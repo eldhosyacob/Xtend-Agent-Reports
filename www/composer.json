@@ -1,0 +1,17 @@
+{
+    "name": "xtend/www",
+    "autoload": {
+        "psr-4": {
+            "Xtend\\Www\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Eldhos Yacob",
+            "email": "eldhosy@gmail.com"
+        }
+    ],
+    "require": {
+        "phpoffice/phpspreadsheet": "^5.7"
+    }
+}
