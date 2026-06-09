@@ -58,7 +58,7 @@ if (strcasecmp($user_department, 'Voice Logger') === 0) {
 }
 
 // Fetch today's records for the current logged-in agent
-$agentUsername = strtoupper($_SESSION['username']);
+$agentUsername = strtoupper($_SESSION['real_name'] ?? $_SESSION['username']);
 
 $query = "SELECT * FROM `$tableName` WHERE `date` = CURDATE() AND UPPER(`agent`) = :agent ORDER BY `id` DESC";
 $stmt = $db->prepare($query);

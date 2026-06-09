@@ -48,8 +48,6 @@ if (!$user) {
 }
 
 $user_department = trim($user['department']);
-$tableName = (strcasecmp($user_department, 'Voice Logger') === 0) ? 'support_details' : 'ivr_details';
-
 // Retrieve and check record_id
 $record_id = trim($_POST['record_id'] ?? '');
 if ($record_id === '') {
@@ -60,10 +58,22 @@ if ($record_id === '') {
     exit;
 }
 
-// Security: Verify the record exists and belongs to the agent
-$checkStmt = $db->prepare("SELECT `agent` FROM `$tableName` WHERE `record_id` = :record_id LIMIT 1");
-$checkStmt->execute(['record_id' => $record_id]);
-$existing = $checkStmt->fetch();
+// Find record in either support_details or ivr_details
+$existing = null;
+$tableName = '';
+$stmt = $db->prepare("SELECT * FROM `support_details` WHERE `record_id` = :record_id LIMIT 1");
+$stmt->execute(['record_id' => $record_id]);
+$existing = $stmt->fetch();
+if ($existing) {
+    $tableName = 'support_details';
+} else {
+    $stmt = $db->prepare("SELECT * FROM `ivr_details` WHERE `record_id` = :record_id LIMIT 1");
+    $stmt->execute(['record_id' => $record_id]);
+    $existing = $stmt->fetch();
+    if ($existing) {
+        $tableName = 'ivr_details';
+    }
+}
 
 if (!$existing) {
     echo json_encode([
@@ -73,10 +83,12 @@ if (!$existing) {
     exit;
 }
 
-if (strcasecmp(trim($existing['agent']), $_SESSION['username']) !== 0) {
+// Security: Ensure agent's department matches the record's department
+$record_department = ($tableName === 'support_details') ? 'Voice Logger' : 'IVR';
+if (strcasecmp($user_department, $record_department) !== 0) {
     echo json_encode([
         'success' => false,
-        'message' => 'Unauthorized: You do not own this record'
+        'message' => 'Unauthorized: You do not have permission to edit this record'
     ]);
     exit;
 }
@@ -84,6 +96,7 @@ if (strcasecmp(trim($existing['agent']), $_SESSION['username']) !== 0) {
 // Retrieve form values with sanitization/trimming
 $data = [
     'date' => trim($_POST['date'] ?? ''),
+    'agent' => trim($_POST['agent'] ?? $_SESSION['real_name'] ?? $_SESSION['username']),
     'company_name' => trim($_POST['company_name'] ?? ''),
     'location' => trim($_POST['location'] ?? ''),
     'region' => trim($_POST['region'] ?? ''),
@@ -107,7 +120,7 @@ $data = [
 
 // Perform backend validation for required fields
 $requiredFields = [
-    'date', 'company_name', 'location', 'region', 'contact_details',
+    'date', 'agent', 'company_name', 'location', 'region', 'contact_details',
     'product_category', 'issue_category', 'issue_type', 'issue_details',
     'support_category', 'total_time', 'support_status'
 ];
@@ -122,38 +135,131 @@ foreach ($requiredFields as $field) {
     }
 }
 
-// Update query
-$updateQuery = "UPDATE `$tableName` SET 
-    `date` = :date,
-    `company_name` = :company_name,
-    `location` = :location,
-    `region` = :region,
-    `contact_details` = :contact_details,
-    `product_category` = :product_category,
-    `issue_category` = :issue_category,
-    `issue_type` = :issue_type,
-    `issue_details` = :issue_details,
-    `support_category` = :support_category,
-    `software_details` = :software_details,
-    `hardware_details` = :hardware_details,
-    `solution` = :solution,
-    `total_time` = :total_time,
-    `support_status` = :support_status,
-    `ticket_id` = :ticket_id,
-    `email` = :email,
-    `phone` = :phone,
-    `support_start_time` = :support_start_time,
-    `support_end_time` = :support_end_time
-    WHERE `record_id` = :record_id";
+// Every edit to any record must be saved as a new record with suffix and same case_id,
+// EXCEPT when the same agent edits their own record on the same day.
+$case_id = !empty($existing['case_id']) ? $existing['case_id'] : $record_id;
 
-$stmt = $db->prepare($updateQuery);
-$stmt->execute(array_merge($data, ['record_id' => $record_id]));
+$is_same_agent = (strcasecmp(trim($existing['agent']), $_SESSION['real_name'] ?? $_SESSION['username']) === 0);
+$is_same_day = ($existing['date'] === date('Y-m-d'));
+
+$save_as_new = !($is_same_agent && $is_same_day);
+
+if ($save_as_new) {
+    // Get all record IDs for this case to calculate the next suffix
+    $suffixStmt = $db->prepare("SELECT record_id FROM `$tableName` WHERE case_id = :case_id");
+    $suffixStmt->execute(['case_id' => $case_id]);
+    $existing_record_ids = $suffixStmt->fetchAll(PDO::FETCH_COLUMN);
+
+    $suffixes = [];
+    foreach ($existing_record_ids as $rid) {
+        if (strpos($rid, $case_id . '_') === 0) {
+            $suffix = substr($rid, strlen($case_id) + 1);
+            if ($suffix !== '') {
+                $suffixes[] = $suffix;
+            }
+        }
+    }
+
+    if (empty($suffixes)) {
+        $next_suffix = 'A';
+    } else {
+        // Sort suffixes by length first, then alphabetically
+        usort($suffixes, function($a, $b) {
+            if (strlen($a) !== strlen($b)) {
+                return strlen($a) - strlen($b);
+            }
+            return strcmp($a, $b);
+        });
+        $max_suffix = end($suffixes);
+        $next_suffix = $max_suffix;
+        $next_suffix++;
+    }
+
+    $new_record_id = $case_id . '_' . $next_suffix;
+
+    // Prepare new record data to insert
+    $newData = [
+        'date' => $data['date'],
+        'agent' => $data['agent'],
+        'company_name' => $data['company_name'],
+        'location' => $data['location'],
+        'region' => $data['region'],
+        'contact_details' => $data['contact_details'],
+        'product_category' => $data['product_category'],
+        'issue_category' => $data['issue_category'],
+        'issue_type' => $data['issue_type'],
+        'issue_details' => $data['issue_details'],
+        'support_category' => $data['support_category'],
+        'software_details' => $data['software_details'],
+        'hardware_details' => $data['hardware_details'],
+        'solution' => $data['solution'],
+        'total_time' => $data['total_time'],
+        'support_status' => $data['support_status'],
+        'ticket_id' => $data['ticket_id'],
+        'record_id' => $new_record_id,
+        'email' => $data['email'],
+        'phone' => $data['phone'],
+        'support_start_time' => $data['support_start_time'],
+        'support_end_time' => $data['support_end_time'],
+        'case_id' => $case_id
+    ];
+
+    if ($tableName === 'ivr_details') {
+        $maxIdStmt = $db->query("SELECT MAX(id) as max_id FROM ivr_details");
+        $maxIdRow = $maxIdStmt->fetch();
+        $newData['id'] = ($maxIdRow && $maxIdRow['max_id'] !== null) ? (int)$maxIdRow['max_id'] + 1 : 1;
+    }
+
+    $cols = array_keys($newData);
+    $columns_str = implode(',', array_map(fn($c) => "`$c`", $cols));
+    $placeholders_str = implode(',', array_map(fn($c) => ":$c", $cols));
+
+    $insertStmt = $db->prepare("INSERT INTO `$tableName` ($columns_str) VALUES ($placeholders_str)");
+    $insertStmt->execute($newData);
+    $returned_record_id = $new_record_id;
+} else {
+    // In-place update query
+    $updateQuery = "UPDATE `$tableName` SET 
+        `date` = :date,
+        `agent` = :agent,
+        `company_name` = :company_name,
+        `location` = :location,
+        `region` = :region,
+        `contact_details` = :contact_details,
+        `product_category` = :product_category,
+        `issue_category` = :issue_category,
+        `issue_type` = :issue_type,
+        `issue_details` = :issue_details,
+        `support_category` = :support_category,
+        `software_details` = :software_details,
+        `hardware_details` = :hardware_details,
+        `solution` = :solution,
+        `total_time` = :total_time,
+        `support_status` = :support_status,
+        `ticket_id` = :ticket_id,
+        `email` = :email,
+        `phone` = :phone,
+        `support_start_time` = :support_start_time,
+        `support_end_time` = :support_end_time
+        WHERE `record_id` = :record_id";
+
+    $stmt = $db->prepare($updateQuery);
+    $stmt->execute(array_merge($data, ['record_id' => $record_id]));
+    $returned_record_id = $record_id;
+}
+
+// Synchronize status in all records with the same case_id
+$statusUpdateStmt = $db->prepare("UPDATE `$tableName` SET `support_status` = :status WHERE `case_id` = :case_id");
+$statusUpdateStmt->execute([
+    'status' => $data['support_status'],
+    'case_id' => $case_id
+]);
 
 echo json_encode([
     'success' => true,
-    'message' => 'Record successfully updated!',
+    'message' => $save_as_new ? 'Record successfully saved as a new record!' : 'Record successfully updated!',
     'data' => [
-        'record_id' => $record_id,
+        'record_id' => $returned_record_id,
         'table' => $tableName
     ]
 ]);

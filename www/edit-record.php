@@ -16,35 +16,58 @@ $userStmt->execute(['id' => $_SESSION['id']]);
 $user = $userStmt->fetch();
 $agent_department = $user ? trim($user['department']) : '';
 
-// Route query to the correct table based on user's department
-$tableName = (strcasecmp($agent_department, 'Voice Logger') === 0) ? 'support_details' : 'ivr_details';
-
 // Retrieve and validate record_id
 $record_id = trim($_GET['record_id'] ?? '');
 if ($record_id === '') {
     die("Error: Record ID is required.");
 }
 
-$stmt = $db->prepare("SELECT * FROM `$tableName` WHERE `record_id` = :record_id LIMIT 1");
+$record = null;
+$tableName = '';
+
+// Check support_details first (Voice Logger)
+$stmt = $db->prepare("SELECT * FROM `support_details` WHERE `record_id` = :record_id LIMIT 1");
 $stmt->execute(['record_id' => $record_id]);
 $record = $stmt->fetch();
+if ($record) {
+    $tableName = 'support_details';
+} else {
+    // Check ivr_details (IVR)
+    $stmt = $db->prepare("SELECT * FROM `ivr_details` WHERE `record_id` = :record_id LIMIT 1");
+    $stmt->execute(['record_id' => $record_id]);
+    $record = $stmt->fetch();
+    if ($record) {
+        $tableName = 'ivr_details';
+    }
+}
 
 if (!$record) {
     die("Error: Record not found.");
 }
 
-// Security: Ensure the record belongs to the logged-in agent
-if (strcasecmp(trim($record['agent']), $_SESSION['username']) !== 0) {
+// Security: Ensure the agent's department matches the record's department
+$record_department = ($tableName === 'support_details') ? 'Voice Logger' : 'IVR';
+if (strcasecmp($agent_department, $record_department) !== 0) {
     die("Error: You are not authorized to edit this record.");
 }
 
 // Calculate stopwatch offsetSeconds from the record's saved total_time
-$timeParts = explode(':', $record['total_time']);
-$offsetSeconds = (int)($timeParts[0] ?? 0) * 3600 + (int)($timeParts[1] ?? 0) * 60 + (int)($timeParts[2] ?? 0);
+$is_same_agent = (strcasecmp(trim($record['agent']), $_SESSION['real_name'] ?? $_SESSION['username']) === 0);
+$is_same_day = ($record['date'] === date('Y-m-d'));
+$resume_timer = ($is_same_agent && $is_same_day);
+
+if ($resume_timer) {
+    $timeParts = explode(':', $record['total_time']);
+    $offsetSeconds = (int)($timeParts[0] ?? 0) * 3600 + (int)($timeParts[1] ?? 0) * 60 + (int)($timeParts[2] ?? 0);
+} else {
+    $offsetSeconds = 0;
+}
 
 // Helper function to print selected select values
-function getSelected($val, $dbVal) {
-    return (strcasecmp(trim((string)$val), trim((string)$dbVal)) === 0) ? 'selected' : '';
+if (!function_exists('getSelected')) {
+    function getSelected($val, $dbVal) {
+        return (strcasecmp(trim((string)$val), trim((string)$dbVal)) === 0) ? 'selected' : '';
+    }
 }
 
 // Fetch clients from ODS file for autocomplete (cached in session with timestamp check)
@@ -135,7 +158,7 @@ if (file_exists($odsFile)) {
             <div class="timer-label"><i class="fa-regular fa-clock"></i></div>
             <div class="timer-display-wrapper">
               <span class="timer-pulse-dot"></span>
-              <div class="timer-display" id="runningTimer"><?php echo htmlspecialchars($record['total_time']); ?></div>
+              <div class="timer-display" id="runningTimer"><?php echo htmlspecialchars($resume_timer ? $record['total_time'] : '00:00:00'); ?></div>
             </div>
           </div>
           <h2>Edit Record (<?php echo htmlspecialchars($record_id); ?>)</h2>
@@ -151,7 +174,7 @@ if (file_exists($odsFile)) {
               <label for="date">Date</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-calendar input-icon"></i>
-                <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($record['date']); ?>" required>
+                <input type="date" id="date" name="date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
               </div>
             </div>
 
@@ -160,7 +183,7 @@ if (file_exists($odsFile)) {
               <label for="agent">Agent</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-user input-icon"></i>
-                <input type="text" id="agent" name="agent" class="form-control" value="<?php echo htmlspecialchars($record['agent']); ?>" readonly required>
+                <input type="text" id="agent" name="agent" class="form-control" value="<?php echo htmlspecialchars($_SESSION['real_name'] ?? $_SESSION['username']); ?>" readonly required>
               </div>
             </div>
 
@@ -341,7 +364,7 @@ if (file_exists($odsFile)) {
               <label for="support_start_time">Support Start Time</label>
               <div class="form-control-wrapper">
                 <i class="fa-solid fa-hourglass-start input-icon"></i>
-                <input type="text" id="support_start_time" name="support_start_time" class="form-control" value="<?php echo htmlspecialchars($record['support_start_time']); ?>" readonly required>
+                <input type="text" id="support_start_time" name="support_start_time" class="form-control" value="<?php echo date('H:i:s'); ?>" readonly required>
               </div>
             </div>
 
@@ -350,7 +373,7 @@ if (file_exists($odsFile)) {
               <label for="support_end_time">Support End Time</label>
               <div class="form-control-wrapper">
                 <i class="fa-solid fa-hourglass-end input-icon"></i>
-                <input type="text" id="support_end_time" name="support_end_time" class="form-control" value="<?php echo htmlspecialchars($record['support_end_time'] ?? ''); ?>" readonly>
+                <input type="text" id="support_end_time" name="support_end_time" class="form-control" value="" readonly>
               </div>
             </div>
 

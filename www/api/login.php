@@ -19,7 +19,7 @@ if (!$db) {
 }
 
 
-$stmt = $db->prepare("SELECT id, username, password, department, user_type FROM users WHERE username = :username LIMIT 1");
+$stmt = $db->prepare("SELECT id, username, password, real_name, department, user_type FROM users WHERE username = :username LIMIT 1");
 $stmt->execute(['username' => $username]);
 $user = $stmt->fetch();
 
@@ -45,7 +45,8 @@ if (password_verify($password, $user['password'])) {
 
     $_SESSION['id'] = $user['id'];
     $_SESSION['username'] = $user['username'];
-    $_SESSION['full_name'] = ucfirst($user['username']);
+    $_SESSION['real_name'] = $user['real_name'];
+    $_SESSION['full_name'] = $user['real_name'];
     $_SESSION['department'] = $user['department'];
     $_SESSION['role'] = $user['user_type'];
     $_SESSION['logged_in'] = true;
@@ -56,7 +57,8 @@ if (password_verify($password, $user['password'])) {
         'data' => [
             'id' => $user['id'],
             'username' => $user['username'],
-            'full_name' => ucfirst($user['username']),
+            'real_name' => $user['real_name'],
+            'full_name' => $user['real_name'],
             'department' => $user['department'],
             'role' => $user['user_type']
         ]

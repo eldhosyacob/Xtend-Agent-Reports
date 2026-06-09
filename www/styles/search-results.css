@@ -237,7 +237,7 @@
     padding: 12px 18px;
     text-transform: none;
     font-size: 13px;
-    text-align: left;
+    text-align: center;
     border-bottom: none;
 }
 
@@ -247,7 +247,8 @@
     background: #ffffff;
     color: var(--text-primary);
     font-weight: 500;
-    font-size: 13px;
+    font-size: 11px;
+    text-align: center;
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -658,5 +659,113 @@
 
     .detail-item.full-width {
         grid-column: span 1;
+    }
+}
+
+/* Pagination Styling */
+.pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: 16px;
+    transition: opacity 0.3s ease;
+}
+
+.btn-pagination {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 8px 16px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    user-select: none;
+}
+
+.btn-pagination:hover:not(.disabled):not(:disabled) {
+    border-color: var(--input-focus-border);
+    color: var(--input-focus-border);
+    background: #f8fafc;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.btn-pagination:active:not(.disabled):not(:disabled) {
+    transform: translateY(1px);
+}
+
+.btn-pagination.disabled,
+.btn-pagination:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f8fafc;
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+    box-shadow: none;
+}
+
+.pagination-pages {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.page-num-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 6px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.page-num-btn:hover {
+    border-color: var(--input-focus-border);
+    color: var(--input-focus-border);
+    background: #f8fafc;
+}
+
+.page-num-btn.active {
+    background: linear-gradient(135deg, var(--accent-coral) 0%, #a83d36 100%);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 4px 10px rgba(208, 103, 95, 0.25);
+}
+
+.pagination-ellipsis {
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 0 4px;
+    user-select: none;
+}
+
+@media (max-width: 600px) {
+    .pagination-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .btn-pagination {
+        width: 100%;
+        justify-content: center;
     }
 }

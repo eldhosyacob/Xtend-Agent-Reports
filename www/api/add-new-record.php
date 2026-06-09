@@ -140,6 +140,7 @@ if ($tableName === 'ivr_details') {
 
 // Add placeholder for record_id
 $data['record_id'] = '';
+$data['case_id'] = '';
 
 // Dynamically construct prepared insert query
 $cols = array_keys($data);
@@ -161,6 +162,7 @@ while (!$success && $attempts < $max_attempts) {
     $letters = chr(rand(65, 90)) . chr(rand(65, 90));
     $record_id = $next_num . $letters;
     $data['record_id'] = $record_id;
+    $data['case_id'] = $record_id;
 
     try {
         $insertStmt->execute($data);

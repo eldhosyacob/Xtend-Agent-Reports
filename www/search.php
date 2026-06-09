@@ -342,6 +342,44 @@ if (file_exists($odsFile)) {
             $suggestions.empty().hide();
           }
         });
+
+        // Toast notification helper
+        function showNotification(message, type = 'success') {
+          $('.toast-notification').remove();
+
+          const icon = type === 'success' 
+            ? '<i class="fa-solid fa-circle-check toast-icon" style="color: #10b981;"></i>' 
+            : '<i class="fa-solid fa-circle-exclamation toast-icon" style="color: #ef4444;"></i>';
+
+          const $toast = $('<div class="toast-notification"></div>')
+            .addClass('toast-' + type)
+            .html(icon + '<span>' + message + '</span>')
+            .appendTo('body');
+
+          setTimeout(() => $toast.addClass('show'), 50);
+
+          setTimeout(() => {
+            $toast.removeClass('show');
+            setTimeout(() => $toast.remove(), 400);
+          }, 4000);
+        }
+
+        // Form submission validation: Ensure at least one search criterion is entered
+        $('#searchForm').on('submit', function(e) {
+          const agent = $('#agent').val().trim();
+          const fromDate = $('#from_date').val().trim();
+          const toDate = $('#to_date').val().trim();
+          const companyName = $('#company_name').val().trim();
+          const location = $('#location').val().trim();
+          const hardware = $('#hardware_details').val().trim();
+          const ticket = $('#ticket_id').val().trim();
+          const dept = $('#department_select').length ? $('#department_select').val() : '';
+
+          if (!agent && !fromDate && !toDate && !companyName && !location && !hardware && !ticket && !dept) {
+            e.preventDefault();
+            showNotification('Please enter at least one search criteria to search.', 'error');
+          }
+        });
       });
     </script>
   </body>

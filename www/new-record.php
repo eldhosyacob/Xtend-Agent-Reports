@@ -3,7 +3,7 @@
 require_once 'config/auth_check.php';
 
 // Default agent name from current session (uppercase)
-$agent_name = isset($_SESSION['username']) ? strtoupper($_SESSION['username']) : '';
+$agent_name = isset($_SESSION['real_name']) ? strtoupper($_SESSION['real_name']) : '';
 // Default department name from current session (uppercase)
 $agent_department = isset($_SESSION['department']) ? strtoupper($_SESSION['department']) : '';
 
@@ -804,36 +804,7 @@ if (file_exists($odsFile)) {
         });
 
         // 6. Live Session Stopwatch Timer
-        // let totalSeconds = 0;
-        // let timerInterval = null;
-
-        // function startTimer() {
-        //   if (timerInterval) clearInterval(timerInterval);
-        //   totalSeconds = 0;
-        //   updateTimerDisplay();
-          
-        //   timerInterval = setInterval(function() {
-        //     totalSeconds++;
-        //     updateTimerDisplay();
-        //   }, 1000);
-        // }
-
-        // function updateTimerDisplay() {
-        //   const hours = Math.floor(totalSeconds / 3600);
-        //   const minutes = Math.floor((totalSeconds % 3600) / 60);
-        //   const seconds = totalSeconds % 60;
-
-        //   const formattedTime = 
-        //     String(hours).padStart(2, '0') + ':' + 
-        //     String(minutes).padStart(2, '0') + ':' + 
-        //     String(seconds).padStart(2, '0');
-
-        //   $('#runningTimer').text(formattedTime);
-        //   $('#total_time').val(formattedTime);
-        // }
-
-        // // Start timer immediately on page load
-        // startTimer();
+        
         let timerInterval = null;
         let startTime = null;
 

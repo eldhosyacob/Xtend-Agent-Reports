@@ -54,6 +54,7 @@ require_once __DIR__ . '/config/auth_check.php';
           <table class="custom-search-table" id="records-table">
             <thead>
               <tr>
+                <th scope="col">Sl. No.</th>
                 <th scope="col">Record ID</th>
                 <th scope="col">Date</th>
                 <th scope="col">Agent</th>
@@ -67,6 +68,7 @@ require_once __DIR__ . '/config/auth_check.php';
             <tbody id="records-tbody">
               <!-- Loading Skeleton Rows -->
               <tr class="skeleton-row">
+                <td><div class="skeleton-line w-30"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-line w-50"></div></td>
@@ -77,6 +79,7 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
               </tr>
               <tr class="skeleton-row">
+                <td><div class="skeleton-line w-30"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-line w-50"></div></td>
@@ -87,6 +90,7 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
               </tr>
               <tr class="skeleton-row">
+                <td><div class="skeleton-line w-30"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-line w-50"></div></td>
@@ -98,6 +102,17 @@ require_once __DIR__ . '/config/auth_check.php';
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="pagination-container" id="pagination-wrapper" style="display: none;">
+          <button class="btn-pagination" id="btn-prev" disabled>
+            <i class="fa-solid fa-chevron-left"></i> Previous
+          </button>
+          <div class="pagination-pages" id="pagination-pages"></div>
+          <button class="btn-pagination" id="btn-next" disabled>
+            Next <i class="fa-solid fa-chevron-right"></i>
+          </button>
         </div>
 
       </main>
@@ -232,6 +247,9 @@ require_once __DIR__ . '/config/auth_check.php';
     <script>
       $(document).ready(function() {
         let allRecords = [];
+        let displayedRecords = [];
+        let currentPage = 1;
+        const pageSize = 10;
 
         // Load records on page ready using the current URL query parameters
         loadSearchResults();
@@ -248,8 +266,10 @@ require_once __DIR__ . '/config/auth_check.php';
         // Filter text input inside results
         $('#search-records').on('input', function() {
           const val = $(this).val().toLowerCase().trim();
+          currentPage = 1;
           if (val === '') {
-            renderRecords(allRecords);
+            displayedRecords = allRecords;
+            renderRecords(displayedRecords);
           } else {
             const filtered = allRecords.filter(function(r) {
               const recId = (r.record_id || '').toLowerCase();
@@ -265,7 +285,8 @@ require_once __DIR__ . '/config/auth_check.php';
                      status.indexOf(val) > -1 ||
                      ticket.indexOf(val) > -1;
             });
-            renderRecords(filtered);
+            displayedRecords = filtered;
+            renderRecords(displayedRecords);
           }
         });
 
@@ -287,12 +308,14 @@ require_once __DIR__ . '/config/auth_check.php';
             success: function(response) {
               if (response.success) {
                 allRecords = response.data || [];
+                currentPage = 1;
+                displayedRecords = allRecords;
                 
                 // Update Badge text
                 $('#results-badge').html('<i class="fa-solid fa-list-check" style="color: #ecae3b;"></i> <span style="color: #18ad9f; margin:0 4px;">'+allRecords.length+'</span><span style="color: #18678e;"> matching records</span>');
 
                 // Populate rows
-                renderRecords(allRecords);
+                renderRecords(displayedRecords);
               } else {
                 showError(response.message || 'Failed to fetch search results.');
               }
@@ -310,6 +333,7 @@ require_once __DIR__ . '/config/auth_check.php';
           for (let i = 0; i < 4; i++) {
             skeletonHtml += `
               <tr class="skeleton-row">
+                <td><div class="skeleton-line w-30"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-line w-50"></div></td>
@@ -321,16 +345,18 @@ require_once __DIR__ . '/config/auth_check.php';
               </tr>`;
           }
           $('#records-tbody').html(skeletonHtml);
+          $('#pagination-wrapper').hide();
         }
 
         function showError(msg) {
           $('#records-tbody').html(`
             <tr>
-              <td colspan="8" class="table-error-cell">
+              <td colspan="9" class="table-error-cell">
                 <i class="fa-solid fa-triangle-exclamation"></i>
                 ${msg}
               </td>
             </tr>`);
+          $('#pagination-wrapper').hide();
         }
 
         function renderRecords(records) {
@@ -340,7 +366,7 @@ require_once __DIR__ . '/config/auth_check.php';
           if (records.length === 0) {
             $tbody.html(`
               <tr>
-                <td colspan="8">
+                <td colspan="9">
                   <div class="table-empty-state">
                     <i class="fa-solid fa-folder-open"></i>
                     <h3>No Search Results</h3>
@@ -348,10 +374,18 @@ require_once __DIR__ . '/config/auth_check.php';
                   </div>
                 </td>
               </tr>`);
+            $('#pagination-wrapper').hide();
             return;
           }
 
-          records.forEach(function(r) {
+          // Calculate pagination boundaries
+          const startIndex = (currentPage - 1) * pageSize;
+          const endIndex = Math.min(startIndex + pageSize, records.length);
+          const paginatedRecords = records.slice(startIndex, endIndex);
+
+          paginatedRecords.forEach(function(r, index) {
+            const slNo = startIndex + index + 1;
+
             // Map status CSS classes
             let rawStatus = r.support_status || 'Pending';
             let statusLower = rawStatus.toLowerCase();
@@ -378,6 +412,7 @@ require_once __DIR__ . '/config/auth_check.php';
 
             const row = `
               <tr>
+                <td>${slNo}</td>
                 <td>
                   <span class="record-id-badge">${escapeHtml(r.record_id)}</span>
                 </td>
@@ -402,10 +437,96 @@ require_once __DIR__ . '/config/auth_check.php';
           });
 
           // Bind view details buttons
-          $('.btn-action-view').on('click', function() {
+          $('.btn-action-view').off('click').on('click', function() {
             const recordId = $(this).data('record-id');
             showDetails(recordId);
           });
+
+          // Draw pagination controls
+          updatePaginationControls(records.length);
+        }
+
+        function updatePaginationControls(totalCount) {
+          const totalPages = Math.ceil(totalCount / pageSize);
+
+          if (totalPages <= 1) {
+            $('#pagination-wrapper').hide();
+            return;
+          } else {
+            $('#pagination-wrapper').show();
+          }
+
+          // Update Prev/Next buttons state
+          $('#btn-prev').prop('disabled', currentPage === 1).toggleClass('disabled', currentPage === 1);
+          $('#btn-next').prop('disabled', currentPage === totalPages).toggleClass('disabled', currentPage === totalPages);
+
+          const $pagesContainer = $('#pagination-pages');
+          $pagesContainer.empty();
+
+          const range = 1;
+          const pages = [];
+          for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - range && i <= currentPage + range)) {
+              pages.push(i);
+            }
+          }
+
+          let lastPage = 0;
+          pages.forEach(function(page) {
+            if (lastPage !== 0) {
+              if (page - lastPage === 2) {
+                // Fill the gap if it is only 1 page
+                const fillPage = lastPage + 1;
+                const btn = $('<button class="page-num-btn">' + fillPage + '</button>');
+                btn.on('click', function() {
+                  currentPage = fillPage;
+                  renderRecords(displayedRecords);
+                  scrollToTableTop();
+                });
+                $pagesContainer.append(btn);
+              } else if (page - lastPage > 2) {
+                $pagesContainer.append('<span class="pagination-ellipsis">...</span>');
+              }
+            }
+
+            const btn = $('<button class="page-num-btn">' + page + '</button>');
+            if (page === currentPage) {
+              btn.addClass('active');
+            }
+            btn.on('click', function() {
+              if (currentPage !== page) {
+                currentPage = page;
+                renderRecords(displayedRecords);
+                scrollToTableTop();
+              }
+            });
+            $pagesContainer.append(btn);
+            lastPage = page;
+          });
+        }
+
+        // Setup Prev/Next click events
+        $('#btn-prev').on('click', function() {
+          if (currentPage > 1) {
+            currentPage--;
+            renderRecords(displayedRecords);
+            scrollToTableTop();
+          }
+        });
+
+        $('#btn-next').on('click', function() {
+          const totalPages = Math.ceil(displayedRecords.length / pageSize);
+          if (currentPage < totalPages) {
+            currentPage++;
+            renderRecords(displayedRecords);
+            scrollToTableTop();
+          }
+        });
+
+        function scrollToTableTop() {
+          $('html, body').animate({
+            scrollTop: $('.report-card-wrapper').offset().top - 20
+          }, 300);
         }
 
         function showDetails(recordId) {
