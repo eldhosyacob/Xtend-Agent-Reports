@@ -41,6 +41,23 @@ if ($record) {
     }
 }
 
+// Fallback to auto-increment id if not found by record_id
+if (!$record && is_numeric($record_id)) {
+    $stmt = $db->prepare("SELECT * FROM `support_details` WHERE `id` = :id LIMIT 1");
+    $stmt->execute(['id' => (int)$record_id]);
+    $record = $stmt->fetch();
+    if ($record) {
+        $tableName = 'support_details';
+    } else {
+        $stmt = $db->prepare("SELECT * FROM `ivr_details` WHERE `id` = :id LIMIT 1");
+        $stmt->execute(['id' => (int)$record_id]);
+        $record = $stmt->fetch();
+        if ($record) {
+            $tableName = 'ivr_details';
+        }
+    }
+}
+
 if (!$record) {
     die("Error: Record not found.");
 }
@@ -166,7 +183,7 @@ if (file_exists($odsFile)) {
         </div>
 
         <form id="editRecordForm" autocomplete="off">
-          <input type="hidden" name="record_id" value="<?php echo htmlspecialchars($record['record_id']); ?>">
+          <input type="hidden" name="record_id" value="<?php echo htmlspecialchars($record['record_id'] ?: $record_id); ?>">
           <div class="grid-form">
             
             <!-- 1. DATE -->

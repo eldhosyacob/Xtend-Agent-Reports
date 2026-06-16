@@ -75,6 +75,23 @@ if ($existing) {
     }
 }
 
+// Fallback to auto-increment id if not found by record_id
+if (!$existing && is_numeric($record_id)) {
+    $stmt = $db->prepare("SELECT * FROM `support_details` WHERE `id` = :id LIMIT 1");
+    $stmt->execute(['id' => (int)$record_id]);
+    $existing = $stmt->fetch();
+    if ($existing) {
+        $tableName = 'support_details';
+    } else {
+        $stmt = $db->prepare("SELECT * FROM `ivr_details` WHERE `id` = :id LIMIT 1");
+        $stmt->execute(['id' => (int)$record_id]);
+        $existing = $stmt->fetch();
+        if ($existing) {
+            $tableName = 'ivr_details';
+        }
+    }
+}
+
 if (!$existing) {
     echo json_encode([
         'success' => false,
@@ -137,7 +154,7 @@ foreach ($requiredFields as $field) {
 
 // Every edit to any record must be saved as a new record with suffix and same case_id,
 // EXCEPT when the same agent edits their own record on the same day.
-$case_id = !empty($existing['case_id']) ? $existing['case_id'] : $record_id;
+$case_id = !empty($existing['case_id']) ? $existing['case_id'] : (!empty($existing['record_id']) ? $existing['record_id'] : $existing['id']);
 
 $is_same_agent = (strcasecmp(trim($existing['agent']), $_SESSION['real_name'] ?? $_SESSION['username']) === 0);
 $is_same_day = ($existing['date'] === date('Y-m-d'));
@@ -241,11 +258,11 @@ if ($save_as_new) {
         `phone` = :phone,
         `support_start_time` = :support_start_time,
         `support_end_time` = :support_end_time
-        WHERE `record_id` = :record_id";
+        WHERE `id` = :id";
 
     $stmt = $db->prepare($updateQuery);
-    $stmt->execute(array_merge($data, ['record_id' => $record_id]));
-    $returned_record_id = $record_id;
+    $stmt->execute(array_merge($data, ['id' => $existing['id']]));
+    $returned_record_id = $existing['record_id'] ?: $record_id;
 }
 
 // Synchronize status in all records with the same case_id

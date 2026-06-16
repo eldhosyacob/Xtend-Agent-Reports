@@ -257,6 +257,11 @@ require_once __DIR__ . '/config/auth_check.php';
         let allRecords = [];
         let activeDepartment = '';
 
+        function getRecordIdentifier(r) {
+          if (!r) return '';
+          return (r.record_id && String(r.record_id) !== 'null' && String(r.record_id) !== 'NULL' && String(r.record_id).trim() !== '') ? r.record_id : r.id;
+        }
+
         // Load records initially
         loadRecords();
 
@@ -276,7 +281,7 @@ require_once __DIR__ . '/config/auth_check.php';
             renderRecords(allRecords);
           } else {
             const filtered = allRecords.filter(function(r) {
-              const recId = (r.record_id || '').toLowerCase();
+              const recId = String(getRecordIdentifier(r)).toLowerCase();
               const comp = (r.company_name || '').toLowerCase();
               const prod = (r.product_category || '').toLowerCase();
               const status = (r.support_status || '').toLowerCase();
@@ -415,14 +420,14 @@ require_once __DIR__ . '/config/auth_check.php';
             let reopenBtn = '';
             if (statusLower !== 'closed' && statusLower !== 'closed-device replaced') {
               reopenBtn = `
-                <a href="edit-record.php?record_id=${escapeHtml(r.record_id)}" target="_blank" class="btn-action-reopen" title="Reopen Record">
+                <a href="edit-record.php?record_id=${escapeHtml(getRecordIdentifier(r))}" target="_blank" class="btn-action-reopen" title="Reopen Record">
                   <i class="fa-solid fa-folder-open"></i>
                 </a>`;
             }
 
             const row = `
               <tr>
-                <td><span class="record-id-badge">${escapeHtml(r.record_id)}</span></td>
+                <td><span class="record-id-badge">${escapeHtml(getRecordIdentifier(r))}</span></td>
                 <td class="company-name-cell">${escapeHtml(r.company_name)}</td>
                 <td>${escapeHtml(r.product_category || '—')}</td>
                 <td>
@@ -431,7 +436,7 @@ require_once __DIR__ . '/config/auth_check.php';
                   </span>
                 </td>
                 <td class="actions-cell">
-                  <button class="btn-action-view" data-record-id="${escapeHtml(r.record_id)}" title="View Details">
+                  <button class="btn-action-view" data-record-id="${escapeHtml(getRecordIdentifier(r))}" title="View Details">
                     <i class="fa-solid fa-eye"></i>
                   </button>
                   ${reopenBtn}
@@ -442,22 +447,24 @@ require_once __DIR__ . '/config/auth_check.php';
 
           // Bind view buttons
           $('.btn-action-view').on('click', function() {
-            const recordId = $(this).data('record-id');
+            const recordId = $(this).attr('data-record-id');
             showDetails(recordId);
           });
         }
 
         function showDetails(recordId) {
-          const record = allRecords.find(r => r.record_id === recordId);
+          const record = allRecords.find(r => String(getRecordIdentifier(r)) === String(recordId));
           if (!record) return;
 
           // Utility to handle empty values cleanly
           function valOrDash(val) {
-            return (val && val.trim() !== '') ? val : '—';
+            if (val === null || val === undefined) return '—';
+            const str = String(val).trim();
+            return str !== '' ? str : '—';
           }
 
           // Populate modal fields
-          $('#detail-record-id').text(valOrDash(record.record_id));
+          $('#detail-record-id').text(valOrDash(getRecordIdentifier(record)));
           $('#detail-date').text(valOrDash(record.date));
           $('#detail-agent').text(valOrDash(record.agent));
           $('#detail-company-name').text(valOrDash(record.company_name));
