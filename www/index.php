@@ -128,7 +128,7 @@ require_once('config/login_redirect.php');
           success: function (response) {
             console.log("login ajax 1:", response);
             if (response.success) {
-              window.location.href = 'users.php';
+              window.location.href = 'dashboard.php';
             } else {
               showError(response.message || 'Login failed. Please try again.');
               $('#loginBtn').prop('disabled', false).text('Sign In');

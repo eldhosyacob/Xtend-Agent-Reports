@@ -26,6 +26,20 @@ $user_full_name = isset($_SESSION['full_name']) ? $_SESSION['full_name'] : 'Admi
 $user_id = isset($_SESSION['id']) ? $_SESSION['id'] : '';
 $username = isset($_SESSION['username']) ? $_SESSION['username'] : '';
 $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
+$user_department = isset($_SESSION['department']) ? $_SESSION['department'] : '';
+
+// Resolve user profile photo path
+$profile_photo_url = 'images/default-avatar.png'; // default fallback or initials
+$allowed_extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+if (!empty($user_id)) {
+    foreach ($allowed_extensions as $ext) {
+        $photo_path = __DIR__ . '/../images/profile/' . $user_id . '.' . $ext;
+        if (file_exists($photo_path)) {
+            $profile_photo_url = 'images/profile/' . $user_id . '.' . $ext . '?t=' . filemtime($photo_path);
+            break;
+        }
+    }
+}
 ?>
 
 <!-- Header -->
@@ -41,6 +55,41 @@ $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
     </div>
     <!-- <div class="xtend-logo masked-text">Xtend License Update</div> -->
   </div>
+
+  <div class="header-right">
+    <div class="header-user">
+      <button class="user-menu-btn" id="userMenuBtn" aria-label="User menu">
+        <div class="user-avatar" id="headerUserAvatar">
+          <?php if ($profile_photo_url !== 'images/default-avatar.png'): ?>
+            <img src="<?php echo $profile_photo_url; ?>" alt="User Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;">
+          <?php else: ?>
+            <?php 
+              $initials = '';
+              if (!empty($user_full_name)) {
+                $words = explode(' ', $user_full_name);
+                foreach ($words as $word) {
+                  $initials .= strtoupper(substr($word, 0, 1));
+                }
+                $initials = substr($initials, 0, 2);
+              }
+              echo htmlspecialchars($initials ?: '?');
+            ?>
+          <?php endif; ?>
+        </div>
+        <span class="user-name"><?php echo htmlspecialchars($user_full_name); ?></span>
+        <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+      </button>
+      <div class="user-dropdown" id="userDropdown">
+        <a href="user-profile.php" class="dropdown-item">
+          <i class="fa-solid fa-user"></i> My Profile
+        </a>
+        <div class="dropdown-divider"></div>
+        <a href="#" onclick="showLogoutModal(); return false;" class="dropdown-item">
+          <i class="fa-solid fa-right-from-bracket"></i> Logout
+        </a>
+      </div>
+    </div>
+  </div>
 </header>
 
 <!-- Sidebar -->
@@ -50,45 +99,54 @@ $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
     <div class="sidebar-section">
       <ul class="sidebar-menu">
         <li class="sidebar-menu-item <?php echo ($current_page == 'home' || $current_page == 'dashboard') ? 'active' : ''; ?>">
-          <a href="home.php" class="sidebar-link">
+          <a href="dashboard.php" class="sidebar-link">
             <!-- <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
               <path
                 d="M8 3.293l6 6V13.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 13.5V9.293l6-6zm5-.793V1.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293l-2-2z" />
             </svg> -->
-            <i class="fa-solid fa-house" style="color:#d1d1d1"></i>
-            <span>Home</span>
+            <i class="fa-solid fa-house"></i>
+            <span>Dashboard</span>
           </a>
         </li>
-        <li class="sidebar-menu-item <?php echo ($current_page == 'new-record' || $current_page == 'new-record') ? 'active' : ''; ?>">
-          <a href="new-record.php" target="_blank" class="sidebar-link">
-            <i class="fa-solid fa-square-plus" style="color:#71cbae"></i>
+        <li class="sidebar-menu-item <?php echo ($current_page == 'new-record') ? 'active' : ''; ?>">
+          <a href="#" onclick="showNewRecordConfirmModal(); return false;" class="sidebar-link">
+            <i class="fa-solid fa-square-plus"></i>
             <span>Add New Record</span>
           </a>
         </li>
         <li class="sidebar-menu-item <?php echo ($current_page == 'upload-record') ? 'active' : ''; ?>">
           <a href="upload-record.php" class="sidebar-link">
-            <i class="fa-solid fa-file-arrow-up" style="color:#c19149"></i>
+            <i class="fa-solid fa-file-arrow-up"></i>
             <span>Upload Record</span>
           </a>
         </li>
         <li class="sidebar-menu-item <?php echo ($current_page == 'my-records') ? 'active' : ''; ?>">
           <a href="my-records.php" class="sidebar-link">
-            <i class="fa-solid fa-file-lines" style="color:#71cbae"></i>
+            <i class="fa-solid fa-file-lines"></i>
             <span>My Records</span>
           </a>
         </li>
         <li class="sidebar-menu-item <?php echo ($current_page == 'search') ? 'active' : ''; ?>">
           <a href="search.php" class="sidebar-link">
-            <i class="fa-solid fa-magnifying-glass" style="color:#2fa7cd"></i>
+            <i class="fa-solid fa-magnifying-glass"></i>
             <span>Search</span>
           </a>
         </li>
-        <li class="sidebar-menu-item <?php echo ($current_page == 'administration') ? 'active' : ''; ?>">
-          <a href="administration.php" class="sidebar-link">
-            <i class="fa-solid fa-user-shield" style="color:#a88be4"></i>
-            <span>Administration</span>
+        <li class="sidebar-menu-item <?php echo ($current_page == 'user-profile') ? 'active' : ''; ?>">
+          <a href="user-profile.php" class="sidebar-link">
+            <i class="fa-solid fa-user-shield"></i>
+            <span>Profile</span>
           </a>
         </li>
+
+        <?php if ($user_role === 'admin'): ?>
+        <li class="sidebar-menu-item <?php echo ($current_page == 'user-accounts') ? 'active' : ''; ?>">
+          <a href="user-accounts.php" class="sidebar-link">
+            <i class="fa-solid fa-users-line"></i>
+            <span>Accounts</span>
+          </a>
+        </li>
+        <?php endif; ?>
         <li class="sidebar-menu-item <?php echo ($current_page == 'logout') ? 'active' : ''; ?>">
           <a href="#" onclick="showLogoutModal(); return false;" class="sidebar-link">
             <!-- <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
@@ -97,7 +155,7 @@ $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
               <path fill-rule="evenodd"
                 d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z" />
             </svg> -->
-            <i class="fa-solid fa-right-from-bracket" style="color:#d95555"></i>
+            <i class="fa-solid fa-right-from-bracket"></i>
             <span>Logout</span>
           </a>
         </li>
@@ -125,6 +183,50 @@ $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
         style="padding:10px 30px; border:none; border-radius:4px; cursor:pointer; font-size:14px; font-weight:500; background-color:#dc3545; color:white; transition:background-color 0.3s;"
         onmouseover="this.style.backgroundColor='#c82333'"
         onmouseout="this.style.backgroundColor='#dc3545'">Logout</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add New Record Confirmation Modal -->
+<div id="newRecordConfirmModal" class="confirm-modal-overlay" style="display: none;">
+  <div class="confirm-modal-wrapper">
+    <div class="confirm-modal-card split-design">
+      
+      <!-- Gradient Header Section -->
+      <div class="confirm-modal-header-section">
+        <button type="button" class="confirm-modal-close-btn light-version" onclick="hideNewRecordConfirmModal()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="confirm-icon-badge">
+          <i class="fa-solid fa-file-circle-plus"></i>
+        </div>
+      </div>
+      
+      <!-- Body Content Section -->
+      <div class="confirm-modal-body-section">
+        <h2 class="confirm-title">Create New Record</h2>
+        <p class="confirm-description">Enter The Company Name and Click <span style="color: var(--accent-coral);">Proceed</span> To Continue</p>
+        
+        <!-- Company Name Selection Field -->
+        <div class="confirm-form-group">
+          <label for="modal_company_name">Company Name</label>
+          <div class="form-control-wrapper autocomplete-wrapper">
+            <i class="fa-regular fa-building input-icon"></i>
+            <input type="text" id="modal_company_name" name="company_name" class="form-control" placeholder="Enter company / client name" autocomplete="off" required>
+            <div class="autocomplete-suggestions" id="modalCompanySuggestions"></div>
+          </div>
+        </div>
+
+        <div class="confirm-actions">
+          <button type="button" class="btn btn-secondary" onclick="hideNewRecordConfirmModal()">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" onclick="proceedToNewRecord()">
+            Proceed
+          </button>
+        </div>
+      </div>
+      
     </div>
   </div>
 </div>
@@ -159,7 +261,12 @@ $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
       }
     });
 
-
+    // Close confirmation modal when clicking on overlay backdrop
+    $('#newRecordConfirmModal').on('click', function(e) {
+      if (e.target === this || $(e.target).hasClass('confirm-modal-wrapper')) {
+        hideNewRecordConfirmModal();
+      }
+    });
 
     // Search functionality
     $('.search-btn').on('click', function () {
@@ -194,5 +301,153 @@ $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
 
   function confirmLogout() {
     window.location.href = 'logout.php?confirm=yes';
+  }
+
+  // Confirmation modal functions
+  let modalClientList = null;
+  let modalCurrentFocus = -1;
+
+  function showNewRecordConfirmModal() {
+    $('#newRecordConfirmModal').fadeIn(200);
+    // Focus and clear input
+    $('#modal_company_name').val('').focus();
+    $('#modalCompanySuggestions').empty().hide();
+    modalCurrentFocus = -1;
+
+    // Load clients if not already loaded
+    if (modalClientList === null) {
+      $.ajax({
+        url: 'api/get-clients.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+          if (response.success) {
+            modalClientList = response.data;
+            initModalAutocomplete();
+          }
+        }
+      });
+    }
+  }
+
+  function hideNewRecordConfirmModal() {
+    $('#newRecordConfirmModal').fadeOut(200);
+  }
+
+  function initModalAutocomplete() {
+    const $input = $('#modal_company_name');
+    const $suggestions = $('#modalCompanySuggestions');
+
+    $input.on('input', function() {
+      const val = this.value.trim().toLowerCase();
+      $suggestions.empty().hide();
+      modalCurrentFocus = -1;
+
+      if (!val || !modalClientList) return;
+
+      // Filter matches (case-insensitive, max 10 results)
+      const matches = modalClientList.filter(client => client.toLowerCase().includes(val)).slice(0, 10);
+
+      if (matches.length > 0) {
+        matches.forEach((match, index) => {
+          const $suggestion = $('<div class="autocomplete-suggestion"></div>')
+            .text(match)
+            .attr('data-index', index)
+            .on('click', function() {
+              $input.val(match);
+              $suggestions.empty().hide();
+            });
+          $suggestions.append($suggestion);
+        });
+        $suggestions.show();
+      }
+    });
+
+    // Keyboard navigation helper
+    $input.on('keydown', function(e) {
+      const $items = $suggestions.find('.autocomplete-suggestion');
+      if (!$items.length) return;
+
+      if (e.keyCode === 40) { // Arrow Down
+        modalCurrentFocus++;
+        setModalActive($items);
+        e.preventDefault();
+      } else if (e.keyCode === 38) { // Arrow Up
+        modalCurrentFocus--;
+        setModalActive($items);
+        e.preventDefault();
+      } else if (e.keyCode === 13) { // Enter
+        if (modalCurrentFocus > -1) {
+          if ($items.eq(modalCurrentFocus).length) {
+            $items.eq(modalCurrentFocus).trigger('click');
+            e.preventDefault();
+          }
+        }
+      } else if (e.keyCode === 27) { // Escape
+        $suggestions.empty().hide();
+        modalCurrentFocus = -1;
+      }
+    });
+
+    function setModalActive($items) {
+      $items.removeClass('active');
+      if (modalCurrentFocus >= $items.length) modalCurrentFocus = 0;
+      if (modalCurrentFocus < 0) modalCurrentFocus = $items.length - 1;
+      const $activeItem = $items.eq(modalCurrentFocus);
+      $activeItem.addClass('active');
+      
+      // Scroll suggestion container into view if needed
+      const containerHeight = $suggestions.height();
+      const itemHeight = $activeItem.outerHeight();
+      const itemTop = $activeItem.position().top;
+
+      if (itemTop + itemHeight > containerHeight) {
+        $suggestions.scrollTop($suggestions.scrollTop() + itemTop + itemHeight - containerHeight);
+      } else if (itemTop < 0) {
+        $suggestions.scrollTop($suggestions.scrollTop() + itemTop);
+      }
+    }
+
+    // Dismiss suggestions when clicking outside
+    $(document).on('click', function(e) {
+      if (!$(e.target).closest('#modal_company_name').parent().length) {
+        $suggestions.empty().hide();
+        modalCurrentFocus = -1;
+      }
+    });
+  }
+
+  function proceedToNewRecord() {
+    const companyName = $('#modal_company_name').val().trim();
+    if (!companyName) {
+      alert('Please enter or select a Company Name.');
+      $('#modal_company_name').focus();
+      return;
+    }
+
+    const $btn = $('#newRecordConfirmModal .btn-primary');
+    const originalHtml = $btn.html();
+    $btn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Creating...');
+
+    $.ajax({
+      url: 'api/create-pending-record.php',
+      type: 'POST',
+      data: { company_name: companyName },
+      dataType: 'json',
+      success: function(response) {
+        if (response.success) {
+          window.open('new-record.php?id=' + encodeURIComponent(response.record_id), '_blank');
+          hideNewRecordConfirmModal();
+        } else {
+          alert('Error: ' + response.message);
+        }
+      },
+      error: function() {
+        alert('An error occurred while creating the record.');
+      },
+      complete: function() {
+        $btn.prop('disabled', false).html(originalHtml);
+      }
+    });
   }
 </script>

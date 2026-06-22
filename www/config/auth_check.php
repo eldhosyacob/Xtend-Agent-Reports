@@ -1,8 +1,8 @@
 <?php
 // Include this file at the top of pages
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/session.php';
+
+
 
 if (!isset($_SESSION['id']) || !isset($_SESSION['username'])) {
     session_destroy();

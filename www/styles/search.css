@@ -249,7 +249,7 @@ select.form-control {
 .form-actions {
     grid-column: span 12;
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 16px;
     margin-top: 20px;
     border-top: 1px solid var(--border-color);

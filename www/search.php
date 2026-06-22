@@ -153,16 +153,42 @@ if (file_exists($odsFile)) {
 
             <form method="get" action="search-results.php" autocomplete="off" id="searchForm">
                 <div class="grid-form">
-                <!-- 1. AGENT NAME -->
+                    <!-- 1. DEPARTMENT SELECT (If Manager) -->
+                    <?php if ($is_manager): ?>
+                      <div class="form-group col-6">
+                        <label for="department_select">Department</label>
+                        <div class="form-control-wrapper select-wrapper">
+                            <i class="fa-solid fa-sitemap input-icon"></i>
+                          <select id="department_select" name="department_select" class="form-control">
+                          <option value="" selected>-- Select Department --</option>
+                          <option value="ivr">IVR</option>
+                          <option value="voice_logger">Voice Logger</option>
+                          </select>
+                        </div>
+                      </div>
+                    <?php endif; ?>
+
+                <!-- 2. AGENT NAME -->
                 <div class="form-group col-6">
                         <label for="agent">Agent Name</label>
-                        <div class="form-control-wrapper">
+                        <div class="form-control-wrapper select-wrapper">
                             <i class="fa-regular fa-user input-icon"></i>
-                            <input type="text" id="agent" name="agent" class="form-control" placeholder="Enter agent username">
+                            <select id="agent" name="agent" class="form-control">
+                                <option value="" selected>-- Select Agent --</option>
+                                <option value="Jasim C J">JASIM C J</option>
+                                <option value="Asif">ASIF</option>
+                                <option value="JEFFRY VB">JEFFRY VB</option>
+                                <option value="BUDTHAN">BUDTHAN</option>
+                                <option value="SAJITH V S">SAJITH V S</option>
+                                <option value="MELFRIN FRANCIS">MELFRIN FRANCIS</option>
+                                <option value="VISHNU SURESH">VISHNU SURESH</option>
+                                <option value="SIDHARTH H">SIDHARTH H</option>
+                                <option value="ALAN ANTO">ALAN ANTO</option>
+                            </select>
                         </div>
                     </div>
         
-                    <!-- 2. FROM DATE -->
+                    <!-- 3. FROM DATE -->
                     <div class="form-group col-6">
                         <label for="from_date">From Date</label>
                         <div class="form-control-wrapper">
@@ -171,7 +197,7 @@ if (file_exists($odsFile)) {
                         </div>
                     </div>
 
-                    <!-- 3. TO DATE -->
+                    <!-- 4. TO DATE -->
                     <div class="form-group col-6">
                         <label for="to_date">To Date</label>
                         <div class="form-control-wrapper">
@@ -180,7 +206,7 @@ if (file_exists($odsFile)) {
                         </div>
                     </div>
 
-                    <!-- 4. COMPANY NAME -->
+                    <!-- 5. COMPANY NAME -->
                     <div class="form-group col-6">
                         <label for="company_name">Company Name</label>
                         <div class="form-control-wrapper autocomplete-wrapper">
@@ -191,7 +217,7 @@ if (file_exists($odsFile)) {
                     </div>
 
 
-                    <!-- 5. LOCATION -->
+                    <!-- 6. LOCATION -->
                     <div class="form-group col-6">
                         <label for="location">Location</label>
                         <div class="form-control-wrapper">
@@ -200,7 +226,7 @@ if (file_exists($odsFile)) {
                         </div>
                     </div>
 
-                    <!-- 6. HARDWARE DETAILS -->
+                    <!-- 7. HARDWARE DETAILS -->
                     <div class="form-group col-6">
                         <label for="hardware_details">Hardware Details</label>
                         <div class="form-control-wrapper">
@@ -209,7 +235,44 @@ if (file_exists($odsFile)) {
                         </div>
                     </div>
 
-                    <!-- 7. TICKET ID -->
+
+                    <!-- 8. PRODUCT CATEGORY -->
+                    <div class="form-group col-6">
+                        <label for="product_category">Product Category</label>
+                        <div class="form-control-wrapper select-wrapper">
+                            <i class="fa-solid fa-cubes input-icon"></i>
+                            <select id="product_category" name="product_category" class="form-control">
+                                <option value="" selected>-- Select Product Category --</option>
+                                <option value="ANALOG_LOGGER">ANALOG_LOGGER</option>
+                                <option value="PRI_LOGGER">PRI_LOGGER</option>
+                                <option value="DIGITAL_EXTENSION">DIGITAL_EXTENSION</option>
+                                <option value="IP_LOGGER">IP_LOGGER</option>
+                                <option value="XTEND_SMARTLOG">XTEND_SMARTLOG</option>
+                                <option value="CALLBILLING">CALLBILLING</option>
+                                <option value="CMS_HO">CMS_HO</option>
+                                <option value="IVR_GATEWAY">IVR_GATEWAY</option>
+                                <option value="STANDALONE_LOGGER">STANDALONE_LOGGER</option>
+                                <option value="ACTIVE_LOGGER">ACTIVE_LOGGER</option>
+                                <option value="XTEND_ONCALL">XTEND_ONCALL</option>
+                                <option value="XTEND_VX">XTEND_VX</option>
+                                <option value="XTEND_SX2">XTEND_SX2</option>
+                                <option value="XTEND_SX">XTEND_SX</option>
+                                <option value="LINUX_STANDALONE">LINUX_STANDALONE</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 9. ISSUE CATEGORY -->
+                    <div class="form-group col-6">
+                        <label for="issue_category">Issue Category</label>
+                        <div class="form-control-wrapper autocomplete-wrapper">
+                            <i class="fa-solid fa-tags input-icon"></i>
+                            <input type="text" id="issue_category" name="issue_category" class="form-control" placeholder="Select Product Category first" autocomplete="off" disabled>
+                            <div class="autocomplete-suggestions" id="issueCategorySuggestions"></div>
+                        </div>
+                    </div>
+
+                    <!-- 10. TICKET ID -->
                     <div class="form-group col-6">
                         <label for="ticket_id">Ticket ID</label>
                         <div class="form-control-wrapper">
@@ -217,21 +280,6 @@ if (file_exists($odsFile)) {
                             <input type="text" id="ticket_id" name="ticket_id" class="form-control" placeholder="Enter Ticket ID or Reason">
                         </div>
                     </div>
-
-                    <!-- 8. DEPARTMENT SELECT (If Manager) -->
-                    <?php if ($is_manager): ?>
-                        <div class="form-group col-6">
-                            <label for="department_select">Department</label>
-                            <div class="form-control-wrapper select-wrapper">
-                                <i class="fa-solid fa-sitemap input-icon"></i>
-                                <select id="department_select" name="department_select" class="form-control">
-                                <option value="" selected>-- Select Department --</option>
-                                <option value="ivr">IVR</option>
-                                <option value="voice_logger">Voice Logger</option>
-                                </select>
-                            </div>
-                        </div>
-                    <?php endif; ?>
 
                     <!-- Form Action Buttons -->
                     <div class="form-actions">
@@ -330,16 +378,140 @@ if (file_exists($odsFile)) {
 
         // Close autocomplete when clicking outside
         $(document).on('click', function(e) {
-          if (!$(e.target).closest('.autocomplete-wrapper').length) {
+          if (!$(e.target).closest('#company_name').parent().length) {
             $suggestions.empty().hide();
+            currentFocus = -1;
+          }
+          if (!$(e.target).closest('#issue_category').parent().length) {
+            $issueSuggestions.empty().hide();
+            issueCurrentFocus = -1;
           }
         });
+
+        // Dynamic Issue Category Autocomplete based on Product Category
+        let issueCategories = [];
+        const $issueInput = $('#issue_category');
+        const $issueSuggestions = $('#issueCategorySuggestions');
+        let issueCurrentFocus = -1;
+
+        // Fetch categories when Product Category changes
+        $('#product_category').on('change', function() {
+          const selectedCategory = $(this).val();
+          $issueInput.val('').prop('disabled', true).attr('placeholder', 'Loading issue categories...');
+          $issueSuggestions.empty().hide();
+          issueCategories = [];
+
+          if (!selectedCategory) {
+            $issueInput.attr('placeholder', 'Select Product Category first');
+            return;
+          }
+
+          $.ajax({
+            url: 'api/get-issue-categories.php',
+            type: 'GET',
+            data: { product_category: selectedCategory },
+            dataType: 'json',
+            success: function(response) {
+              if (response.success && Array.isArray(response.data)) {
+                issueCategories = response.data;
+                $issueInput.prop('disabled', false).attr('placeholder', 'Search or select issue category...');
+              } else {
+                showNotification(response.message || 'Failed to load issue categories.', 'error');
+                $issueInput.attr('placeholder', 'Error loading categories');
+              }
+            },
+            error: function() {
+              showNotification('Failed to load issue categories from server.', 'error');
+              $issueInput.attr('placeholder', 'Error loading categories');
+            }
+          });
+        });
+
+        // Trigger focus and input events for autocomplete filtering
+        $issueInput.on('focus input', function() {
+          const val = this.value.trim().toLowerCase();
+          $issueSuggestions.empty().hide();
+          issueCurrentFocus = -1;
+
+          if (issueCategories.length === 0) return;
+
+          const matches = val 
+            ? issueCategories.filter(cat => cat.toLowerCase().includes(val))
+            : issueCategories;
+
+          const limitMatches = matches.slice(0, 30);
+
+          if (limitMatches.length > 0) {
+            limitMatches.forEach((match, index) => {
+              const highlighted = val ? 
+                match.replace(new RegExp('(' + val.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + ')', 'gi'), '<strong>$1</strong>') : 
+                match;
+              
+              const $suggestion = $('<div class="autocomplete-suggestion"></div>')
+                .html(highlighted)
+                .attr('data-index', index)
+                .on('click', function() {
+                  $issueInput.val(match);
+                  $issueSuggestions.empty().hide();
+                });
+              $issueSuggestions.append($suggestion);
+            });
+            $issueSuggestions.show();
+          }
+        });
+
+        // Keyboard navigation for issue categories
+        $issueInput.on('keydown', function(e) {
+          const $items = $issueSuggestions.find('.autocomplete-suggestion');
+          if (!$items.length) return;
+
+          if (e.keyCode === 40) { // Arrow Down
+            issueCurrentFocus++;
+            setIssueActive($items);
+            e.preventDefault();
+          } else if (e.keyCode === 38) { // Arrow Up
+            issueCurrentFocus--;
+            setIssueActive($items);
+            e.preventDefault();
+          } else if (e.keyCode === 13) { // Enter
+            if (issueCurrentFocus > -1) {
+              if ($items.eq(issueCurrentFocus).length) {
+                $items.eq(issueCurrentFocus).trigger('click');
+                e.preventDefault();
+              }
+            }
+          } else if (e.keyCode === 27) { // Escape
+            $issueSuggestions.empty().hide();
+            issueCurrentFocus = -1;
+          }
+        });
+
+        function setIssueActive($items) {
+          $items.removeClass('active');
+          if (issueCurrentFocus >= $items.length) issueCurrentFocus = 0;
+          if (issueCurrentFocus < 0) issueCurrentFocus = $items.length - 1;
+          const $activeItem = $items.eq(issueCurrentFocus);
+          $activeItem.addClass('active');
+          
+          const containerHeight = $issueSuggestions.height();
+          const itemHeight = $activeItem.outerHeight();
+          const itemTop = $activeItem.position().top;
+
+          if (itemTop + itemHeight > containerHeight) {
+            $issueSuggestions.scrollTop($issueSuggestions.scrollTop() + itemTop + itemHeight - containerHeight);
+          } else if (itemTop < 0) {
+            $issueSuggestions.scrollTop($issueSuggestions.scrollTop() + itemTop);
+          }
+        }
 
         // Reset button logic
         $('#resetBtn').on('click', function() {
           if (confirm('Are you sure you want to clear the search criteria?')) {
             $('#searchForm')[0].reset();
             $suggestions.empty().hide();
+            $issueSuggestions.empty().hide();
+            $issueInput.prop('disabled', true).attr('placeholder', 'Select Product Category first');
+            issueCategories = [];
           }
         });
 
@@ -374,8 +546,10 @@ if (file_exists($odsFile)) {
           const hardware = $('#hardware_details').val().trim();
           const ticket = $('#ticket_id').val().trim();
           const dept = $('#department_select').length ? $('#department_select').val() : '';
+          const prodCat = $('#product_category').val();
+          const issueCat = $('#issue_category').val().trim();
 
-          if (!agent && !fromDate && !toDate && !companyName && !location && !hardware && !ticket && !dept) {
+          if (!agent && !fromDate && !toDate && !companyName && !location && !hardware && !ticket && !dept && !prodCat && !issueCat) {
             e.preventDefault();
             showNotification('Please enter at least one search criteria to search.', 'error');
           }

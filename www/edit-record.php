@@ -298,15 +298,10 @@ if (file_exists($odsFile)) {
             <!-- 11. ISSUE CATEGORY -->
             <div class="form-group col-6">
               <label for="issue_category">Issue Category</label>
-              <div class="form-control-wrapper select-wrapper">
+              <div class="form-control-wrapper autocomplete-wrapper">
                 <i class="fa-solid fa-tags input-icon"></i>
-                <select id="issue_category" name="issue_category" class="form-control" required>
-                  <option value="" disabled>Select Issue Category</option>
-                  <option value="Hardware" <?php echo getSelected('Hardware', $record['issue_category']); ?>>Hardware</option>
-                  <option value="Software" <?php echo getSelected('Software', $record['issue_category']); ?>>Software</option>
-                  <option value="Driver" <?php echo getSelected('Driver', $record['issue_category']); ?>>Driver</option>
-                  <option value="Others" <?php echo getSelected('Others', $record['issue_category']); ?>>Others</option>
-                </select>
+                <input type="text" id="issue_category" name="issue_category" class="form-control" placeholder="Select Product Category first" value="<?php echo htmlspecialchars($record['issue_category']); ?>" autocomplete="off" required>
+                <div class="autocomplete-suggestions" id="issueCategorySuggestions"></div>
               </div>
             </div>
 
@@ -791,11 +786,141 @@ if (file_exists($odsFile)) {
         }
 
         $(document).on('click', function(e) {
-          if (!$(e.target).closest('.autocomplete-wrapper').length) {
+          if (!$(e.target).closest('#company_name').parent().length) {
             $suggestions.empty().hide();
             currentFocus = -1;
           }
+          if (!$(e.target).closest('#issue_category').parent().length) {
+            $issueSuggestions.empty().hide();
+            issueCurrentFocus = -1;
+          }
         });
+
+        // Dynamic Issue Category Autocomplete based on Product Category
+        let issueCategories = [];
+        const $issueInput = $('#issue_category');
+        const $issueSuggestions = $('#issueCategorySuggestions');
+        let issueCurrentFocus = -1;
+
+        // Fetch categories when Product Category changes
+        $('#product_category').on('change', function(e, isInitialLoad) {
+          const selectedCategory = $(this).val();
+          
+          if (!isInitialLoad) {
+            $issueInput.val('');
+          }
+          
+          $issueInput.prop('disabled', true).attr('placeholder', 'Loading issue categories...');
+          $issueSuggestions.empty().hide();
+          issueCategories = [];
+
+          if (!selectedCategory) {
+            $issueInput.attr('placeholder', 'Select Product Category first');
+            return;
+          }
+
+          $.ajax({
+            url: 'api/get-issue-categories.php',
+            type: 'GET',
+            data: { product_category: selectedCategory },
+            dataType: 'json',
+            success: function(response) {
+              if (response.success && Array.isArray(response.data)) {
+                issueCategories = response.data;
+                $issueInput.prop('disabled', false).attr('placeholder', 'Search or select issue category...');
+              } else {
+                showNotification(response.message || 'Failed to load issue categories.', 'error');
+                $issueInput.attr('placeholder', 'Error loading categories');
+              }
+            },
+            error: function() {
+              showNotification('Failed to load issue categories from server.', 'error');
+              $issueInput.attr('placeholder', 'Error loading categories');
+            }
+          });
+        });
+
+        // Trigger focus and input events for autocomplete filtering
+        $issueInput.on('focus input', function() {
+          const val = this.value.trim().toLowerCase();
+          $issueSuggestions.empty().hide();
+          issueCurrentFocus = -1;
+
+          if (issueCategories.length === 0) return;
+
+          const matches = val 
+            ? issueCategories.filter(cat => cat.toLowerCase().includes(val))
+            : issueCategories;
+
+          const limitMatches = matches.slice(0, 30);
+
+          if (limitMatches.length > 0) {
+            limitMatches.forEach((match, index) => {
+              const highlighted = val ? 
+                match.replace(new RegExp('(' + val.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + ')', 'gi'), '<strong>$1</strong>') : 
+                match;
+              
+              const $suggestion = $('<div class="autocomplete-suggestion"></div>')
+                .html(highlighted)
+                .attr('data-index', index)
+                .on('click', function() {
+                  $issueInput.val(match);
+                  $issueSuggestions.empty().hide();
+                });
+              $issueSuggestions.append($suggestion);
+            });
+            $issueSuggestions.show();
+          }
+        });
+
+        // Keyboard navigation for issue categories
+        $issueInput.on('keydown', function(e) {
+          const $items = $issueSuggestions.find('.autocomplete-suggestion');
+          if (!$items.length) return;
+
+          if (e.keyCode === 40) { // Arrow Down
+            issueCurrentFocus++;
+            setIssueActive($items);
+            e.preventDefault();
+          } else if (e.keyCode === 38) { // Arrow Up
+            issueCurrentFocus--;
+            setIssueActive($items);
+            e.preventDefault();
+          } else if (e.keyCode === 13) { // Enter
+            if (issueCurrentFocus > -1) {
+              if ($items.eq(issueCurrentFocus).length) {
+                $items.eq(issueCurrentFocus).trigger('click');
+                e.preventDefault();
+              }
+            }
+          } else if (e.keyCode === 27) { // Escape
+            $issueSuggestions.empty().hide();
+            issueCurrentFocus = -1;
+          }
+        });
+
+        function setIssueActive($items) {
+          $items.removeClass('active');
+          if (issueCurrentFocus >= $items.length) issueCurrentFocus = 0;
+          if (issueCurrentFocus < 0) issueCurrentFocus = $items.length - 1;
+          const $activeItem = $items.eq(issueCurrentFocus);
+          $activeItem.addClass('active');
+          
+          const containerHeight = $issueSuggestions.height();
+          const itemHeight = $activeItem.outerHeight();
+          const itemTop = $activeItem.position().top;
+
+          if (itemTop + itemHeight > containerHeight) {
+            $issueSuggestions.scrollTop($issueSuggestions.scrollTop() + itemTop + itemHeight - containerHeight);
+          } else if (itemTop < 0) {
+            $issueSuggestions.scrollTop($issueSuggestions.scrollTop() + itemTop);
+          }
+        }
+
+        // Trigger change on load if a category is already selected, but preserve initial value
+        if ($('#product_category').val()) {
+          $('#product_category').trigger('change', [true]);
+        }
 
         // 6. Live Session Stopwatch Timer with PHP Offset Resumption
         let timerInterval = null;

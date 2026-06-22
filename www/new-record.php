@@ -2,10 +2,69 @@
 // Secure the page - ensure user is authenticated
 require_once 'config/auth_check.php';
 
-// Default agent name from current session (uppercase)
-$agent_name = isset($_SESSION['real_name']) ? strtoupper($_SESSION['real_name']) : '';
-// Default department name from current session (uppercase)
-$agent_department = isset($_SESSION['department']) ? strtoupper($_SESSION['department']) : '';
+// Include database configuration
+require_once 'config/database.php';
+$db = getDatabaseConnection();
+
+if (!$db) {
+    die("Database connection failed.");
+}
+
+// Retrieve and validate record_id
+$record_id = trim($_GET['id'] ?? $_GET['record_id'] ?? '');
+if ($record_id === '') {
+    die("Error: Record ID is required to access this page.");
+}
+
+$record = null;
+$tableName = '';
+
+// Check support_details first (Voice Logger)
+$stmt = $db->prepare("SELECT * FROM `support_details` WHERE `record_id` = :record_id LIMIT 1");
+$stmt->execute(['record_id' => $record_id]);
+$record = $stmt->fetch();
+if ($record) {
+    $tableName = 'support_details';
+} else {
+    // Check ivr_details (IVR)
+    $stmt = $db->prepare("SELECT * FROM `ivr_details` WHERE `record_id` = :record_id LIMIT 1");
+    $stmt->execute(['record_id' => $record_id]);
+    $record = $stmt->fetch();
+    if ($record) {
+        $tableName = 'ivr_details';
+    }
+}
+
+if (!$record) {
+    die("Error: Record not found.");
+}
+
+// Fetch user's department from session/DB
+$user_department = isset($_SESSION['department']) ? $_SESSION['department'] : '';
+$record_department = ($tableName === 'support_details') ? 'Voice Logger' : 'IVR';
+if (strcasecmp($user_department, $record_department) !== 0) {
+    die("Error: You are not authorized to view this record.");
+}
+
+$agent_name = htmlspecialchars($record['agent']);
+$agent_department = htmlspecialchars($record_department);
+
+// Calculate elapsed seconds since record support_start_time
+$offset_seconds = 0;
+if (!empty($record['date']) && !empty($record['support_start_time'])) {
+    $start_datetime = $record['date'] . ' ' . $record['support_start_time'];
+    $start_timestamp = strtotime($start_datetime);
+    if ($start_timestamp !== false) {
+        $offset_seconds = max(0, time() - $start_timestamp);
+    }
+}
+
+// Helper function to print selected select values
+if (!function_exists('getSelected')) {
+    function getSelected($val, $dbVal) {
+        return (strcasecmp(trim((string)$val), trim((string)$dbVal)) === 0) ? 'selected' : '';
+    }
+}
 
 // Fetch clients from ODS file for autocomplete (cached in session with timestamp check)
 // 
@@ -159,6 +218,7 @@ if (file_exists($odsFile)) {
         </div>
 
         <form id="newRecordForm" autocomplete="off">
+          <input type="hidden" name="record_id" value="<?php echo htmlspecialchars($record['record_id']); ?>">
           <div class="grid-form">
             
             <!-- 1. DATE -->
@@ -166,7 +226,7 @@ if (file_exists($odsFile)) {
               <label for="date">Date</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-calendar input-icon"></i>
-                <input type="date" id="date" name="date" class="form-control" required>
+                <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($record['date']); ?>" required>
               </div>
             </div>
 
@@ -175,7 +235,7 @@ if (file_exists($odsFile)) {
               <label for="agent">Agent</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-user input-icon"></i>
-                <input type="text" id="agent" name="agent" class="form-control" value="<?php echo htmlspecialchars($agent_name); ?>" readonly required>
+                <input type="text" id="agent" name="agent" class="form-control" value="<?php echo htmlspecialchars($record['agent']); ?>" readonly required>
               </div>
             </div>
 
@@ -193,7 +253,7 @@ if (file_exists($odsFile)) {
               <label for="company_name">Company Name</label>
               <div class="form-control-wrapper autocomplete-wrapper">
                 <i class="fa-regular fa-building input-icon"></i>
-                <input type="text" id="company_name" name="company_name" class="form-control" placeholder="Enter company / client name" autocomplete="off" required>
+                <input type="text" id="company_name" name="company_name" class="form-control" placeholder="Enter company / client name" value="<?php echo htmlspecialchars($record['company_name']); ?>" autocomplete="off" required>
                 <div class="autocomplete-suggestions" id="companySuggestions"></div>
               </div>
             </div>
@@ -203,7 +263,7 @@ if (file_exists($odsFile)) {
               <label for="location">Location</label>
               <div class="form-control-wrapper">
                 <i class="fa-solid fa-location-dot input-icon"></i>
-                <input type="text" id="location" name="location" class="form-control" placeholder="City, State or Country" required>
+                <input type="text" id="location" name="location" class="form-control" placeholder="City, State or Country" value="<?php echo htmlspecialchars($record['location']); ?>" required>
               </div>
             </div>
 
@@ -213,10 +273,10 @@ if (file_exists($odsFile)) {
               <div class="form-control-wrapper select-wrapper">
                 <i class="fa-solid fa-earth-americas input-icon"></i>
                 <select id="region" name="region" class="form-control" required>
-                  <option value="" disabled selected>Select Region</option>
-                  <option value="INDIA">INDIA</option>
-                  <option value="DUBAI">DUBAI</option>
-                  <option value="SINGAPORE">SINGAPORE</option>
+                  <option value="" disabled <?php echo empty($record['region']) ? 'selected' : ''; ?>>Select Region</option>
+                  <option value="INDIA" <?php echo getSelected('INDIA', $record['region']); ?>>INDIA</option>
+                  <option value="DUBAI" <?php echo getSelected('DUBAI', $record['region']); ?>>DUBAI</option>
+                  <option value="SINGAPORE" <?php echo getSelected('SINGAPORE', $record['region']); ?>>SINGAPORE</option>
                 </select>
               </div>
             </div>
@@ -226,7 +286,7 @@ if (file_exists($odsFile)) {
               <label for="email">Email</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-envelope input-icon"></i>
-                <input type="text" id="email" name="email" class="form-control" placeholder="Contact person email" required>
+                <input type="text" id="email" name="email" class="form-control" placeholder="Contact person email" value="<?php echo htmlspecialchars($record['email']); ?>" required>
               </div>
             </div>
 
@@ -235,7 +295,7 @@ if (file_exists($odsFile)) {
               <label for="phone">Phone</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-phone input-icon"></i>
-                <input type="text" id="phone" name="phone" class="form-control" placeholder="Contact person phone" required>
+                <input type="text" id="phone" name="phone" class="form-control" placeholder="Contact person phone" value="<?php echo htmlspecialchars($record['phone']); ?>" required>
               </div>
             </div>
 
@@ -244,7 +304,7 @@ if (file_exists($odsFile)) {
               <label for="contact_details">Contact Details</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-address-book input-icon"></i>
-                <input type="text" id="contact_details" name="contact_details" class="form-control" placeholder="Contact person name, phone, email" required>
+                <input type="text" id="contact_details" name="contact_details" class="form-control" placeholder="Contact person name, phone, email" value="<?php echo htmlspecialchars($record['contact_details']); ?>" required>
               </div>
             </div>
 
@@ -254,22 +314,18 @@ if (file_exists($odsFile)) {
               <div class="form-control-wrapper select-wrapper">
                 <i class="fa-solid fa-cubes input-icon"></i>
                 <select id="product_category" name="product_category" class="form-control" required>
-                  <option value="" disabled selected>Select Product Category</option>
-                  <option value="ANALOG_LOGGER">ANALOG_LOGGER</option>
-                  <option value="PRI_LOGGER">PRI_LOGGER</option>
-                  <option value="DIGITAL_EXTENSION">DIGITAL_EXTENSION</option>
-                  <option value="IP_LOGGER">IP_LOGGER</option>
-                  <option value="XTEND_SMARTLOG">XTEND_SMARTLOG</option>
-                  <option value="CALLBILLING">CALLBILLING</option>
-                  <option value="CMS_HO">CMS_HO</option>
-                  <option value="IVR_GATEWAY">IVR_GATEWAY</option>
-                  <option value="STANDALONE_LOGGER">STANDALONE_LOGGER</option>
-                  <option value="ACTIVE_LOGGER">ACTIVE_LOGGER</option>
-                  <option value="XTEND_ONCALL">XTEND_ONCALL</option>
-                  <option value="XTEND_VX">XTEND_VX</option>
-                  <option value="XTEND_SX2">XTEND_SX2</option>
-                  <option value="XTEND_SX">XTEND_SX</option>
-                  <option value="LINUX_STANDALONE">LINUX_STANDALONE</option>
+                  <option value="" disabled <?php echo empty($record['product_category']) ? 'selected' : ''; ?>>Select Product Category</option>
+                  <?php
+                  $products = [
+                    "ANALOG_LOGGER", "PRI_LOGGER", "DIGITAL_EXTENSION", "IP_LOGGER",
+                    "XTEND_SMARTLOG", "CALLBILLING", "CMS_HO", "IVR_GATEWAY",
+                    "STANDALONE_LOGGER", "ACTIVE_LOGGER", "XTEND_ONCALL", "XTEND_VX",
+                    "XTEND_SX2", "XTEND_SX", "LINUX_STANDALONE"
+                  ];
+                  foreach ($products as $p) {
+                      echo '<option value="' . $p . '" ' . getSelected($p, $record['product_category']) . '>' . $p . '</option>';
+                  }
+                  ?>
                 </select>
               </div>
             </div>
@@ -277,15 +333,10 @@ if (file_exists($odsFile)) {
             <!-- 10. ISSUE CATEGORY -->
             <div class="form-group col-6">
               <label for="issue_category">Issue Category</label>
-              <div class="form-control-wrapper select-wrapper">
+              <div class="form-control-wrapper autocomplete-wrapper">
                 <i class="fa-solid fa-tags input-icon"></i>
-                <select id="issue_category" name="issue_category" class="form-control" required>
-                  <option value="" disabled selected>Select Issue Category</option>
-                  <option value="Hardware">Hardware</option>
-                  <option value="Software">Software</option>
-                  <option value="Driver">Driver</option>
-                  <option value="Others">Others</option>
-                </select>
+                <input type="text" id="issue_category" name="issue_category" class="form-control" placeholder="<?php echo empty($record['product_category']) ? 'Select Product Category first' : 'Search or select issue category...'; ?>" value="<?php echo htmlspecialchars($record['issue_category']); ?>" autocomplete="off" required <?php echo empty($record['product_category']) ? 'disabled' : ''; ?>>
+                <div class="autocomplete-suggestions" id="issueCategorySuggestions"></div>
               </div>
             </div>
 
@@ -295,11 +346,11 @@ if (file_exists($odsFile)) {
               <div class="form-control-wrapper select-wrapper">
                 <i class="fa-solid fa-triangle-exclamation input-icon"></i>
                 <select id="issue_type" name="issue_type" class="form-control" required>
-                  <option value="" disabled selected>Select Issue Type</option>
-                  <option value="Hardware">Hardware</option>
-                  <option value="Software">Software</option>
-                  <option value="Driver">Driver</option>
-                  <option value="Others">Others</option>
+                  <option value="" disabled <?php echo empty($record['issue_type']) ? 'selected' : ''; ?>>Select Issue Type</option>
+                  <option value="Hardware" <?php echo getSelected('Hardware', $record['issue_type']); ?>>Hardware</option>
+                  <option value="Software" <?php echo getSelected('Software', $record['issue_type']); ?>>Software</option>
+                  <option value="Driver" <?php echo getSelected('Driver', $record['issue_type']); ?>>Driver</option>
+                  <option value="Others" <?php echo getSelected('Others', $record['issue_type']); ?>>Others</option>
                 </select>
               </div>
             </div>
@@ -309,7 +360,7 @@ if (file_exists($odsFile)) {
               <label for="issue_details">Issue Details/Notes</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-file-lines input-icon" style="top: 18px;"></i>
-                <textarea id="issue_details" name="issue_details" class="form-control" placeholder="Provide detailed notes regarding the issue reported..." required></textarea>
+                <textarea id="issue_details" name="issue_details" class="form-control" placeholder="Provide detailed notes regarding the issue reported..." required><?php echo htmlspecialchars($record['issue_details']); ?></textarea>
               </div>
             </div>
 
@@ -319,11 +370,11 @@ if (file_exists($odsFile)) {
               <div class="form-control-wrapper select-wrapper">
                 <i class="fa-solid fa-layer-group input-icon"></i>
                 <select id="support_category" name="support_category" class="form-control" required>
-                  <option value="" disabled selected>Select Support Category</option>
-                  <option value="Mail Support">Mail Support</option>
-                  <option value="Skype Support">Skype Support</option>
-                  <option value="Mobile Support">Mobile Support</option>
-                  <option value="CC Support">CC Support</option>
+                  <option value="" disabled <?php echo empty($record['support_category']) ? 'selected' : ''; ?>>Select Support Category</option>
+                  <option value="Mail Support" <?php echo getSelected('Mail Support', $record['support_category']); ?>>Mail Support</option>
+                  <option value="Skype Support" <?php echo getSelected('Skype Support', $record['support_category']); ?>>Skype Support</option>
+                  <option value="Mobile Support" <?php echo getSelected('Mobile Support', $record['support_category']); ?>>Mobile Support</option>
+                  <option value="CC Support" <?php echo getSelected('CC Support', $record['support_category']); ?>>CC Support</option>
                 </select>
               </div>
             </div>
@@ -333,7 +384,7 @@ if (file_exists($odsFile)) {
               <label for="software_details">Software Details</label>
               <div class="form-control-wrapper">
                 <i class="fa-solid fa-laptop-code input-icon"></i>
-                <input type="text" id="software_details" name="software_details" class="form-control" placeholder="Software version and other details">
+                <input type="text" id="software_details" name="software_details" class="form-control" placeholder="Software version and other details" value="<?php echo htmlspecialchars($record['software_details']); ?>">
               </div>
             </div>
 
@@ -342,7 +393,7 @@ if (file_exists($odsFile)) {
               <label for="hardware_details">Hardware Details</label>
               <div class="form-control-wrapper">
                 <i class="fa-solid fa-microchip input-icon"></i>
-                <input type="text" id="hardware_details" name="hardware_details" class="form-control" placeholder="Specify the hardware details">
+                <input type="text" id="hardware_details" name="hardware_details" class="form-control" placeholder="Specify the hardware details" value="<?php echo htmlspecialchars($record['hardware_details']); ?>">
               </div>
             </div>
 
@@ -351,7 +402,7 @@ if (file_exists($odsFile)) {
               <label for="solution">Solution</label>
               <div class="form-control-wrapper">
                 <i class="fa-solid fa-check-double input-icon" style="top: 18px;"></i>
-                <textarea id="solution" name="solution" class="form-control" placeholder="Describe the solution"></textarea>
+                <textarea id="solution" name="solution" class="form-control" placeholder="Describe the solution"><?php echo htmlspecialchars($record['solution']); ?></textarea>
               </div>
             </div>
 
@@ -360,7 +411,7 @@ if (file_exists($odsFile)) {
               <label for="support_start_time">Support Start Time</label>
               <div class="form-control-wrapper">
                 <i class="fa-solid fa-hourglass-start input-icon"></i>
-                <input type="text" id="support_start_time" name="support_start_time" class="form-control" readonly required>
+                <input type="text" id="support_start_time" name="support_start_time" class="form-control" value="<?php echo htmlspecialchars($record['support_start_time']); ?>" readonly required>
               </div>
             </div>
 
@@ -369,7 +420,7 @@ if (file_exists($odsFile)) {
               <label for="support_end_time">Support End Time</label>
               <div class="form-control-wrapper">
                 <i class="fa-solid fa-hourglass-end input-icon"></i>
-                <input type="text" id="support_end_time" name="support_end_time" class="form-control" readonly>
+                <input type="text" id="support_end_time" name="support_end_time" class="form-control" value="<?php echo htmlspecialchars($record['support_end_time']); ?>" readonly>
               </div>
             </div>
 
@@ -378,7 +429,7 @@ if (file_exists($odsFile)) {
               <label for="total_time">Total Time</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-clock input-icon"></i>
-                <input type="text" id="total_time" name="total_time" class="form-control" readonly required>
+                <input type="text" id="total_time" name="total_time" class="form-control" value="<?php echo htmlspecialchars($record['total_time']); ?>" readonly required>
               </div>
             </div>
 
@@ -388,13 +439,13 @@ if (file_exists($odsFile)) {
               <div class="form-control-wrapper select-wrapper">
                 <i class="fa-solid fa-circle-info input-icon"></i>
                 <select id="support_status" name="support_status" class="form-control" required>
-                  <option value="" disabled selected>Select Support Status</option>
-                  <option value="Closed">Closed</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Under Observation">Under Observation</option>
-                  <option value="Escalated">Escalated</option>
-                  <option value="Escalated to Presales">Escalated to Presales</option>
-                  <option value="Closed-Device Replaced">Closed-Device Replaced</option>
+                  <option value="" disabled <?php echo empty($record['support_status']) ? 'selected' : ''; ?>>Select Support Status</option>
+                  <option value="Closed" <?php echo getSelected('Closed', $record['support_status']); ?>>Closed</option>
+                  <option value="Pending" <?php echo getSelected('Pending', $record['support_status']); ?>>Pending</option>
+                  <option value="Under Observation" <?php echo getSelected('Under Observation', $record['support_status']); ?>>Under Observation</option>
+                  <option value="Escalated" <?php echo getSelected('Escalated', $record['support_status']); ?>>Escalated</option>
+                  <option value="Escalated to Presales" <?php echo getSelected('Escalated to Presales', $record['support_status']); ?>>Escalated to Presales</option>
+                  <option value="Closed-Device Replaced" <?php echo getSelected('Closed-Device Replaced', $record['support_status']); ?>>Closed-Device Replaced</option>
                 </select>
               </div>
             </div>
@@ -404,9 +455,10 @@ if (file_exists($odsFile)) {
               <label for="reason">Reason</label>
               <div class="form-control-wrapper">
                 <i class="fa-solid fa-question input-icon" style="top: 18px;"></i>
-                <textarea id="reason" name="reason" class="form-control" placeholder="Specify the reason"></textarea>
+                <textarea id="reason" name="reason" class="form-control" placeholder="Specify the reason"><?php echo htmlspecialchars($record['ticket_id'] ?? ''); ?></textarea>
               </div>
             </div>
+
 
             <!-- Form Action Buttons -->
             <div class="form-actions">
@@ -429,36 +481,17 @@ if (file_exists($odsFile)) {
 
     <script>
       $(document).ready(function() {
-        // 1. Pre-fill date input with today's local date and set start time
         const today = new Date().toISOString().split('T')[0];
-        $('#date').val(today);
-        $('#support_start_time').val(new Date().toTimeString().split(' ')[0]);
-
         // 2. Interactive features: auto-grow textareas as the user types
         $('textarea').on('input', function() {
           this.style.height = 'auto';
           this.style.height = (this.scrollHeight + 2) + 'px';
         });
 
-        // 3. Reset form handler
+        // 3. Reset form handler: Reloads page to restore DB state
         $('#resetBtn').on('click', function() {
-          if (confirm('Are you sure you want to clear the form? All unsaved inputs will be lost.')) {
-            $('#newRecordForm')[0].reset();
-            // Restore default date and agent name
-            $('#date').val(today);
-            
-            // Reset start time and clear end time
-            $('#support_start_time').val(new Date().toTimeString().split(' ')[0]);
-            $('#support_end_time').val('');
-            
-            // Trigger auto-height reset for textareas
-            $('textarea').css('height', 'auto');
-
-            // Clear autocomplete suggestions
-            $('#companySuggestions').empty().hide();
-
-            // Restart stopwatch timer
-            startTimer();
+          if (confirm('Are you sure you want to revert your edits? All unsaved inputs will be lost.')) {
+            window.location.reload();
           }
         });
 
@@ -681,7 +714,7 @@ if (file_exists($odsFile)) {
           const formData = $(this).serialize();
 
           $.ajax({
-            url: 'api/add-new-record.php',
+            url: 'api/edit-record.php',
             type: 'POST',
             data: formData,
             dataType: 'json',
@@ -797,21 +830,142 @@ if (file_exists($odsFile)) {
 
         // Dismiss when clicking outside
         $(document).on('click', function(e) {
-          if (!$(e.target).closest('.autocomplete-wrapper').length) {
+          if (!$(e.target).closest('#company_name').parent().length) {
             $suggestions.empty().hide();
             currentFocus = -1;
           }
+          if (!$(e.target).closest('#issue_category').parent().length) {
+            $issueSuggestions.empty().hide();
+            issueCurrentFocus = -1;
+          }
         });
+
+        // 5.5. Dynamic Issue Category Autocomplete based on Product Category
+        let issueCategories = [];
+        const $issueInput = $('#issue_category');
+        const $issueSuggestions = $('#issueCategorySuggestions');
+        let issueCurrentFocus = -1;
+
+        // Fetch categories when Product Category changes
+        $('#product_category').on('change', function() {
+          const selectedCategory = $(this).val();
+          $issueInput.val('').prop('disabled', true).attr('placeholder', 'Loading issue categories...');
+          $issueSuggestions.empty().hide();
+          issueCategories = [];
+
+          if (!selectedCategory) {
+            $issueInput.attr('placeholder', 'Select Product Category first');
+            return;
+          }
+
+          $.ajax({
+            url: 'api/get-issue-categories.php',
+            type: 'GET',
+            data: { product_category: selectedCategory },
+            dataType: 'json',
+            success: function(response) {
+              if (response.success && Array.isArray(response.data)) {
+                issueCategories = response.data;
+                $issueInput.prop('disabled', false).attr('placeholder', 'Search or select issue category...');
+              } else {
+                showNotification(response.message || 'Failed to load issue categories.', 'error');
+                $issueInput.attr('placeholder', 'Error loading categories');
+              }
+            },
+            error: function() {
+              showNotification('Failed to load issue categories from server.', 'error');
+              $issueInput.attr('placeholder', 'Error loading categories');
+            }
+          });
+        });
+
+        // Trigger focus and input events for autocomplete filtering
+        $issueInput.on('focus input', function() {
+          const val = this.value.trim().toLowerCase();
+          $issueSuggestions.empty().hide();
+          issueCurrentFocus = -1;
+
+          if (issueCategories.length === 0) return;
+
+          const matches = val 
+            ? issueCategories.filter(cat => cat.toLowerCase().includes(val))
+            : issueCategories;
+
+          const limitMatches = matches.slice(0, 30);
+
+          if (limitMatches.length > 0) {
+            limitMatches.forEach((match, index) => {
+              const highlighted = val ? 
+                match.replace(new RegExp('(' + val.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + ')', 'gi'), '<strong>$1</strong>') : 
+                match;
+              
+              const $suggestion = $('<div class="autocomplete-suggestion"></div>')
+                .html(highlighted)
+                .attr('data-index', index)
+                .on('click', function() {
+                  $issueInput.val(match);
+                  $issueSuggestions.empty().hide();
+                });
+              $issueSuggestions.append($suggestion);
+            });
+            $issueSuggestions.show();
+          }
+        });
+
+        // Keyboard navigation for issue categories
+        $issueInput.on('keydown', function(e) {
+          const $items = $issueSuggestions.find('.autocomplete-suggestion');
+          if (!$items.length) return;
+
+          if (e.keyCode === 40) { // Arrow Down
+            issueCurrentFocus++;
+            setIssueActive($items);
+            e.preventDefault();
+          } else if (e.keyCode === 38) { // Arrow Up
+            issueCurrentFocus--;
+            setIssueActive($items);
+            e.preventDefault();
+          } else if (e.keyCode === 13) { // Enter
+            if (issueCurrentFocus > -1) {
+              if ($items.eq(issueCurrentFocus).length) {
+                $items.eq(issueCurrentFocus).trigger('click');
+                e.preventDefault();
+              }
+            }
+          } else if (e.keyCode === 27) { // Escape
+            $issueSuggestions.empty().hide();
+            issueCurrentFocus = -1;
+          }
+        });
+
+        function setIssueActive($items) {
+          $items.removeClass('active');
+          if (issueCurrentFocus >= $items.length) issueCurrentFocus = 0;
+          if (issueCurrentFocus < 0) issueCurrentFocus = $items.length - 1;
+          const $activeItem = $items.eq(issueCurrentFocus);
+          $activeItem.addClass('active');
+          
+          const containerHeight = $issueSuggestions.height();
+          const itemHeight = $activeItem.outerHeight();
+          const itemTop = $activeItem.position().top;
+
+          if (itemTop + itemHeight > containerHeight) {
+            $issueSuggestions.scrollTop($issueSuggestions.scrollTop() + itemTop + itemHeight - containerHeight);
+          } else if (itemTop < 0) {
+            $issueSuggestions.scrollTop($issueSuggestions.scrollTop() + itemTop);
+          }
+        }
 
         // 6. Live Session Stopwatch Timer
         
         let timerInterval = null;
         let startTime = null;
+        const offsetSeconds = <?php echo (int)$offset_seconds; ?>;
 
         function startTimer() {
             if (timerInterval) clearInterval(timerInterval);
 
-            startTime = Date.now();
+            startTime = Date.now() - (offsetSeconds * 1000);
             updateTimerDisplay();
 
             timerInterval = setInterval(updateTimerDisplay, 1000);

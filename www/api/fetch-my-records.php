@@ -1,7 +1,6 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once('../config/session.php');
+
 header('Content-Type: application/json');
 
 // Only allow GET requests
@@ -57,10 +56,22 @@ if (strcasecmp($user_department, 'Voice Logger') === 0) {
     $tableName = 'ivr_details';
 }
 
-// Fetch today's records for the current logged-in agent
+// Fetch records for the current logged-in agent with optional date range filter
 $agentUsername = strtoupper($_SESSION['real_name'] ?? $_SESSION['username']);
+$range = isset($_GET['range']) ? trim($_GET['range']) : 'today';
 
-$query = "SELECT * FROM `$tableName` WHERE `date` = CURDATE() AND UPPER(`agent`) = :agent ORDER BY `id` DESC";
+if (!in_array($range, ['today', 'week', 'month'])) {
+    $range = 'today';
+}
+
+$dateCondition = "`date` = CURDATE()";
+if ($range === 'week') {
+    $dateCondition = "`date` >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+} elseif ($range === 'month') {
+    $dateCondition = "`date` >= DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+}
+
+$query = "SELECT * FROM `$tableName` WHERE $dateCondition AND UPPER(`agent`) = :agent ORDER BY `id` DESC";
 $stmt = $db->prepare($query);
 $stmt->execute(['agent' => $agentUsername]);
 $records = $stmt->fetchAll();
@@ -70,6 +81,7 @@ echo json_encode([
     'count' => count($records),
     'department' => $user_department,
     'table' => $tableName,
+    'range' => $range,
     'data' => $records
 ]);
 ?>

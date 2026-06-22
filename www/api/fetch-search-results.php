@@ -1,7 +1,6 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once('../config/session.php');
+
 header('Content-Type: application/json');
 
 // Only allow GET requests
@@ -99,6 +98,14 @@ if (isset($_GET['hardware_details']) && trim($_GET['hardware_details']) !== '') 
 if (isset($_GET['ticket_id']) && trim($_GET['ticket_id']) !== '') {
     $conditions[] = "`ticket_id` LIKE :ticket_id";
     $params['ticket_id'] = '%' . trim($_GET['ticket_id']) . '%';
+}
+if (isset($_GET['product_category']) && trim($_GET['product_category']) !== '') {
+    $conditions[] = "`product_category` LIKE :product_category";
+    $params['product_category'] = '%' . trim($_GET['product_category']) . '%';
+}
+if (isset($_GET['issue_category']) && trim($_GET['issue_category']) !== '') {
+    $conditions[] = "`issue_category` LIKE :issue_category";
+    $params['issue_category'] = '%' . trim($_GET['issue_category']) . '%';
 }
 
 $all_records = [];

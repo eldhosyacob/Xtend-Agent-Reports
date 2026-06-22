@@ -1,8 +1,7 @@
 <?php
 // Start session
-if (session_status() === PHP_SESSION_NONE) {
-  session_start();
-}
+require_once('config/session.php');
+
 
 // Check if logout is confirmed
 if (isset($_GET['confirm']) && $_GET['confirm'] === 'yes') {

@@ -38,7 +38,6 @@
     padding: 40px 24px;
     overflow-y: auto;
     position: relative;
-    margin-left: 20px;
 }
 
 /* Background animated glow spots */
@@ -122,7 +121,7 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.09);
 }
 
 .btn-icon-text:hover {
@@ -166,7 +165,7 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -228,12 +227,12 @@
 /* Report Table Container */
 .report-card-wrapper {
     background: var(--card-bg);
-    border: 1px solid var(--border-color);
+    border: 1px solid #dcdfe3;
     border-radius: 20px;
     padding: 24px;
     max-width: 1100px;
     margin: 0 auto;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     position: relative;
     z-index: 10;
 }
@@ -245,6 +244,14 @@
     align-items: center;
     margin-bottom: 20px;
     gap: 16px;
+}
+
+.filter-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+    max-width: 500px;
 }
 
 .search-input-wrapper {
@@ -265,7 +272,7 @@
 .search-control {
     width: 100%;
     background: #f8fafc;
-    border: 1px solid var(--border-color);
+    border: 1px solid #dadce0;
     border-radius: 10px;
     padding: 10px 14px 10px 38px;
     font-size: 13px;
@@ -280,12 +287,65 @@
     box-shadow: 0 0 0 3px var(--input-focus-shadow);
 }
 
+.select-filter-wrapper {
+    position: relative;
+    max-width: 180px;
+    width: 100%;
+}
+
+.select-filter-wrapper .select-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    font-size: 14px;
+    pointer-events: none;
+}
+
+.filter-select-control {
+    width: 100%;
+    background: #f8fafc;
+    border: 1px solid #dadce0;
+    border-radius: 10px;
+    padding: 10px 32px 10px 38px;
+    font-size: 13px;
+    outline: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.select-filter-wrapper::after {
+    content: '\f078';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    font-size: 11px;
+    pointer-events: none;
+}
+
+.filter-select-control:focus {
+    border-color: var(--input-focus-border);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+}
+
 /* Premium Table design */
 .table-responsive-wrapper {
     overflow-x: auto;
     width: 100%;
     border-radius: 12px;
-    border: 1px solid var(--border-color);
+    border: 1px solid #e2e5ea;
 }
 
 .custom-report-table {
@@ -296,19 +356,19 @@
 }
 
 .custom-report-table th {
-    background-color: #6f868e;
+    background-color: #2074b3;
     color: #ffffff;
     font-weight: 600;
     padding: 14px 18px;
     border-bottom: 1px solid var(--border-color);
     text-transform: uppercase;
     font-size: 12px;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
 }
 
 .custom-report-table td {
     padding: 14px 18px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid #e2e5ea;
     color: #6f868e;
     font-weight: 500;
     font-size: 11px;
@@ -424,7 +484,7 @@
 
 /* Empty State Styling */
 .table-empty-state {
-    padding: 60px 20px;
+    padding: 30px 20px;
     text-align: center;
 }
 
@@ -631,7 +691,18 @@
         align-items: flex-start;
     }
 
+    .filter-controls {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        max-width: 100%;
+    }
+
     .search-input-wrapper {
+        max-width: 100%;
+    }
+
+    .select-filter-wrapper {
         max-width: 100%;
     }
 

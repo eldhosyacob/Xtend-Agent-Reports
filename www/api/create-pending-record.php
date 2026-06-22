@@ -62,47 +62,6 @@ if (strcasecmp($user_department, 'Voice Logger') === 0) {
     exit;
 }
 
-// Retrieve form values with sanitization/trimming
-$data = [
-    'date' => trim($_POST['date'] ?? ''),
-    'agent' => trim($_POST['agent'] ?? ''),
-    'company_name' => trim($_POST['company_name'] ?? ''),
-    'location' => trim($_POST['location'] ?? ''),
-    'region' => trim($_POST['region'] ?? ''),
-    'contact_details' => trim($_POST['contact_details'] ?? ''),
-    'product_category' => trim($_POST['product_category'] ?? ''),
-    'issue_category' => trim($_POST['issue_category'] ?? ''),
-    'issue_type' => trim($_POST['issue_type'] ?? ''),
-    'issue_details' => trim($_POST['issue_details'] ?? ''),
-    'support_category' => trim($_POST['support_category'] ?? ''),
-    'software_details' => trim($_POST['software_details'] ?? ''),
-    'hardware_details' => trim($_POST['hardware_details'] ?? ''),
-    'solution' => trim($_POST['solution'] ?? ''),
-    'total_time' => trim($_POST['total_time'] ?? ''),
-    'support_status' => trim($_POST['support_status'] ?? ''),
-    'ticket_id' => trim($_POST['reason'] ?? ''), // maps reason to ticket_id
-    'email' => !empty($_POST['email']) ? trim($_POST['email']) : null,
-    'phone' => !empty($_POST['phone']) ? trim($_POST['phone']) : null,
-    'support_start_time' => !empty($_POST['support_start_time']) ? trim($_POST['support_start_time']) : null,
-    'support_end_time' => !empty($_POST['support_end_time']) ? trim($_POST['support_end_time']) : null,
-];
-
-// Perform backend validation for strictly required fields
-$requiredFields = [
-    'date', 'agent', 'company_name', 'location', 'region', 'contact_details',
-    'product_category', 'issue_category', 'issue_type', 'issue_details',
-    'support_category', 'total_time', 'support_status'
-];
-foreach ($requiredFields as $field) {
-    if ($data[$field] === '') {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Missing required field: ' . htmlspecialchars($field)
-        ]);
-        exit;
-    }
-}
-
 // Generate the next incrementing numeric prefix for record_id
 $next_num = 1000;
 
@@ -136,6 +95,36 @@ if ($row_ivr && $row_ivr['max_num'] !== null) {
     $next_num = max($next_num, (int)$row_ivr['max_num'] + 1);
 }
 
+// Prepare baseline data
+$agent_name = isset($_SESSION['real_name']) ? strtoupper($_SESSION['real_name']) : strtoupper($_SESSION['username']);
+$company_name = isset($_POST['company_name']) ? trim($_POST['company_name']) : '';
+
+$data = [
+    'date' => date('Y-m-d'),
+    'agent' => $agent_name,
+    'company_name' => $company_name,
+    'location' => '',
+    'region' => '',
+    'contact_details' => '',
+    'product_category' => '',
+    'issue_category' => '',
+    'issue_type' => '',
+    'issue_details' => '',
+    'support_category' => '',
+    'software_details' => '',
+    'hardware_details' => '',
+    'solution' => '',
+    'total_time' => '00:00:00',
+    'support_status' => 'Pending',
+    'ticket_id' => '',
+    'email' => null,
+    'phone' => null,
+    'support_start_time' => date('H:i:s'),
+    'support_end_time' => null,
+    'record_id' => '',
+    'case_id' => ''
+];
+
 // Handle missing AUTO_INCREMENT id behavior for the ivr_details table
 if ($tableName === 'ivr_details') {
     $maxIdStmt = $db->query("SELECT MAX(id) as max_id FROM ivr_details");
@@ -143,16 +132,12 @@ if ($tableName === 'ivr_details') {
     $data['id'] = ($maxIdRow && $maxIdRow['max_id'] !== null) ? (int)$maxIdRow['max_id'] + 1 : 1;
 }
 
-// Add placeholder for record_id
-$data['record_id'] = '';
-$data['case_id'] = '';
-
 // Dynamically construct prepared insert query
 $cols = array_keys($data);
 $columns_str = implode(',', array_map(fn($c) => "`$c`", $cols));
 $placeholders_str = implode(',', array_map(fn($c) => ":$c", $cols));
 
-$insertStmt = $db->prepare("INSERT INTO $tableName ($columns_str) VALUES ($placeholders_str)");
+$insertStmt = $db->prepare("INSERT INTO `$tableName` ($columns_str) VALUES ($placeholders_str)");
 
 $success = false;
 $attempts = 0;
@@ -196,10 +181,7 @@ if (!$success) {
 
 echo json_encode([
     'success' => true,
-    'message' => 'Record successfully created!',
-    'data' => [
-        'record_id' => $record_id,
-        'table' => $tableName
-    ]
+    'record_id' => $record_id,
+    'message' => 'Pending record successfully created!'
 ]);
 ?>

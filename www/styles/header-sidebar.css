@@ -93,14 +93,14 @@
   right: 0;
   width: 100%;
   height: 60px;
-  /* background-color: #2c3e50; */
-  background-color: #3e454c;
-  color: #fff;
+  background-color: #ffffff;
+  color: #0f172a;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 15px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
   z-index: 1000;
 }
 
@@ -112,10 +112,9 @@
 }
 
 .logo-container img {
-  width: 220px;
-  /* reduce width */
-  height: auto;
-  /* keep aspect ratio */
+  max-height: 40px;
+  width: auto;
+  display: block;
 }
 
 
@@ -138,13 +137,13 @@
 .hamburger-line {
   width: 25px;
   height: 3px;
-  background-color: #fff;
+  background-color: #475569;
   transition: all 0.3s ease;
   border-radius: 2px;
 }
 
 .hamburger-menu:hover .hamburger-line {
-  background-color: #3498db;
+  background-color: #2563eb;
 }
 
 .hamburger-menu.active .hamburger-line:nth-child(1) {
@@ -161,7 +160,6 @@
 
 /* Logo */
 .xtend-logo {
-  /* background: url("../images/xtend-logo.png"); */
   display: grid;
   background-size: contain;
   background-repeat: no-repeat;
@@ -183,9 +181,9 @@
 
 .page-title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 500;
-  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f172a;
 }
 
 /* Header Right */
@@ -202,9 +200,9 @@
 
 .user-menu-btn {
   background: none;
-  border: none;
-  color: #c6c6c6;
-  background-color: #27282a;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  background-color: #f8fafc;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -212,11 +210,12 @@
   padding: 8px 20px;
   box-sizing: border-box;
   border-radius: 5px;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .user-menu-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: #f1f5f9;
+  color: #0f172a;
 }
 
 .user-avatar {
@@ -225,8 +224,9 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  background-color: #3498db;
+  background-color: #2563eb;
   border-radius: 50%;
+  color: #ffffff;
 }
 
 .user-name {
@@ -250,6 +250,7 @@
   background-color: #fff;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e2e8f0;
   min-width: 200px;
   opacity: 0;
   visibility: hidden;
@@ -300,11 +301,10 @@
   left: 0;
   width: 240px;
   height: calc(100vh - 60px);
-  /* background-color: #34495e; */
-  background-color: #27282a;
-  color: #ecf0f1;
+  background-color: #ffffff;
+  color: #0f172a;
+  border-right: 1px solid #e2e8f0;
   overflow: visible;
-  /* Changed from overflow-y: auto to allow flyouts to escape */
   transition: transform 0.3s ease;
   z-index: 999;
   display: flex;
@@ -314,7 +314,7 @@
 .sidebar-nav {
   flex: 1;
   padding: 20px 0;
-  font-family: monospace;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .sidebar-section {
@@ -324,7 +324,7 @@
 .sidebar-section-title {
   font-size: 12px;
   text-transform: uppercase;
-  color: #95a5a6;
+  color: #94a3b8;
   padding: 0 20px;
   margin-bottom: 10px;
   font-weight: 600;
@@ -346,7 +346,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
-  color: #ecf0f1;
+  color: #475569;
   text-decoration: none;
   transition: all 0.3s ease;
   position: relative;
@@ -359,14 +359,14 @@
   top: 0;
   height: 100%;
   width: 4px;
-  background-color: #3498db;
+  background-color: #2563eb;
   transform: scaleY(0);
   transition: transform 0.3s ease;
 }
 
 .sidebar-link:hover {
-  background-color: rgba(52, 152, 219, 0.1);
-  color: #3498db;
+  background-color: #f1f5f9;
+  color: #34a18a;
 }
 
 .sidebar-link:hover::before {
@@ -374,13 +374,63 @@
 }
 
 .sidebar-menu-item.active .sidebar-link {
-  background-color: rgba(52, 152, 219, 0.15);
-  color: #3498db;
-  font-weight: 500;
+  background-color: #f1f5f9;
+  color: #e91e63;
+  font-weight: 600;
 }
 
 .sidebar-menu-item.active .sidebar-link::before {
   transform: scaleY(1);
+}
+
+/* Sidebar Icon Colors (CRM Style) */
+.sidebar-link i {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+  color: #64748b;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.sidebar-menu-item.active .sidebar-link i,
+.sidebar-link:hover i {
+  transform: scale(1.15);
+}
+
+/* Specific icon active/hover transitions */
+.sidebar-menu-item.active .sidebar-link .fa-house,
+.sidebar-link:hover .fa-house {
+  color: #2563eb;
+}
+
+.sidebar-menu-item.active .sidebar-link .fa-square-plus,
+.sidebar-link:hover .fa-square-plus {
+  color: #10b981;
+}
+
+.sidebar-menu-item.active .sidebar-link .fa-file-arrow-up,
+.sidebar-link:hover .fa-file-arrow-up {
+  color: #f59e0b;
+}
+
+.sidebar-menu-item.active .sidebar-link .fa-file-lines,
+.sidebar-link:hover .fa-file-lines {
+  color: #0ea5e9;
+}
+
+.sidebar-menu-item.active .sidebar-link .fa-magnifying-glass,
+.sidebar-link:hover .fa-magnifying-glass {
+  color: #3b82f6;
+}
+
+.sidebar-menu-item.active .sidebar-link .fa-user-shield,
+.sidebar-link:hover .fa-user-shield {
+  color: #8b5cf6;
+}
+
+.sidebar-menu-item.active .sidebar-link .fa-right-from-bracket,
+.sidebar-link:hover .fa-right-from-bracket {
+  color: #ef4444;
 }
 
 .sidebar-link svg {
@@ -399,7 +449,7 @@
   left: 0;
   width: 100%;
   height: calc(100vh - 60px);
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.4);
   opacity: 0;
   visibility: hidden;
   transition: all 0.3s ease;
@@ -417,16 +467,16 @@
 }
 
 .sidebar-container::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .sidebar-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 3px;
 }
 
 .sidebar-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 /* ===== RESPONSIVE STYLES ===== */
@@ -498,14 +548,9 @@
   list-style: none;
   padding: 5px 0 10px 0;
   margin: 0;
-  background-color: #202123;
-  /* Darker shade for depth */
-  border-left: 4px solid #3498db;
-  /* Continuity line from parent active state if desired, or just decorative */
-  /* Remove border-left if it feels too heavy, let's stick to background distinction */
+  background-color: #f8fafc;
   border-left: none;
-  box-shadow: inset 0 10px 20px -10px rgba(0, 0, 0, 0.5);
-  /* Inner shadow for drawer effect */
+  box-shadow: inset 0 4px 6px -4px rgba(0, 0, 0, 0.05);
 }
 
 .sidebar-submenu li {
@@ -515,11 +560,9 @@
 
 .sidebar-submenu li a {
   padding: 12px 20px 12px 52px;
-  /* Indented text */
   display: flex;
   align-items: center;
-  color: #9eaab0;
-  /* Muted text color */
+  color: #64748b;
   text-decoration: none;
   font-size: 13px;
   font-weight: 500;
@@ -529,42 +572,30 @@
 
 /* Hover State */
 .sidebar-submenu li a:hover {
-  color: #fff;
-  background-color: rgba(255, 255, 255, 0.03);
+  color: #2563eb;
+  background-color: #f1f5f9;
   padding-left: 56px;
-  /* Subtle slide effect */
 }
-
-/* Active State for Submenu Items (if needed in future) */
-/* Active State for Submenu Items (Removed as per request - only dot indicates active state) */
-/* .sidebar-submenu li a.active {
-  color: #3498db;
-  background-color: rgba(52, 152, 219, 0.1);
-} */
 
 /* Bullet Point / Icon Indicator */
 .sidebar-submenu li a:not(.nested-submenu-toggle)::before {
   content: '';
   position: absolute;
   left: 28px;
-  /* Position in the padding area */
   top: 50%;
   transform: translateY(-50%);
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: #58656d;
-  /* Inactive dot color */
+  background-color: #cbd5e1;
   transition: all 0.3s ease;
 }
 
 .sidebar-submenu li a:not(.nested-submenu-toggle):hover::before,
 .sidebar-submenu li a.active:not(.nested-submenu-toggle)::before {
-  background-color: #3498db;
-  /* Active dot color */
+  background-color: #2563eb;
   transform: translateY(-50%) scale(1.2);
-  box-shadow: 0 0 8px rgba(52, 152, 219, 0.6);
-  /* Glow effect */
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.4);
 }
 
 /* Override styling for 'All' reports item to align text to 'Clients' and center the dot with the user icon */
@@ -592,9 +623,9 @@
   top: 0;
   left: 100%;
   width: 180px;
-  background-color: #2b2e32;
-  /* Slightly different shade to pop out */
-  box-shadow: 4px 4px 15px rgba(0, 0, 0, 0.6);
+  background-color: #ffffff;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
   border-radius: 4px;
   z-index: 1000;
   padding: 5px 0;
@@ -622,12 +653,11 @@
   font-weight: 600;
   text-align: center;
   text-transform: uppercase;
-  color: #2fa7cd;
+  color: #2563eb;
   letter-spacing: 0.5px;
-  /* border-bottom: 1px solid rgba(255, 255, 255, 0.05); */
   margin-bottom: 5px;
   pointer-events: none;
-  border-bottom: 1px solid #5d8174;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 /* .header-bottom {
@@ -636,3 +666,344 @@
   width: 100%;
   background-color: #2fa7cd;
 } */
+
+/* ===== CONFIRM MODAL STYLES ===== */
+.confirm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.35);
+  /* Soft backdrop */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  /* Over everything */
+  box-sizing: border-box;
+}
+
+.confirm-modal-wrapper {
+  width: 100%;
+  max-width: 480px;
+  /* Narrower and sleeker */
+  /* padding: 20px; */
+  box-sizing: border-box;
+}
+
+.confirm-modal-card.split-design {
+  position: relative;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  /* border-radius: 16px; */
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.05),
+    0 20px 40px -15px rgba(15, 23, 42, 0.15);
+  box-sizing: border-box;
+  text-align: center;
+  overflow: hidden;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  display: flex;
+  flex-direction: column;
+  animation: modal-slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modal-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Header Section (Vibrant Gradient) */
+.confirm-modal-header-section {
+  background: linear-gradient(135deg, #db6c92 0%, #e61c61 100%);
+  padding: 34px 20px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirm-icon-badge {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  animation: scale-up 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, badge-pulse 2s infinite ease-in-out;
+}
+
+@keyframes scale-up {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes badge-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05), 0 0 0 0 rgba(255, 255, 255, 0.25);
+  }
+
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08), 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+}
+
+/* Close Button floating over gradient header */
+.confirm-modal-close-btn.light-version {
+  display: flex;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: color 0.2s ease;
+  outline: none;
+  padding: 4px;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirm-modal-close-btn.light-version:hover {
+  color: #ffffff;
+}
+
+/* Body Content Section */
+.confirm-modal-body-section {
+  padding: 52px;
+  box-sizing: border-box;
+}
+
+.confirm-modal-card .confirm-title {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.5px;
+  color: #0f172a;
+}
+
+.confirm-modal-card .confirm-description {
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 500;
+  margin: 0 0 28px 0;
+}
+
+/* Compact Agent Badge */
+.confirm-modal-card .agent-compact-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 11px;
+  color: #475569;
+  margin: 0 auto 20px auto;
+}
+
+.confirm-modal-card .agent-compact-badge i {
+  color: #4f46e5;
+}
+
+.confirm-modal-card .agent-compact-badge strong {
+  color: #0f172a;
+}
+
+/* Actions Section */
+.confirm-modal-card .confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.confirm-modal-card .btn {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  outline: none;
+  border: none;
+  box-sizing: border-box;
+  flex: 1;
+  /* Make buttons equal width */
+  justify-content: center;
+}
+
+.confirm-modal-card .btn-secondary {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.confirm-modal-card .btn-secondary:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.confirm-modal-card .btn-primary {
+  background: linear-gradient(135deg, #ed3e7a 0%, #732a43 100%);
+  color: #ffffff;
+  box-shadow: 0 3px 8px rgba(79, 70, 229, 0.15);
+}
+
+.confirm-modal-card .btn-primary:hover {
+  box-shadow: 0 5px 12px rgb(228, 88, 107);
+  filter: brightness(1.05);
+}
+
+@media (max-width: 480px) {
+  .confirm-modal-body-section {
+    padding: 20px 16px 16px 16px;
+  }
+
+  .confirm-modal-card .confirm-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .confirm-modal-card .btn {
+    width: 100%;
+    flex: none;
+  }
+}
+
+/* ===== CONFIRM MODAL FORM STYLES ===== */
+.confirm-form-group {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.confirm-form-group label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.confirm-form-group .form-control-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.confirm-form-group i.input-icon {
+  position: absolute;
+  left: 16px;
+  color: #058a05;
+  /* green for company */
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.confirm-form-group .form-control {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 12px 16px 12px 44px;
+  color: #0f172a;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.confirm-form-group .form-control:focus {
+  border-color: #46cebc;
+  box-shadow: 0 0 0 4px rgba(30, 201, 178, 0.15);
+}
+
+/* Modal Autocomplete Suggestions Styling */
+.confirm-form-group .autocomplete-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.confirm-form-group .autocomplete-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  /* must be above modal */
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-top: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  display: none;
+  box-sizing: border-box;
+}
+
+.confirm-form-group .autocomplete-suggestion {
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #0f172a;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: left;
+}
+
+.confirm-form-group .autocomplete-suggestion:last-child {
+  border-bottom: none;
+}
+
+.confirm-form-group .autocomplete-suggestion:hover,
+.confirm-form-group .autocomplete-suggestion.active {
+  background: #f1f5f9;
+  color: #d0675f;
+}

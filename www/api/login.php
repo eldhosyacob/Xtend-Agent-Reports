@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once('../config/session.php');
+
 header('Content-Type: application/json');
 
 // Include database configuration

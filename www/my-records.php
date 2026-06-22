@@ -42,7 +42,7 @@ require_once __DIR__ . '/config/auth_check.php';
           </div>
           <div class="stat-info-box">
             <span class="value" id="stat-total">—</span>
-            <span class="label">Total Today</span>
+            <span class="label" id="stat-total-label">Total Today</span>
           </div>
         </div>
         <div class="stat-card-wrapper">
@@ -79,9 +79,19 @@ require_once __DIR__ . '/config/auth_check.php';
         
         <!-- Filter/Search Bar -->
         <div class="table-filter-bar">
-          <div class="search-input-wrapper">
-            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-            <input type="text" id="search-records" class="search-control" placeholder="Search records..." aria-label="Search records">
+          <div class="filter-controls">
+            <div class="search-input-wrapper">
+              <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+              <input type="text" id="search-records" class="search-control" placeholder="Search records..." aria-label="Search records">
+            </div>
+            <div class="select-filter-wrapper">
+              <i class="fa-solid fa-calendar-days select-icon"></i>
+              <select id="date-range-filter" class="filter-select-control" aria-label="Filter by date range">
+                <option value="today" selected>Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+              </select>
+            </div>
           </div>
           <!-- <div class="department-info-badge" id="department-badge">
             Loading Department...
@@ -274,6 +284,11 @@ require_once __DIR__ . '/config/auth_check.php';
           });
         });
 
+        // Change date range filter
+        $('#date-range-filter').on('change', function() {
+          loadRecords();
+        });
+
         // Filter search input
         $('#search-records').on('input', function() {
           const val = $(this).val().toLowerCase().trim();
@@ -302,9 +317,12 @@ require_once __DIR__ . '/config/auth_check.php';
           // Display skeleton loading
           showSkeletons();
 
+          const range = $('#date-range-filter').val() || 'today';
+
           $.ajax({
             url: 'api/fetch-my-records.php',
             method: 'GET',
+            data: { range: range },
             dataType: 'json',
             success: function(response) {
               if (response.success) {
@@ -358,6 +376,15 @@ require_once __DIR__ . '/config/auth_check.php';
         }
 
         function updateStats(records) {
+          const range = $('#date-range-filter').val() || 'today';
+          let labelText = 'Total Today';
+          if (range === 'week') {
+            labelText = 'Total This Week';
+          } else if (range === 'month') {
+            labelText = 'Total This Month';
+          }
+          $('#stat-total-label').text(labelText);
+
           const total = records.length;
           const pending = records.filter(r => (r.support_status || '').toLowerCase() === 'pending').length;
           const closed = records.filter(r => (r.support_status || '').toLowerCase().startsWith('closed')).length;
@@ -428,7 +455,7 @@ require_once __DIR__ . '/config/auth_check.php';
             const row = `
               <tr>
                 <td><span class="record-id-badge">${escapeHtml(getRecordIdentifier(r))}</span></td>
-                <td class="company-name-cell">${escapeHtml(r.company_name)}</td>
+                <td class="company-name-cell">${escapeHtml(r.company_name) || '—'}</td>
                 <td>${escapeHtml(r.product_category || '—')}</td>
                 <td>
                   <span class="status-pill ${statusClass}">
