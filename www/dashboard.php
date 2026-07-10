@@ -206,10 +206,13 @@ if (!empty($user_id)) {
         // Helper function to map statuses to standard theme colors
         function getStatusColor(status) {
           const s = (status || '').toLowerCase().trim();
+          if (s === 'under observation' || s === 'escalated' || s === 'escalated to presales') {
+            return 'var(--purple-color)';
+          }
           if (s === 'closed' || s === 'closed-device replaced') {
             return 'var(--success-color)';
           }
-          if (s === 'pending' || s === 'under observation') {
+          if (s === 'pending') {
             return 'var(--warning-color)';
           }
           if (s.startsWith('escalated')) {

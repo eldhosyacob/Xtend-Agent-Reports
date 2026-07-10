@@ -1,6 +1,15 @@
 <?php
-require_once __DIR__ . '/config/auth_check.php';
+// Secure the page - ensure user is authenticated
+require_once 'config/auth_check.php';
+
+$company_name = trim($_GET['company_name'] ?? '');
+$add_to_company_list = intval($_GET['add_to_company_list'] ?? 0);
+
+if ($company_name === '') {
+    die("Error: Client name is required to view pending records.");
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -8,9 +17,9 @@ require_once __DIR__ . '/config/auth_check.php';
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Search Results | Xtend Agent Reports</title>
+    <title>Pending Records | Xtend Agent Reports</title>
     <link rel="shortcut icon" href="images/favicon.png" />
-    <link rel="stylesheet" href="styles/search-results.css">
+    <link rel="stylesheet" href="styles/view-pending-records.css">
     <link rel="stylesheet" href="styles/header-sidebar.css">
     <link rel="stylesheet" href="styles/common.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -21,49 +30,37 @@ require_once __DIR__ . '/config/auth_check.php';
       
       <!-- Page Header -->
       <header class="page-header-wrapper">
-        <div class="page-title-section">
-          <h1>Search Results</h1>
-          <!-- <p>Showing records matching your search criteria</p> -->
+        <div class="page-title-section pending-records-title-wrapper">
+          <div class="pending-records-page-title">Pending Records for <span class="client-name-highlight"><?php echo htmlspecialchars($company_name); ?></span></div>
+          <!-- <p>The client has existing pending or active support logs. Reopen one or proceed to create a new session.</p> -->
         </div>
-        <!-- <div class="header-actions">
-          <a href="search.php" class="btn-icon-text" aria-label="Back to Search">
-            <i class="fa-solid fa-arrow-left"></i> Back to Search
-          </a>
-          <button class="btn-icon-text btn-primary" id="btn-refresh" aria-label="Refresh results">
-            <i class="fa-solid fa-rotate"></i> Refresh
+        <div class="header-actions">
+          <button class="btn-icon-text btn-create-direct" id="btn-create-record-direct" aria-label="Create new record without confirmation">
+            <i class="fa-solid fa-plus"></i> Create New Record
           </button>
-        </div> -->
+        </div>
       </header>
 
       <!-- Main Report Card -->
       <main class="report-card-wrapper">
         
-        <!-- Filter/Search Bar within results -->
         <div class="table-filter-bar">
-          <!-- <div class="search-input-wrapper">
-            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-            <input type="text" id="search-records" class="search-control" placeholder="Filter current results..." aria-label="Filter results">
-          </div> -->
           <div class="results-info-badge" id="results-badge">
-            Loading results...
+            Checking for pending records...
           </div>
-          <button class="btn-icon-text btn-primary" id="btn-export" disabled aria-label="Export to CSV">
-            <i class="fa-solid fa-file-csv"></i> Export
-          </button>
         </div>
 
         <!-- Floating-Row Table View -->
         <div class="table-responsive-wrapper">
-          <table class="custom-search-table" id="records-table">
+          <table class="custom-search-table pending-records-table" id="records-table">
             <thead>
               <tr>
                 <th scope="col">Sl. No.</th>
                 <th scope="col">Record ID</th>
                 <th scope="col">Date</th>
                 <th scope="col">Agent</th>
-                <th scope="col">Company Name</th>
                 <th scope="col">Product Category</th>
-                <th scope="col">Ticket ID/Reason</th>
+                <th scope="col">Department</th>
                 <th scope="col">Status</th>
                 <th scope="col">Actions</th>
               </tr>
@@ -77,7 +74,6 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td><div class="skeleton-line w-50"></div></td>
                 <td><div class="skeleton-line w-70"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
-                <td><div class="skeleton-line w-50"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
               </tr>
@@ -88,18 +84,6 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td><div class="skeleton-line w-50"></div></td>
                 <td><div class="skeleton-line w-70"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
-                <td><div class="skeleton-line w-50"></div></td>
-                <td><div class="skeleton-badge"></div></td>
-                <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
-              </tr>
-              <tr class="skeleton-row">
-                <td><div class="skeleton-line w-30"></div></td>
-                <td><div class="skeleton-badge"></div></td>
-                <td><div class="skeleton-line w-60"></div></td>
-                <td><div class="skeleton-line w-50"></div></td>
-                <td><div class="skeleton-line w-70"></div></td>
-                <td><div class="skeleton-line w-60"></div></td>
-                <td><div class="skeleton-line w-50"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
               </tr>
@@ -195,10 +179,6 @@ require_once __DIR__ . '/config/auth_check.php';
               <label>Support Category</label>
               <div class="value-box" id="detail-support-category"></div>
             </div>
-            <div class="detail-item">
-              <label>Department / Table</label>
-              <div class="value-box" id="detail-department"></div>
-            </div>
             
             <div class="detail-item full-width">
               <label>Software Details</label>
@@ -229,28 +209,30 @@ require_once __DIR__ . '/config/auth_check.php';
               <label>Total Time</label>
               <div class="value-box" id="detail-total-time"></div>
             </div>
-            
+
             <div class="detail-item">
               <label>Support Status</label>
               <div class="value-box" id="detail-support-status"></div>
             </div>
-            
+
             <div class="detail-item full-width">
               <label>Ticket ID / Reason</label>
               <div class="value-box" id="detail-ticket-id"></div>
             </div>
+
           </form>
         </div>
       </div>
     </div>
 
+    <!-- Include Sidebar & Header Component -->
     <?php include 'components/header-sidebar.php'; ?>
-    
-    <script src="plugins/jquery-3.7.1.min.js"></script>
+
     <script>
       $(document).ready(function() {
-        let allRecords = [];
-        let displayedRecords = [];
+        const companyName = <?php echo json_encode($company_name); ?>;
+        const addToCompanyList = <?php echo json_encode($add_to_company_list); ?>;
+        let pendingRecords = [];
         let currentPage = 1;
         const pageSize = 10;
 
@@ -259,144 +241,51 @@ require_once __DIR__ . '/config/auth_check.php';
           return (r.record_id && String(r.record_id) !== 'null' && String(r.record_id) !== 'NULL' && String(r.record_id).trim() !== '') ? r.record_id : r.id;
         }
 
-        // Load records on page ready using the current URL query parameters
-        loadSearchResults();
+        function escapeHtml(text) {
+          if (!text) return '';
+          return text
+            .toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+        }
 
-        // Listen for record updates from other tabs
-        window.addEventListener('storage', function(e) {
-          if (e.key === 'record_updated') {
-            loadSearchResults();
-          }
-        });
-
-        // Refresh click trigger
-        $('#btn-refresh').on('click', function() {
-          const $icon = $(this).find('i');
-          $icon.addClass('fa-spin');
-          loadSearchResults(function() {
-            $icon.removeClass('fa-spin');
-          });
-        });
-
-        // Export CSV click trigger
-        $('#btn-export').on('click', function() {
-          const queryParams = window.location.search;
-          window.location.href = 'api/export.php' + queryParams;
-        });
-
-        // Filter text input inside results
-        $('#search-records').on('input', function() {
-          const val = $(this).val().toLowerCase().trim();
-          currentPage = 1;
-          if (val === '') {
-            displayedRecords = allRecords;
-            renderRecords(displayedRecords);
-          } else {
-            const filtered = allRecords.filter(function(r) {
-              const recId = String(getRecordIdentifier(r)).toLowerCase();
-              const agent = (r.agent || '').toLowerCase();
-              const comp = (r.company_name || '').toLowerCase();
-              const prod = (r.product_category || '').toLowerCase();
-              const status = (r.support_status || '').toLowerCase();
-              const ticket = (r.ticket_id || '').toLowerCase();
-              return recId.indexOf(val) > -1 || 
-                     agent.indexOf(val) > -1 || 
-                     comp.indexOf(val) > -1 || 
-                     prod.indexOf(val) > -1 || 
-                     status.indexOf(val) > -1 ||
-                     ticket.indexOf(val) > -1;
-            });
-            displayedRecords = filtered;
-            renderRecords(displayedRecords);
-          }
-        });
-
-        // Close details modal clicks
-        $('#modal-close, #details-modal').on('click', function(e) {
-          if (e.target === this) {
-            closeModal();
-          }
-        });
-
-        function loadSearchResults(callback) {
-          showSkeletons();
-          const queryParams = window.location.search;
-
+        function loadPendingRecords() {
           $.ajax({
-            url: 'api/fetch-search-results.php' + queryParams,
-            method: 'GET',
+            url: 'api/fetch-pending-records.php',
+            type: 'GET',
+            data: { company_name: companyName },
             dataType: 'json',
             success: function(response) {
               if (response.success) {
-                allRecords = response.data || [];
-                currentPage = 1;
-                displayedRecords = allRecords;
-                
-                // Update Badge text
-                $('#results-badge').html('<i class="fa-solid fa-list-check" style="color: #ecae3b;"></i> <span style="color: #18ad9f; margin:0 4px;">'+allRecords.length+'</span><span style="color: #18678e;"> matching records</span>');
-
-                // Update export button state
-                $('#btn-export').prop('disabled', allRecords.length === 0);
-
-                // Populate rows
-                renderRecords(displayedRecords);
+                pendingRecords = response.data;
+                $('#results-badge').text('Total Pending Records: ' + pendingRecords.length);
+                renderPendingRecords(pendingRecords);
               } else {
-                showError(response.message || 'Failed to fetch search results.');
+                $('#results-badge').text('Error loading pending records');
+                alert('Error loading records: ' + response.message);
               }
-              if (typeof callback === 'function') callback();
             },
-            error: function(xhr, status, error) {
-              showError('Network error. Unable to load search results.');
-              if (typeof callback === 'function') callback();
+            error: function() {
+              $('#results-badge').text('Error loading pending records');
+              alert('An error occurred while fetching pending records.');
             }
           });
         }
 
-        function showSkeletons() {
-          let skeletonHtml = '';
-          for (let i = 0; i < 4; i++) {
-            skeletonHtml += `
-              <tr class="skeleton-row">
-                <td><div class="skeleton-line w-30"></div></td>
-                <td><div class="skeleton-badge"></div></td>
-                <td><div class="skeleton-line w-60"></div></td>
-                <td><div class="skeleton-line w-50"></div></td>
-                <td><div class="skeleton-line w-70"></div></td>
-                <td><div class="skeleton-line w-60"></div></td>
-                <td><div class="skeleton-line w-50"></div></td>
-                <td><div class="skeleton-badge"></div></td>
-                <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
-              </tr>`;
-          }
-          $('#records-tbody').html(skeletonHtml);
-          $('#pagination-wrapper').hide();
-          $('#btn-export').prop('disabled', true);
-        }
-
-        function showError(msg) {
-          $('#records-tbody').html(`
-            <tr>
-              <td colspan="9" class="table-error-cell">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                ${msg}
-              </td>
-            </tr>`);
-          $('#pagination-wrapper').hide();
-          $('#btn-export').prop('disabled', true);
-        }
-
-        function renderRecords(records) {
+        function renderPendingRecords(records) {
           const $tbody = $('#records-tbody');
           $tbody.empty();
 
           if (records.length === 0) {
             $tbody.html(`
               <tr>
-                <td colspan="9">
+                <td colspan="8">
                   <div class="table-empty-state">
                     <i class="fa-solid fa-folder-open"></i>
-                    <h3>No Search Results</h3>
-                    <p>Try modifying your search criteria filters in the Search page.</p>
+                    <h3>No Active Pending Records Found</h3>
                   </div>
                 </td>
               </tr>`);
@@ -412,7 +301,7 @@ require_once __DIR__ . '/config/auth_check.php';
           paginatedRecords.forEach(function(r, index) {
             const slNo = startIndex + index + 1;
 
-            // Map status CSS classes
+            // Map status classes
             let rawStatus = r.support_status || 'Pending';
             let statusLower = rawStatus.toLowerCase();
             let statusClass = 'status-pending';
@@ -427,7 +316,6 @@ require_once __DIR__ . '/config/auth_check.php';
               statusClass = 'status-escalated';
             }
 
-            // Edit Reopen Button mapping
             let reopenBtn = '';
             if (statusLower !== 'closed' && statusLower !== 'closed-device replaced' && r.is_latest !== false) {
               reopenBtn = `
@@ -439,14 +327,11 @@ require_once __DIR__ . '/config/auth_check.php';
             const row = `
               <tr>
                 <td>${slNo}</td>
-                <td>
-                  <span class="record-id-badge">${escapeHtml(getRecordIdentifier(r))}</span>
-                </td>
+                <td><span class="record-id-badge">${escapeHtml(getRecordIdentifier(r))}</span></td>
                 <td>${escapeHtml(r.date || '—')}</td>
                 <td>${escapeHtml(r.agent || '—')}</td>
-                <td class="company-name-cell">${escapeHtml(r.company_name)}</td>
                 <td>${escapeHtml(r.product_category || '—')}</td>
-                <td><span class="ticket-id-badge">${escapeHtml(r.ticket_id || '—')}</span></td>
+                <td><span class="dept-badge">${escapeHtml(r.record_department || '—')}</span></td>
                 <td>
                   <span class="status-pill ${statusClass}">
                     <i class="fa-solid fa-circle"></i> ${escapeHtml(rawStatus)}
@@ -462,7 +347,7 @@ require_once __DIR__ . '/config/auth_check.php';
             $tbody.append(row);
           });
 
-          // Bind view details buttons
+          // Bind view buttons
           $('.btn-action-view').off('click').on('click', function() {
             const recordId = $(this).attr('data-record-id');
             showDetails(recordId);
@@ -471,6 +356,84 @@ require_once __DIR__ . '/config/auth_check.php';
           // Draw pagination controls
           updatePaginationControls(records.length);
         }
+
+        function showDetails(recordId) {
+          const record = pendingRecords.find(r => String(getRecordIdentifier(r)) === String(recordId));
+          if (!record) return;
+
+          function valOrDash(val) {
+            if (val === null || val === undefined) return '—';
+            const str = String(val).trim();
+            return str !== '' ? str : '—';
+          }
+
+          $('#detail-record-id').text(valOrDash(getRecordIdentifier(record)));
+          $('#detail-date').text(valOrDash(record.date));
+          $('#detail-agent').text(valOrDash(record.agent));
+          $('#detail-company-name').text(valOrDash(record.company_name));
+          $('#detail-location').text(valOrDash(record.location));
+          $('#detail-region').text(valOrDash(record.region));
+          
+          $('#detail-email').text(valOrDash(record.email));
+          $('#detail-phone').text(valOrDash(record.phone));
+          $('#detail-contact-details').text(valOrDash(record.contact_details));
+          $('#detail-product-category').text(valOrDash(record.product_category));
+          
+          $('#detail-issue-category').text(valOrDash(record.issue_category));
+          $('#detail-issue-type').text(valOrDash(record.issue_type));
+          
+          $('#detail-issue-details').val(valOrDash(record.issue_details));
+          $('#detail-support-category').text(valOrDash(record.support_category));
+          $('#detail-software-details').val(valOrDash(record.software_details));
+          $('#detail-hardware-details').val(valOrDash(record.hardware_details));
+          $('#detail-solution').val(valOrDash(record.solution));
+          $('#detail-start-time').text(valOrDash(record.support_start_time));
+          $('#detail-end-time').text(valOrDash(record.support_end_time));
+          $('#detail-total-time').text(valOrDash(record.total_time));
+          $('#detail-support-status').text(valOrDash(record.support_status));
+          $('#detail-ticket-id').text(valOrDash(record.ticket_id));
+
+          $('#details-modal').addClass('active');
+        }
+
+        // Close View Details Modal
+        $('#modal-close, #details-modal').on('click', function(e) {
+          if (e.target === this || this.id === 'modal-close') {
+            $('#details-modal').removeClass('active');
+          }
+        });
+
+        // Create record directly button
+        $('#btn-create-record-direct').on('click', function() {
+          const $btn = $(this);
+          const originalHtml = $btn.html();
+          $btn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Creating...');
+
+          $.ajax({
+            url: 'api/create-pending-record.php',
+            type: 'POST',
+            data: { 
+              company_name: companyName,
+              add_to_company_list: addToCompanyList
+            },
+            dataType: 'json',
+            success: function(response) {
+              if (response.success) {
+                // Open new record page in a new tab as normally
+                window.open('new-record.php?id=' + encodeURIComponent(response.record_id), '_blank');
+                // Redirect current tab back to dashboard
+                window.location.href = 'dashboard.php';
+              } else {
+                alert('Error creating record: ' + response.message);
+                $btn.prop('disabled', false).html(originalHtml);
+              }
+            },
+            error: function() {
+              alert('An error occurred while creating the record.');
+              $btn.prop('disabled', false).html(originalHtml);
+            }
+          });
+        });
 
         function updatePaginationControls(totalCount) {
           const totalPages = Math.ceil(totalCount / pageSize);
@@ -501,12 +464,11 @@ require_once __DIR__ . '/config/auth_check.php';
           pages.forEach(function(page) {
             if (lastPage !== 0) {
               if (page - lastPage === 2) {
-                // Fill the gap if it is only 1 page
                 const fillPage = lastPage + 1;
                 const btn = $('<button class="page-num-btn">' + fillPage + '</button>');
                 btn.on('click', function() {
                   currentPage = fillPage;
-                  renderRecords(displayedRecords);
+                  renderPendingRecords(pendingRecords);
                   scrollToTableTop();
                 });
                 $pagesContainer.append(btn);
@@ -522,7 +484,7 @@ require_once __DIR__ . '/config/auth_check.php';
             btn.on('click', function() {
               if (currentPage !== page) {
                 currentPage = page;
-                renderRecords(displayedRecords);
+                renderPendingRecords(pendingRecords);
                 scrollToTableTop();
               }
             });
@@ -535,16 +497,16 @@ require_once __DIR__ . '/config/auth_check.php';
         $('#btn-prev').on('click', function() {
           if (currentPage > 1) {
             currentPage--;
-            renderRecords(displayedRecords);
+            renderPendingRecords(pendingRecords);
             scrollToTableTop();
           }
         });
 
         $('#btn-next').on('click', function() {
-          const totalPages = Math.ceil(displayedRecords.length / pageSize);
+          const totalPages = Math.ceil(pendingRecords.length / pageSize);
           if (currentPage < totalPages) {
             currentPage++;
-            renderRecords(displayedRecords);
+            renderPendingRecords(pendingRecords);
             scrollToTableTop();
           }
         });
@@ -555,62 +517,8 @@ require_once __DIR__ . '/config/auth_check.php';
           }, 300);
         }
 
-        function showDetails(recordId) {
-          const record = allRecords.find(r => String(getRecordIdentifier(r)) === String(recordId));
-          if (!record) return;
-
-          function valOrDash(val) {
-            if (val === null || val === undefined) return '—';
-            const str = String(val).trim();
-            return str !== '' ? str : '—';
-          }
-
-          // Assign record values to modal container fields
-          $('#detail-record-id').text(valOrDash(getRecordIdentifier(record)));
-          $('#detail-date').text(valOrDash(record.date));
-          $('#detail-agent').text(valOrDash(record.agent));
-          $('#detail-company-name').text(valOrDash(record.company_name));
-          $('#detail-location').text(valOrDash(record.location));
-          $('#detail-region').text(valOrDash(record.region));
-          
-          $('#detail-email').text(valOrDash(record.email));
-          $('#detail-phone').text(valOrDash(record.phone));
-          $('#detail-contact-details').text(valOrDash(record.contact_details));
-          $('#detail-product-category').text(valOrDash(record.product_category));
-          
-          $('#detail-issue-category').text(valOrDash(record.issue_category));
-          $('#detail-issue-type').text(valOrDash(record.issue_type));
-          
-          $('#detail-issue-details').val(valOrDash(record.issue_details));
-          $('#detail-support-category').text(valOrDash(record.support_category));
-          $('#detail-department').text(valOrDash(record.record_department));
-          $('#detail-software-details').val(valOrDash(record.software_details));
-          $('#detail-hardware-details').val(valOrDash(record.hardware_details));
-          $('#detail-solution').val(valOrDash(record.solution));
-          $('#detail-start-time').text(valOrDash(record.support_start_time));
-          $('#detail-end-time').text(valOrDash(record.support_end_time));
-          $('#detail-total-time').text(valOrDash(record.total_time));
-          $('#detail-support-status').text(valOrDash(record.support_status));
-          $('#detail-ticket-id').text(valOrDash(record.ticket_id));
-
-          // Toggle modal active state
-          $('#details-modal').addClass('active');
-        }
-
-        function closeModal() {
-          $('#details-modal').removeClass('active');
-        }
-
-        function escapeHtml(text) {
-          if (!text) return '';
-          return text
-            .toString()
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-        }
+        // Initialize loading
+        loadPendingRecords();
       });
     </script>
   </body>

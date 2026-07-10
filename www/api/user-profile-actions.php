@@ -26,24 +26,7 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
 
 // Profile update actions
 if ($action === 'update_profile') {
-    $real_name = isset($_POST['real_name']) ? trim($_POST['real_name']) : '';
     $password = isset($_POST['password']) ? $_POST['password'] : '';
-
-    if (empty($real_name)) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Real name cannot be empty'
-        ]);
-        exit;
-    }
-
-    if (strlen($real_name) < 2) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Real name must be at least 2 characters'
-        ]);
-        exit;
-    }
 
     require_once __DIR__ . '/../config/database.php';
     $db = getDatabaseConnection();
@@ -66,30 +49,16 @@ if ($action === 'update_profile') {
         }
 
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $db->prepare("UPDATE users SET real_name = :real_name, password = :password WHERE id = :id");
+        $stmt = $db->prepare("UPDATE users SET password = :password WHERE id = :id");
         $stmt->execute([
-            'real_name' => $real_name,
             'password' => $hashed_password,
-            'id' => $user_id
-        ]);
-    } else {
-        $stmt = $db->prepare("UPDATE users SET real_name = :real_name WHERE id = :id");
-        $stmt->execute([
-            'real_name' => $real_name,
             'id' => $user_id
         ]);
     }
 
-    // Update active session values
-    $_SESSION['real_name'] = $real_name;
-    $_SESSION['full_name'] = $real_name;
-
     echo json_encode([
         'success' => true,
-        'message' => 'Profile updated successfully',
-        'data' => [
-            'real_name' => $real_name
-        ]
+        'message' => 'Profile updated successfully'
     ]);
     exit;
 

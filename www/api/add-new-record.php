@@ -103,6 +103,15 @@ foreach ($requiredFields as $field) {
     }
 }
 
+// Validate email format
+if (!empty($data['email']) && !preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.com$/i', $data['email'])) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Email must end with .com'
+    ]);
+    exit;
+}
+
 // Generate the next incrementing numeric prefix for record_id
 $next_num = 1000;
 

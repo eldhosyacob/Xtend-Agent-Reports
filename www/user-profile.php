@@ -132,8 +132,8 @@ foreach ($allowed_extensions as $ext) {
             <div class="profile-form-group">
               <label class="profile-form-label" for="realNameInput">Real Name</label>
               <div class="profile-input-wrapper">
-                <i class="fa-solid fa-user profile-input-icon"></i>
-                <input type="text" id="realNameInput" name="real_name" class="profile-form-control" value="<?php echo htmlspecialchars($user_full_name); ?>" required>
+                <i class="fa-solid fa-lock profile-input-icon"></i>
+                <input type="text" id="realNameInput" name="real_name" class="profile-form-control" value="<?php echo htmlspecialchars($user_full_name); ?>" disabled>
               </div>
             </div>
           </div>
@@ -550,11 +550,12 @@ foreach ($allowed_extensions as $ext) {
                 showAlert('success', 'Profile photo updated successfully!');
               } else {
                 showAlert('error', response.message);
-                $uploadBtn.prop('disabled', false).html(origBtnHtml);
               }
             },
             error: function() {
               showAlert('error', 'An error occurred during file upload');
+            },
+            complete: function() {
               $uploadBtn.prop('disabled', false).html(origBtnHtml);
             }
           });

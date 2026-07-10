@@ -1,36 +1,9 @@
 <?php
-require_once('../config/session.php');
+require_once __DIR__ . '/../config/auth_check.php';
 
-header('Content-Type: application/json');
-
-// Only allow GET requests
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Method not allowed'
-    ]);
-    exit;
-}
-
-// Check session authentication
-if (!isset($_SESSION['id']) || !isset($_SESSION['username'])) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Unauthorized: Please log in first'
-    ]);
-    exit;
-}
-
-// Include database configuration
-require_once __DIR__ . '/../config/database.php';
-$db = getDatabaseConnection();
-
+// $db is initialized by config/auth_check.php
 if (!$db) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Database connection failed'
-    ]);
-    exit;
+    die("Database connection failed.");
 }
 
 // Retrieve user's department from DB to ensure it's accurate and fresh
@@ -39,11 +12,7 @@ $userStmt->execute(['id' => $_SESSION['id']]);
 $user = $userStmt->fetch();
 
 if (!$user) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'User not found'
-    ]);
-    exit;
+    die("User not found.");
 }
 
 $user_department = trim($user['department']);
@@ -129,28 +98,9 @@ foreach ($tables_to_query as $table) {
     $stmt->execute($params);
     $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Find the max ID for each case_id in this table
-    $case_ids = array_unique(array_filter(array_column($records, 'case_id')));
-    $max_ids = [];
-    if (!empty($case_ids)) {
-        $placeholders = [];
-        $params_max = [];
-        foreach ($case_ids as $index => $cid) {
-            $key = "cid_" . $index;
-            $placeholders[] = ":" . $key;
-            $params_max[$key] = $cid;
-        }
-        $in_clause = implode(',', $placeholders);
-        $maxStmt = $db->prepare("SELECT case_id, MAX(id) as max_id FROM `$table` WHERE case_id IN ($in_clause) GROUP BY case_id");
-        $maxStmt->execute($params_max);
-        $max_ids = $maxStmt->fetchAll(PDO::FETCH_KEY_PAIR);
-    }
-
     $dept_label = ($table === 'support_details') ? 'Voice Logger' : 'IVR';
     foreach ($records as &$record) {
         $record['record_department'] = $dept_label;
-        $cid = $record['case_id'];
-        $record['is_latest'] = isset($max_ids[$cid]) ? ($record['id'] == $max_ids[$cid]) : true;
     }
     unset($record); // Break reference
 
@@ -167,9 +117,73 @@ usort($all_records, function ($a, $b) {
     return $b['id'] - $a['id'];
 });
 
-echo json_encode([
-    'success' => true,
-    'count' => count($all_records),
-    'data' => $all_records
+// Set headers for CSV download
+header('Content-Type: text/csv; charset=utf-8');
+header('Content-Disposition: attachment; filename="search_results_' . date('Ymd_His') . '.csv"');
+header('Pragma: no-cache');
+header('Expires: 0');
+
+$output = fopen('php://output', 'w');
+
+// Add UTF-8 BOM for Excel support
+fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+
+// Output CSV headers
+fputcsv($output, [
+    'Record ID',
+    'Department',
+    'Date',
+    'Agent Name',
+    'Company Name',
+    'Location',
+    'Region',
+    'Email',
+    'Phone',
+    'Contact Details',
+    'Product Category',
+    'Issue Category',
+    'Issue Type',
+    'Issue Notes/Details',
+    'Support Category',
+    'Software Details',
+    'Hardware Details',
+    'Solution',
+    'Support Start Time',
+    'Support End Time',
+    'Total Time',
+    'Support Status',
+    'Ticket ID / Reason'
 ]);
-?>
+
+// Loop through records and output each row
+foreach ($all_records as $r) {
+    $rec_id = (!empty($r['record_id']) && $r['record_id'] !== 'null' && $r['record_id'] !== 'NULL') ? $r['record_id'] : ($r['id'] ?? '');
+    fputcsv($output, [
+        $rec_id,
+        $r['record_department'] ?? '',
+        $r['date'] ?? '',
+        $r['agent'] ?? '',
+        $r['company_name'] ?? '',
+        $r['location'] ?? '',
+        $r['region'] ?? '',
+        $r['email'] ?? '',
+        $r['phone'] ?? '',
+        $r['contact_details'] ?? '',
+        $r['product_category'] ?? '',
+        $r['issue_category'] ?? '',
+        $r['issue_type'] ?? '',
+        $r['issue_details'] ?? '',
+        $r['support_category'] ?? '',
+        $r['software_details'] ?? '',
+        $r['hardware_details'] ?? '',
+        $r['solution'] ?? '',
+        $r['support_start_time'] ?? '',
+        $r['support_end_time'] ?? '',
+        $r['total_time'] ?? '',
+        $r['support_status'] ?? '',
+        $r['ticket_id'] ?? ''
+    ]);
+}
+
+fclose($output);
+exit;

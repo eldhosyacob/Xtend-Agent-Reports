@@ -102,7 +102,7 @@ if (isset($_GET['confirm']) && $_GET['confirm'] === 'yes') {
     }
 
     .btn-cancel {
-      background-color: #6c757d;
+      background-color: #009688;
       color: white;
     }
 

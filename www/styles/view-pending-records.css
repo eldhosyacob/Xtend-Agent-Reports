@@ -1,0 +1,78 @@
+@import url('search-results.css');
+
+/* Specific styles for view-pending-records.php */
+.pending-records-title-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+.pending-records-page-title {
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.client-name-highlight {
+    font-weight: 700;
+    color: #e4473b;
+}
+
+.btn-create-direct {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.btn-create-direct:hover {
+    background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+}
+
+/* Adjustments for floating table rows on pending page */
+.pending-records-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 12px;
+    text-align: center;
+}
+
+.pending-records-table th {
+    padding: 16px 20px;
+    font-size: 13px;
+    font-weight: 650;
+    color: #084865;
+    /* text-align: left; */
+    border: none;
+}
+
+.pending-records-table tbody tr {
+    background: var(--card-bg);
+    border-radius: 16px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.pending-records-table tbody tr:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.pending-records-table tbody td {
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.pending-records-table tbody td:first-child {
+    border-left: 1px solid var(--border-color);
+    border-top-left-radius: 16px;
+    border-bottom-left-radius: 16px;
+}
+
+.pending-records-table tbody td:last-child {
+    border-right: 1px solid var(--border-color);
+    border-top-right-radius: 16px;
+    border-bottom-right-radius: 16px;
+}

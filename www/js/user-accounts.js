@@ -1,4 +1,9 @@
 $(document).ready(function() {
+    // Pagination state
+    let allUsers = [];
+    let currentPage = 1;
+    const pageSize = 10;
+
     // Load users on initialization
     loadUsers();
 
@@ -62,7 +67,7 @@ $(document).ready(function() {
         $('#editUserType').val(role || 'user');
 
         $('#editUserModal').addClass('active');
-        $('#editRealName').focus();
+        $('#editPassword').focus();
     });
 
     // Close Edit User Modal
@@ -130,7 +135,7 @@ $(document).ready(function() {
             .substring(0, 2);
     }
 
-    // Fetch and render all users
+    // Fetch and store all users
     function loadUsers() {
         $('#tableLoadingOverlay').addClass('active');
 
@@ -141,87 +146,13 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
                 if (response.success) {
-                    const $tbody = $('#usersTableBody');
-                    $tbody.empty();
-
-                    if (response.data && response.data.length > 0) {
-                        response.data.forEach(function(user) {
-                            const isSelf = parseInt(user.id) === parseInt(currentUserId);
-                            const initials = getInitials(user.real_name);
-                            
-                            // Avatar section
-                            let avatarHtml = '';
-                            if (user.profile_photo_url) {
-                                avatarHtml = `<img src="${user.profile_photo_url}" alt="Avatar">`;
-                            } else {
-                                avatarHtml = `<span>${escapeHtml(initials)}</span>`;
-                            }
-
-                            // Role class mapping
-                            let roleClass = 'badge-role-user';
-                            if (user.role === 'admin') {
-                                roleClass = 'badge-role-admin';
-                            } else if (user.role === 'manager') {
-                                roleClass = 'badge-role-manager';
-                            }
-
-                            // Delete button block (disable for self)
-                            const deleteBtn = isSelf 
-                                ? `<button class="btn-action-icon btn-action-delete" disabled title="You cannot delete your own account">
-                                     <i class="fa-solid fa-ban"></i>
-                                   </button>`
-                                : `<button class="btn-action-icon btn-action-delete btn-delete-user" data-id="${user.id}" data-name="${escapeHtml(user.real_name)}" title="Delete User">
-                                     <i class="fa-solid fa-trash-can"></i>
-                                   </button>`;
-
-                            // Action buttons block (Edit + Delete Icons)
-                            const actionsHtml = `
-                                <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
-                                    <button class="btn-action-icon btn-action-edit btn-edit-user" 
-                                            data-id="${user.id}" 
-                                            data-username="${escapeHtml(user.username)}" 
-                                            data-name="${escapeHtml(user.real_name)}" 
-                                            data-dept="${escapeHtml(user.department)}" 
-                                            data-role="${escapeHtml(user.role)}"
-                                            title="Edit User">
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                    </button>
-                                    ${deleteBtn}
-                                </div>
-                            `;
-
-                            const rowHtml = `
-                                <tr>
-                                    <td>
-                                        <div class="user-profile-block">
-                                            <div class="user-avatar-circle">
-                                                ${avatarHtml}
-                                            </div>
-                                            <div class="user-meta-block">
-                                                <span class="user-display-realname">${escapeHtml(user.real_name)}</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="user-display-username">${escapeHtml(user.username)}</span></td>
-                                    <td><span class="badge badge-dept">${escapeHtml(user.department || '-')}</span></td>
-                                    <td><span class="badge ${roleClass}">${escapeHtml(user.role)}</span></td>
-                                    <td>${actionsHtml}</td>
-                                </tr>
-                            `;
-                            $tbody.append(rowHtml);
-                        });
-                    } else {
-                        $tbody.append(`
-                            <tr>
-                                <td colspan="5">
-                                    <div class="empty-state">
-                                        <i class="fa-solid fa-users-slash"></i>
-                                        <p>No user accounts found.</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        `);
+                    allUsers = response.data || [];
+                    // Render current page (or page 1 if current page exceeds bounds)
+                    const totalPages = Math.ceil(allUsers.length / pageSize);
+                    if (currentPage > totalPages) {
+                        currentPage = totalPages > 0 ? totalPages : 1;
                     }
+                    renderUsersPage(currentPage);
                 } else {
                     showAlert('error', 'Error fetching users: ' + response.message);
                 }
@@ -233,6 +164,160 @@ $(document).ready(function() {
                 $('#tableLoadingOverlay').removeClass('active');
             }
         });
+    }
+
+    // Render a specific page of users
+    function renderUsersPage(page) {
+        const $tbody = $('#usersTableBody');
+        $tbody.empty();
+
+        const totalUsers = allUsers.length;
+        if (totalUsers === 0) {
+            $tbody.append(`
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-users-slash"></i>
+                            <p>No user accounts found.</p>
+                        </div>
+                    </td>
+                </tr>
+            `);
+            $('#paginationControls').hide();
+            return;
+        }
+
+        const totalPages = Math.ceil(totalUsers / pageSize);
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+        currentPage = page;
+
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, totalUsers);
+        const pageUsers = allUsers.slice(startIndex, endIndex);
+
+        pageUsers.forEach(function(user) {
+            const isSelf = parseInt(user.id) === parseInt(currentUserId);
+            const initials = getInitials(user.real_name);
+            
+            // Avatar section
+            let avatarHtml = '';
+            if (user.profile_photo_url) {
+                avatarHtml = `<img src="${user.profile_photo_url}" alt="Avatar">`;
+            } else {
+                avatarHtml = `<span>${escapeHtml(initials)}</span>`;
+            }
+
+            // Role class mapping
+            let roleClass = 'badge-role-user';
+            if (user.role === 'admin') {
+                roleClass = 'badge-role-admin';
+            } else if (user.role === 'manager') {
+                roleClass = 'badge-role-manager';
+            }
+
+            // Delete button block (disable for self)
+            const deleteBtn = isSelf 
+                ? `<button class="btn-action-icon btn-action-delete" disabled title="You cannot delete your own account">
+                     <i class="fa-solid fa-ban"></i>
+                   </button>`
+                : `<button class="btn-action-icon btn-action-delete btn-delete-user" data-id="${user.id}" data-name="${escapeHtml(user.real_name)}" title="Delete User">
+                     <i class="fa-solid fa-trash-can"></i>
+                   </button>`;
+
+            // Action buttons block (Edit + Delete Icons)
+            const actionsHtml = `
+                <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
+                    <button class="btn-action-icon btn-action-edit btn-edit-user" 
+                            data-id="${user.id}" 
+                            data-username="${escapeHtml(user.username)}" 
+                            data-name="${escapeHtml(user.real_name)}" 
+                            data-dept="${escapeHtml(user.department)}" 
+                            data-role="${escapeHtml(user.role)}"
+                            title="Edit User">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    ${deleteBtn}
+                </div>
+            `;
+
+            const rowHtml = `
+                <tr>
+                    <td>
+                        <div class="user-profile-block">
+                            <div class="user-avatar-circle">
+                                ${avatarHtml}
+                            </div>
+                            <div class="user-meta-block">
+                                <span class="user-display-realname">${escapeHtml(user.real_name)}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="user-display-username">${escapeHtml(user.username)}</span></td>
+                    <td><span class="badge badge-dept">${escapeHtml(user.department || '-')}</span></td>
+                    <td><span class="badge ${roleClass}">${escapeHtml(user.role)}</span></td>
+                    <td>${actionsHtml}</td>
+                </tr>
+            `;
+            $tbody.append(rowHtml);
+        });
+
+        // Setup pagination buttons
+        renderPaginationControls(totalPages);
+    }
+
+    // Generate pagination controls HTML and bind event listeners
+    function renderPaginationControls(totalPages) {
+        const $controls = $('#paginationControls');
+        $controls.empty();
+
+        const totalUsers = allUsers.length;
+
+        // If pagination is not required, hide the container
+        if (totalUsers <= pageSize) {
+            $controls.hide();
+            return;
+        }
+
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, totalUsers);
+
+        // 1. Info text display
+        const infoHtml = `<div class="pagination-info">Showing <b>${startIndex + 1}</b> to <b>${endIndex}</b> of <b>${totalUsers}</b> users</div>`;
+        $controls.append(infoHtml);
+
+        // 2. Buttons container
+        const $btnContainer = $('<div class="pagination-buttons"></div>');
+
+        // Prev page button
+        const $prevBtn = $(`<button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`);
+        $prevBtn.on('click', function() {
+            if (currentPage > 1) {
+                renderUsersPage(currentPage - 1);
+            }
+        });
+        $btnContainer.append($prevBtn);
+
+        // Numeric buttons
+        for (let i = 1; i <= totalPages; i++) {
+            const $pageBtn = $(`<button class="pagination-btn ${currentPage === i ? 'active' : ''}">${i}</button>`);
+            $pageBtn.on('click', function() {
+                renderUsersPage(i);
+            });
+            $btnContainer.append($pageBtn);
+        }
+
+        // Next page button
+        const $nextBtn = $(`<button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`);
+        $nextBtn.on('click', function() {
+            if (currentPage < totalPages) {
+                renderUsersPage(currentPage + 1);
+            }
+        });
+        $btnContainer.append($nextBtn);
+
+        $controls.append($btnContainer);
+        $controls.show();
     }
 
     // Submit Add User Form
@@ -308,18 +393,12 @@ $(document).ready(function() {
         e.preventDefault();
 
         const id = $('#editUserId').val();
-        const realName = $('#editRealName').val().trim();
         const password = $('#editPassword').val();
         const confirmPassword = $('#editConfirmPassword').val();
         const department = $('#editDepartment').val();
         const userType = $('#editUserType').val();
 
         // Extra client-side checks
-        if (realName.length < 2) {
-            alert('Real name must be at least 2 characters.');
-            $('#editRealName').focus();
-            return;
-        }
         if (password) {
             if (password.length < 5) {
                 alert('New password must be at least 5 characters.');
@@ -343,7 +422,6 @@ $(document).ready(function() {
             data: {
                 action: 'edit_user',
                 id: id,
-                real_name: realName,
                 password: password,
                 department: department,
                 user_type: userType
@@ -355,11 +433,6 @@ $(document).ready(function() {
                     $('#editUserForm')[0].reset();
                     showAlert('success', 'User details updated successfully!');
                     loadUsers();
-                    
-                    // If current admin updated their own real name, dynamically adjust the top header user menu text
-                    if (parseInt(id) === parseInt(currentUserId)) {
-                        $('.user-name').text(realName);
-                    }
                 } else {
                     alert('Error saving user changes: ' + response.message);
                 }

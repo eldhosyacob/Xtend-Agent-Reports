@@ -179,6 +179,17 @@ if (!$success) {
     exit;
 }
 
+// Add new company to company_list table if requested
+$add_to_company_list = isset($_POST['add_to_company_list']) ? (int)$_POST['add_to_company_list'] : 0;
+if ($add_to_company_list && !empty($company_name)) {
+    $checkStmt = $db->prepare("SELECT COUNT(*) FROM company_list WHERE LOWER(company_name) = LOWER(:company_name)");
+    $checkStmt->execute(['company_name' => $company_name]);
+    if ($checkStmt->fetchColumn() == 0) {
+        $insertCompanyStmt = $db->prepare("INSERT INTO company_list (company_name) VALUES (:company_name)");
+        $insertCompanyStmt->execute(['company_name' => strtoupper($company_name)]);
+    }
+}
+
 echo json_encode([
     'success' => true,
     'record_id' => $record_id,

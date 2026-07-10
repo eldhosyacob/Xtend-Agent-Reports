@@ -68,6 +68,9 @@ $current_user_id = $_SESSION['id'];
           </tbody>
         </table>
       </div>
+      
+      <!-- Pagination Controls -->
+      <div id="paginationControls" class="pagination-container" style="display: none;"></div>
     </div>
   </div>
 
@@ -187,8 +190,8 @@ $current_user_id = $_SESSION['id'];
         <div class="form-group">
           <label class="form-label" for="editRealName">Real Name</label>
           <div class="input-wrapper">
-            <i class="fa-solid fa-user input-icon"></i>
-            <input type="text" id="editRealName" class="form-control" placeholder="Enter full name" required autocomplete="name">
+            <i class="fa-solid fa-lock input-icon"></i>
+            <input type="text" id="editRealName" class="form-control" disabled>
           </div>
         </div>
         

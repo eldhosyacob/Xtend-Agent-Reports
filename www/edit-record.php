@@ -62,6 +62,15 @@ if (!$record) {
     die("Error: Record not found.");
 }
 
+$is_latest = true;
+$case_id = !empty($record['case_id']) ? $record['case_id'] : (!empty($record['record_id']) ? $record['record_id'] : $record['id']);
+$latestStmt = $db->prepare("SELECT id FROM `$tableName` WHERE case_id = :case_id ORDER BY id DESC LIMIT 1");
+$latestStmt->execute(['case_id' => $case_id]);
+$latestRecord = $latestStmt->fetch();
+if ($latestRecord && (int)$latestRecord['id'] !== (int)$record['id']) {
+    $is_latest = false;
+}
+
 // Security: Ensure the agent's department matches the record's department
 $record_department = ($tableName === 'support_details') ? 'Voice Logger' : 'IVR';
 if (strcasecmp($agent_department, $record_department) !== 0) {
@@ -71,7 +80,7 @@ if (strcasecmp($agent_department, $record_department) !== 0) {
 // Calculate stopwatch offsetSeconds from the record's saved total_time
 $is_same_agent = (strcasecmp(trim($record['agent']), $_SESSION['real_name'] ?? $_SESSION['username']) === 0);
 $is_same_day = ($record['date'] === date('Y-m-d'));
-$resume_timer = ($is_same_agent && $is_same_day);
+$resume_timer = ($is_same_agent && $is_same_day && $is_latest);
 
 if ($resume_timer) {
     $timeParts = explode(':', $record['total_time']);
@@ -87,67 +96,15 @@ if (!function_exists('getSelected')) {
     }
 }
 
-// Fetch clients from ODS file for autocomplete (cached in session with timestamp check)
+// Fetch clients from company_list table for autocomplete
 $clients = [];
-$odsFile = dirname(__DIR__) . '/uploads/ClientList/ClientList.ods';
-$cacheFile = dirname(__DIR__) . '/cache/clients.json';
-
-if (file_exists($odsFile)) {
-    $odsModifiedTime = filemtime($odsFile);
-    $useCache = false;
-
-    if (file_exists($cacheFile)) {
-        $cache = json_decode(file_get_contents($cacheFile), true);
-        if (
-            is_array($cache) &&
-            isset($cache['filemtime']) &&
-            isset($cache['clients']) &&
-            $cache['filemtime'] === $odsModifiedTime
-        ) {
-            $clients = $cache['clients'];
-            $useCache = true;
-        }
-    }
-
-    if (!$useCache) {
-        $clients = [];
-        $zip = new ZipArchive();
-        if ($zip->open($odsFile) === true) {
-            $xmlString = $zip->getFromName('content.xml');
-            $zip->close();
-            if ($xmlString !== false) {
-                $xml = simplexml_load_string($xmlString);
-                if ($xml !== false) {
-                    $xml->registerXPathNamespace('table', 'urn:oasis:names:tc:opendocument:xmlns:table:1.0');
-                    $xml->registerXPathNamespace('text', 'urn:oasis:names:tc:opendocument:xmlns:text:1.0');
-                    $tables = $xml->xpath('//table:table');
-                    foreach ($tables as $table) {
-                        $rows = $table->xpath('./table:table-row');
-                        if (empty($rows)) continue;
-                        $headerCells = $rows[0]->xpath('./table:table-cell');
-                        if (empty($headerCells)) continue;
-                        $headerText = trim((string)($headerCells[0]->xpath('.//text:p')[0] ?? ''));
-                        if ($headerText !== 'Client List') continue;
-                        for ($i = 1; $i < count($rows); $i++) {
-                            $cells = $rows[$i]->xpath('./table:table-cell');
-                            if (empty($cells)) continue;
-                            $clientName = trim((string)($cells[0]->xpath('.//text:p')[0] ?? ''));
-                            if ($clientName !== '') {
-                                $clients[] = $clientName;
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-        $clients = array_values(array_unique($clients));
-        sort($clients, SORT_NATURAL | SORT_FLAG_CASE);
-        $cacheDir = dirname($cacheFile);
-        if (!is_dir($cacheDir)) {
-            mkdir($cacheDir, 0755, true);
-        }
-        file_put_contents($cacheFile, json_encode(['filemtime' => $odsModifiedTime, 'clients' => $clients], JSON_UNESCAPED_UNICODE));
+if ($db) {
+    try {
+        $stmt = $db->prepare("SELECT company_name FROM company_list ORDER BY company_name ASC");
+        $stmt->execute();
+        $clients = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        error_log("Failed to fetch clients list from DB: " . $e->getMessage());
     }
 }
 ?>
@@ -159,7 +116,7 @@ if (file_exists($odsFile)) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Edit Record <?php echo htmlspecialchars($record_id); ?> | Xtend Agent Reports</title>
+    <title><?php echo $is_latest ? 'Edit Record' : 'View Record'; ?> <?php echo htmlspecialchars($record_id); ?> | Xtend Agent Reports</title>
     <link rel="shortcut icon" href="images/favicon.png" />
     <link rel="stylesheet" href="styles/header-sidebar.css">
     <link rel="stylesheet" href="styles/new_record.css">
@@ -178,8 +135,8 @@ if (file_exists($odsFile)) {
               <div class="timer-display" id="runningTimer"><?php echo htmlspecialchars($resume_timer ? $record['total_time'] : '00:00:00'); ?></div>
             </div>
           </div>
-          <h2>Edit Record (<?php echo htmlspecialchars($record_id); ?>)</h2>
-          <p>Modify the fields below to update the logged support session.</p>
+          <h2><?php echo $is_latest ? 'Edit Record' : 'View Record'; ?> (<?php echo htmlspecialchars($record_id); ?>)</h2>
+          <p><?php echo $is_latest ? 'Modify the fields below to update the logged support session.' : 'This is a previous version of the record and is view-only.'; ?></p>
         </div>
 
         <form id="editRecordForm" autocomplete="off">
@@ -200,7 +157,7 @@ if (file_exists($odsFile)) {
               <label for="agent">Agent</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-user input-icon"></i>
-                <input type="text" id="agent" name="agent" class="form-control" value="<?php echo htmlspecialchars($_SESSION['real_name'] ?? $_SESSION['username']); ?>" readonly required>
+                <input type="text" id="agent" name="agent" class="form-control" value="<?php echo htmlspecialchars(strtoupper($_SESSION['real_name'] ?? $_SESSION['username'] ?? '')); ?>" readonly required>
               </div>
             </div>
 
@@ -218,7 +175,7 @@ if (file_exists($odsFile)) {
               <label for="company_name">Company Name</label>
               <div class="form-control-wrapper autocomplete-wrapper">
                 <i class="fa-regular fa-building input-icon"></i>
-                <input type="text" id="company_name" name="company_name" class="form-control" placeholder="Enter company / client name" value="<?php echo htmlspecialchars($record['company_name']); ?>" autocomplete="off" required>
+                <input type="text" id="company_name" name="company_name" class="form-control" placeholder="Enter company / client name" value="<?php echo htmlspecialchars($record['company_name']); ?>" autocomplete="off" readonly required>
                 <div class="autocomplete-suggestions" id="companySuggestions"></div>
               </div>
             </div>
@@ -251,7 +208,7 @@ if (file_exists($odsFile)) {
               <label for="email">Email</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-envelope input-icon"></i>
-                <input type="text" id="email" name="email" class="form-control" placeholder="Contact person email" value="<?php echo htmlspecialchars($record['email']); ?>" required>
+                <input type="email" id="email" name="email" class="form-control" placeholder="Contact person email" value="<?php echo htmlspecialchars($record['email']); ?>" pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[cC][oO][mM]" title="Please enter an email address ending with .com">
               </div>
             </div>
 
@@ -260,7 +217,7 @@ if (file_exists($odsFile)) {
               <label for="phone">Phone</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-phone input-icon"></i>
-                <input type="text" id="phone" name="phone" class="form-control" placeholder="Contact person phone" value="<?php echo htmlspecialchars($record['phone']); ?>" required>
+                <input type="number" id="phone" name="phone" class="form-control" placeholder="Contact person phone" value="<?php echo htmlspecialchars($record['phone']); ?>" required>
               </div>
             </div>
 
@@ -425,6 +382,7 @@ if (file_exists($odsFile)) {
             </div>
 
             <!-- Form Action Buttons -->
+            <?php if ($is_latest): ?>
             <div class="form-actions">
               <button type="button" id="resetBtn" class="btn btn-secondary">
                 <i class="fa-solid fa-rotate-left"></i> Revert
@@ -433,6 +391,7 @@ if (file_exists($odsFile)) {
                 <i class="fa-regular fa-paper-plane"></i> Save Changes
               </button>
             </div>
+            <?php endif; ?>
 
           </div>
         </form>
@@ -446,6 +405,27 @@ if (file_exists($odsFile)) {
     <script src="plugins/jquery-3.7.1.min.js"></script>
     <script>
       $(document).ready(function() {
+        let formSubmitted = false;
+        const recordId = $('input[name="record_id"]').val();
+
+        <?php if ($is_latest): ?>
+        $(window).on('beforeunload', function(e) {
+          if (!formSubmitted) {
+            e.preventDefault();
+            e.returnValue = 'All the data you have entered will be lost, are you sure?';
+            return 'All the data you have entered will be lost, are you sure?';
+          }
+        });
+
+        $(window).on('unload', function() {
+          if (!formSubmitted && recordId) {
+            const formData = new FormData();
+            formData.append('record_id', recordId);
+            navigator.sendBeacon('api/set-pending-status.php', formData);
+          }
+        });
+        <?php endif; ?>
+
         const clientList = <?php echo json_encode($clients, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
         
         // Auto-grow textareas initially
@@ -463,6 +443,7 @@ if (file_exists($odsFile)) {
         // Reset form handler: Reloads page to restore DB state
         $('#resetBtn').on('click', function() {
           if (confirm('Are you sure you want to revert your edits? All unsaved inputs will be lost.')) {
+            formSubmitted = true;
             window.location.reload();
           }
         });
@@ -475,7 +456,7 @@ if (file_exists($odsFile)) {
               .html(`
                 .toast-notification {
                   position: fixed;
-                  top: 30px;
+                  top: 60px;
                   right: 30px;
                   z-index: 9999;
                   box-shadow: 0 10px 25px rgba(0,0,0,0.15);
@@ -488,7 +469,7 @@ if (file_exists($odsFile)) {
                   gap: 12px;
                   font-family: 'Plus Jakarta Sans', sans-serif;
                   font-size: 14px;
-                  font-weight: 500;
+                  font-weight: 600;
                   transform: translateY(-20px);
                   opacity: 0;
                   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
@@ -503,8 +484,8 @@ if (file_exists($odsFile)) {
                   border: 1px solid #a7f3d0;
                 }
                 .toast-error {
-                  background-color: #fef2f2;
-                  color: #991b1b;
+                  background-color: #ffffff;
+                  color: #f70909ff;
                   border: 1px solid #fecaca;
                 }
                 .toast-icon {
@@ -689,6 +670,12 @@ if (file_exists($odsFile)) {
             dataType: 'json',
             success: function(response) {
               if (response.success) {
+                formSubmitted = true;
+                localStorage.setItem('record_updated', JSON.stringify({
+                  record_id: response.data.record_id,
+                  action: 'edit',
+                  timestamp: Date.now()
+                }));
                 showSuccessModal(response.message, response.data.record_id);
               } else {
                 showNotification(response.message || 'Error occurred while saving.', 'error');
@@ -953,7 +940,12 @@ if (file_exists($odsFile)) {
             $('#total_time').val(formattedTime);
         }
 
+        <?php if (!$is_latest): ?>
+        // If not latest, disable all form fields
+        $('#editRecordForm :input').prop('disabled', true);
+        <?php else: ?>
         startTimer();
+        <?php endif; ?>
       });
     </script>
   </body>

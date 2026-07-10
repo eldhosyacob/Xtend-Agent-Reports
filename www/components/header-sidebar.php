@@ -51,14 +51,27 @@ if (!empty($user_id)) {
       <span class="hamburger-line"></span>
     </button>
     <div class="logo-container">
-      <img src="/images/logo.jpg" alt="logo">
+      <img src="/images/logo.png" alt="logo">
     </div>
     <!-- <div class="xtend-logo masked-text">Xtend License Update</div> -->
   </div>
 
   <div class="header-right">
+    <div class="header-datetime" id="headerDateTime">
+      <div class="datetime-icon-wrapper">
+        <i class="fa-regular fa-clock"></i>
+      </div>
+      <div class="datetime-content">
+        <span class="datetime-date" id="headerDateText"></span>
+        <span class="datetime-divider"></span>
+        <span class="datetime-time" id="headerTimeText"></span>
+      </div>
+    </div>
     <div class="header-user">
-      <button class="user-menu-btn" id="userMenuBtn" aria-label="User menu">
+      <?php 
+        $is_user_menu_disabled = ($current_page === 'new-record' || $current_page === 'edit-record');
+      ?>
+      <button class="user-menu-btn" id="userMenuBtn" aria-label="User menu" <?php echo $is_user_menu_disabled ? 'disabled' : ''; ?>>
         <div class="user-avatar" id="headerUserAvatar">
           <?php if ($profile_photo_url !== 'images/default-avatar.png'): ?>
             <img src="<?php echo $profile_photo_url; ?>" alt="User Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;">
@@ -114,12 +127,12 @@ if (!empty($user_id)) {
             <span>Add New Record</span>
           </a>
         </li>
-        <li class="sidebar-menu-item <?php echo ($current_page == 'upload-record') ? 'active' : ''; ?>">
+        <!-- <li class="sidebar-menu-item <?php echo ($current_page == 'upload-record') ? 'active' : ''; ?>">
           <a href="upload-record.php" class="sidebar-link">
             <i class="fa-solid fa-file-arrow-up"></i>
             <span>Upload Record</span>
           </a>
-        </li>
+        </li> -->
         <li class="sidebar-menu-item <?php echo ($current_page == 'my-records') ? 'active' : ''; ?>">
           <a href="my-records.php" class="sidebar-link">
             <i class="fa-solid fa-file-lines"></i>
@@ -162,6 +175,9 @@ if (!empty($user_id)) {
       </ul>
     </div>
   </nav>
+  <div class="sidebar-footer-logo">
+    <img src="images/xtend-logo.png" alt="Xtend Logo">
+  </div>
 </aside>
 
 <!-- Overlay for mobile -->
@@ -176,9 +192,9 @@ if (!empty($user_id)) {
     <p style="margin-bottom:30px; color:#666; font-size:16px;">Are you sure you want to logout?</p>
     <div style="display:flex; gap:10px; justify-content:center;">
       <button onclick="hideLogoutModal()"
-        style="padding:10px 30px; border:none; border-radius:4px; cursor:pointer; font-size:14px; font-weight:500; background-color:#6c757d; color:white; transition:background-color 0.3s;"
-        onmouseover="this.style.backgroundColor='#5a6268'"
-        onmouseout="this.style.backgroundColor='#6c757d'">Cancel</button>
+        style="padding:10px 30px; border:none; border-radius:4px; cursor:pointer; font-size:14px; font-weight:500; background-color:#25b0a3; color:white; transition:background-color 0.3s;"
+        onmouseover="this.style.backgroundColor='#009688'"
+        onmouseout="this.style.backgroundColor='#25b0a3'">Cancel</button>
       <button onclick="confirmLogout()"
         style="padding:10px 30px; border:none; border-radius:4px; cursor:pointer; font-size:14px; font-weight:500; background-color:#dc3545; color:white; transition:background-color 0.3s;"
         onmouseover="this.style.backgroundColor='#c82333'"
@@ -205,7 +221,7 @@ if (!empty($user_id)) {
       <!-- Body Content Section -->
       <div class="confirm-modal-body-section">
         <h2 class="confirm-title">Create New Record</h2>
-        <p class="confirm-description">Enter The Company Name and Click <span style="color: var(--accent-coral);">Proceed</span> To Continue</p>
+        <p class="confirm-description">Enter The Company Name and Click <span style="color: red;">Proceed</span> To Continue</p>
         
         <!-- Company Name Selection Field -->
         <div class="confirm-form-group">
@@ -214,6 +230,10 @@ if (!empty($user_id)) {
             <i class="fa-regular fa-building input-icon"></i>
             <input type="text" id="modal_company_name" name="company_name" class="form-control" placeholder="Enter company / client name" autocomplete="off" required>
             <div class="autocomplete-suggestions" id="modalCompanySuggestions"></div>
+          </div>
+          <div id="addCompanyCheckboxContainer" class="add-company-checkbox-wrapper">
+            <input type="checkbox" id="add_to_company_list" name="add_to_company_list">
+            <label for="add_to_company_list">Add to company list</label>
           </div>
         </div>
 
@@ -231,9 +251,73 @@ if (!empty($user_id)) {
   </div>
 </div>
 
+<!-- Reopen Record Confirmation Modal -->
+<div id="reopenConfirmModal" class="confirm-modal-overlay" style="display: none;">
+  <div class="confirm-modal-wrapper">
+    <div class="confirm-modal-card split-design">
+      
+      <!-- Gradient Header Section -->
+      <div class="confirm-modal-header-section" style="background: linear-gradient(135deg, #18ad9f 0%, #18678e 100%);">
+        <button type="button" class="confirm-modal-close-btn light-version" onclick="hideReopenConfirmModal()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="confirm-icon-badge">
+          <i class="fa-solid fa-folder-open"></i>
+        </div>
+      </div>
+      
+      <!-- Body Content Section -->
+      <div class="confirm-modal-body-section" style="padding: 40px 30px;">
+        <h2 class="confirm-title" style="margin-bottom: 12px;">Reopen Record</h2>
+        <p class="confirm-description" style="margin-bottom: 24px; font-size: 14px;">Are you sure you want to reopen the record for <strong id="reopen_company_name" style="color: #18678e;"></strong>?</p>
+        
+        <div class="confirm-actions">
+          <button type="button" class="btn btn-secondary" onclick="hideReopenConfirmModal()">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" id="btnReopenConfirmProceed">
+            Reopen
+          </button>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
 <script src="plugins/jquery-3.7.1.min.js"></script>
 <script>
   $(document).ready(function () {
+    // Live date and time update
+    function updateHeaderDateTime() {
+      const now = new Date();
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      const dayName = days[now.getDay()];
+      const monthName = months[now.getMonth()];
+      const dateNum = now.getDate();
+      const year = now.getFullYear();
+      
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const formattedHours = String(hours).padStart(2, '0');
+      
+      const timeString = `${formattedHours}:${minutes}:${seconds} ${ampm}`;
+      const dateString = `${dayName}, ${monthName} ${dateNum}, ${year}`;
+      
+      $('#headerDateText').text(dateString);
+      $('#headerTimeText').text(timeString);
+    }
+    
+    updateHeaderDateTime();
+    setInterval(updateHeaderDateTime, 1000);
+
     // Hamburger menu toggle
     $('#hamburgerMenu').on('click', function () {
       $('#sidebar').toggleClass('active');
@@ -250,6 +334,7 @@ if (!empty($user_id)) {
 
     // User dropdown toggle
     $('#userMenuBtn').on('click', function (e) {
+      if ($(this).prop('disabled')) return;
       e.stopPropagation();
       $('#userDropdown').toggleClass('active');
     });
@@ -266,6 +351,29 @@ if (!empty($user_id)) {
       if (e.target === this || $(e.target).hasClass('confirm-modal-wrapper')) {
         hideNewRecordConfirmModal();
       }
+    });
+
+    // Close reopen confirmation modal on overlay click
+    $('#reopenConfirmModal').on('click', function(e) {
+      if (e.target === this || $(e.target).hasClass('confirm-modal-wrapper')) {
+        hideReopenConfirmModal();
+      }
+    });
+
+    // Reopen proceed button handler
+    $('#btnReopenConfirmProceed').on('click', function() {
+      if (reopenRecordId) {
+        window.open('edit-record.php?record_id=' + encodeURIComponent(reopenRecordId), '_blank');
+        hideReopenConfirmModal();
+      }
+    });
+
+    // Delegated click handler for reopen action buttons
+    $(document).on('click', '.btn-action-reopen', function(e) {
+      e.preventDefault();
+      const recordId = $(this).attr('data-record-id');
+      const companyName = $(this).attr('data-company-name');
+      showReopenConfirmModal(recordId, companyName);
     });
 
     // Search functionality
@@ -312,6 +420,8 @@ if (!empty($user_id)) {
     // Focus and clear input
     $('#modal_company_name').val('').focus();
     $('#modalCompanySuggestions').empty().hide();
+    $('#addCompanyCheckboxContainer').hide();
+    $('#add_to_company_list').prop('checked', false);
     modalCurrentFocus = -1;
 
     // Load clients if not already loaded
@@ -334,6 +444,37 @@ if (!empty($user_id)) {
     $('#newRecordConfirmModal').fadeOut(200);
   }
 
+  // Reopen confirmation functions
+  let reopenRecordId = null;
+
+  function showReopenConfirmModal(recordId, companyName) {
+    reopenRecordId = recordId;
+    $('#reopen_company_name').text(companyName || 'Unknown');
+    $('#reopenConfirmModal').fadeIn(200);
+  }
+
+  function hideReopenConfirmModal() {
+    $('#reopenConfirmModal').fadeOut(200);
+    reopenRecordId = null;
+  }
+
+  function checkCompanyExists(val) {
+    const cleanVal = val.trim();
+    if (!cleanVal || !modalClientList) {
+      $('#addCompanyCheckboxContainer').hide();
+      $('#add_to_company_list').prop('checked', false);
+      return;
+    }
+    
+    const exists = modalClientList.some(client => client.toLowerCase() === cleanVal.toLowerCase());
+    if (!exists) {
+      $('#addCompanyCheckboxContainer').css('display', 'flex');
+    } else {
+      $('#addCompanyCheckboxContainer').hide();
+      $('#add_to_company_list').prop('checked', false);
+    }
+  }
+
   function initModalAutocomplete() {
     const $input = $('#modal_company_name');
     const $suggestions = $('#modalCompanySuggestions');
@@ -342,6 +483,8 @@ if (!empty($user_id)) {
       const val = this.value.trim().toLowerCase();
       $suggestions.empty().hide();
       modalCurrentFocus = -1;
+
+      checkCompanyExists(this.value);
 
       if (!val || !modalClientList) return;
 
@@ -356,6 +499,7 @@ if (!empty($user_id)) {
             .on('click', function() {
               $input.val(match);
               $suggestions.empty().hide();
+              checkCompanyExists(match);
             });
           $suggestions.append($suggestion);
         });
@@ -427,15 +571,43 @@ if (!empty($user_id)) {
 
     const $btn = $('#newRecordConfirmModal .btn-primary');
     const originalHtml = $btn.html();
-    $btn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Creating...');
+    $btn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Checking...');
+
+    const addToCompanyList = $('#add_to_company_list').is(':checked') ? 1 : 0;
 
     $.ajax({
-      url: 'api/create-pending-record.php',
-      type: 'POST',
+      url: 'api/fetch-pending-records.php',
+      type: 'GET',
       data: { company_name: companyName },
       dataType: 'json',
       success: function(response) {
+        if (response.success && response.count > 0) {
+          window.location.href = 'view-pending-records.php?company_name=' + encodeURIComponent(companyName) + '&add_to_company_list=' + addToCompanyList;
+        } else {
+          createPendingRecordDirectly(companyName, addToCompanyList, $btn, originalHtml);
+        }
+      },
+      error: function() {
+        createPendingRecordDirectly(companyName, addToCompanyList, $btn, originalHtml);
+      }
+    });
+  }
+
+  function createPendingRecordDirectly(companyName, addToCompanyList, $btn, originalHtml) {
+    $btn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Creating...');
+    $.ajax({
+      url: 'api/create-pending-record.php',
+      type: 'POST',
+      data: { 
+        company_name: companyName,
+        add_to_company_list: addToCompanyList
+      },
+      dataType: 'json',
+      success: function(response) {
         if (response.success) {
+          if (addToCompanyList) {
+            modalClientList = null;
+          }
           window.open('new-record.php?id=' + encodeURIComponent(response.record_id), '_blank');
           hideNewRecordConfirmModal();
         } else {

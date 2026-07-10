@@ -1,15 +1,19 @@
 <?php
 // Secure the page - ensure user is authenticated
 require_once 'config/auth_check.php';
+require_once 'config/database.php';
+
+$db = getDatabaseConnection();
+if (!$db) {
+    die("Database connection failed.");
+}
 
 // Determine if the user is a manager to display the department field
 $user_department = isset($_SESSION['department']) ? strtolower($_SESSION['department']) : '';
 
 if (empty($user_department)) {
     // Fallback: Query from db if not in session
-    require_once 'config/database.php';
-    $db = getDatabaseConnection();
-    if ($db && isset($_SESSION['id'])) {
+    if (isset($_SESSION['id'])) {
         try {
             $stmt = $db->prepare('SELECT department FROM users WHERE id = ?');
             $stmt->execute([$_SESSION['id']]);
@@ -25,106 +29,26 @@ if (empty($user_department)) {
 }
 $is_manager = ($user_department === 'manager');
 
-// Fetch clients from ODS file for autocomplete (cached in session with timestamp check)
+// Fetch list of agents from users table
+$agents = [];
+try {
+    $stmt = $db->prepare("SELECT DISTINCT real_name FROM users WHERE real_name IS NOT NULL AND TRIM(real_name) != '' ORDER BY real_name ASC");
+    $stmt->execute();
+    $agents = $stmt->fetchAll(PDO::FETCH_COLUMN);
+} catch (PDOException $e) {
+    error_log("Failed to fetch agents list: " . $e->getMessage());
+}
+
+
+// Fetch clients from company_list table in the database
 $clients = [];
-$odsFile = dirname(__DIR__) . '/uploads/ClientList/ClientList.ods';
-$cacheFile = dirname(__DIR__) . '/cache/clients.json';
-
-if (file_exists($odsFile)) {
-    $odsModifiedTime = filemtime($odsFile);
-    $useCache = false;
-
-    if (file_exists($cacheFile)) {
-        $cache = json_decode(file_get_contents($cacheFile), true);
-
-        if (
-            is_array($cache) &&
-            isset($cache['filemtime']) &&
-            isset($cache['clients']) &&
-            $cache['filemtime'] === $odsModifiedTime
-        ) {
-            $clients = $cache['clients'];
-            $useCache = true;
-        }
-    }
-
-    if (!$useCache) {
-        $clients = [];
-        $zip = new ZipArchive();
-
-        if ($zip->open($odsFile) === true) {
-            $xmlString = $zip->getFromName('content.xml');
-            $zip->close();
-
-            if ($xmlString !== false) {
-                $xml = simplexml_load_string($xmlString);
-
-                if ($xml !== false) {
-                    $xml->registerXPathNamespace(
-                        'table',
-                        'urn:oasis:names:tc:opendocument:xmlns:table:1.0'
-                    );
-                    $xml->registerXPathNamespace(
-                        'text',
-                        'urn:oasis:names:tc:opendocument:xmlns:text:1.0'
-                    );
-
-                    $tables = $xml->xpath('//table:table');
-
-                    foreach ($tables as $table) {
-                        $rows = $table->xpath('./table:table-row');
-                        if (empty($rows)) {
-                            continue;
-                        }
-
-                        $headerCells = $rows[0]->xpath('./table:table-cell');
-                        if (empty($headerCells)) {
-                            continue;
-                        }
-
-                        $headerText = trim((string)($headerCells[0]->xpath('.//text:p')[0] ?? ''));
-                        if ($headerText !== 'Client List') {
-                            continue;
-                        }
-
-                        for ($i = 1; $i < count($rows); $i++) {
-                            $cells = $rows[$i]->xpath('./table:table-cell');
-                            if (empty($cells)) {
-                                continue;
-                            }
-
-                            $clientName = trim(
-                                (string)($cells[0]->xpath('.//text:p')[0] ?? '')
-                            );
-
-                            if ($clientName !== '') {
-                                $clients[] = $clientName;
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-
-        $clients = array_values(array_unique($clients));
-        sort($clients, SORT_NATURAL | SORT_FLAG_CASE);
-
-        $cacheDir = dirname($cacheFile);
-        if (!is_dir($cacheDir)) {
-            mkdir($cacheDir, 0755, true);
-        }
-
-        file_put_contents(
-            $cacheFile,
-            json_encode(
-                [
-                    'filemtime' => $odsModifiedTime,
-                    'clients' => $clients
-                ],
-                JSON_UNESCAPED_UNICODE
-            )
-        );
+if ($db) {
+    try {
+        $stmt = $db->prepare("SELECT company_name FROM company_list ORDER BY company_name ASC");
+        $stmt->execute();
+        $clients = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        error_log("Failed to fetch clients list from DB: " . $e->getMessage());
     }
 }
 ?>
@@ -155,7 +79,7 @@ if (file_exists($odsFile)) {
                 <div class="grid-form">
                     <!-- 1. DEPARTMENT SELECT (If Manager) -->
                     <?php if ($is_manager): ?>
-                      <div class="form-group col-6">
+                      <div class="form-group col-4">
                         <label for="department_select">Department</label>
                         <div class="form-control-wrapper select-wrapper">
                             <i class="fa-solid fa-sitemap input-icon"></i>
@@ -169,27 +93,23 @@ if (file_exists($odsFile)) {
                     <?php endif; ?>
 
                 <!-- 2. AGENT NAME -->
-                <div class="form-group col-6">
+                <div class="form-group col-4">
                         <label for="agent">Agent Name</label>
                         <div class="form-control-wrapper select-wrapper">
                             <i class="fa-regular fa-user input-icon"></i>
                             <select id="agent" name="agent" class="form-control">
                                 <option value="" selected>-- Select Agent --</option>
-                                <option value="Jasim C J">JASIM C J</option>
-                                <option value="Asif">ASIF</option>
-                                <option value="JEFFRY VB">JEFFRY VB</option>
-                                <option value="BUDTHAN">BUDTHAN</option>
-                                <option value="SAJITH V S">SAJITH V S</option>
-                                <option value="MELFRIN FRANCIS">MELFRIN FRANCIS</option>
-                                <option value="VISHNU SURESH">VISHNU SURESH</option>
-                                <option value="SIDHARTH H">SIDHARTH H</option>
-                                <option value="ALAN ANTO">ALAN ANTO</option>
+                                <?php foreach ($agents as $agentName): ?>
+                                    <option value="<?php echo htmlspecialchars($agentName); ?>">
+                                        <?php echo htmlspecialchars(strtoupper($agentName)); ?>
+                                    </option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
         
                     <!-- 3. FROM DATE -->
-                    <div class="form-group col-6">
+                    <div class="form-group col-4">
                         <label for="from_date">From Date</label>
                         <div class="form-control-wrapper">
                             <i class="fa-regular fa-calendar input-icon"></i>
@@ -198,7 +118,7 @@ if (file_exists($odsFile)) {
                     </div>
 
                     <!-- 4. TO DATE -->
-                    <div class="form-group col-6">
+                    <div class="form-group col-4">
                         <label for="to_date">To Date</label>
                         <div class="form-control-wrapper">
                             <i class="fa-regular fa-calendar input-icon"></i>
@@ -207,7 +127,7 @@ if (file_exists($odsFile)) {
                     </div>
 
                     <!-- 5. COMPANY NAME -->
-                    <div class="form-group col-6">
+                    <div class="form-group col-4">
                         <label for="company_name">Company Name</label>
                         <div class="form-control-wrapper autocomplete-wrapper">
                             <i class="fa-regular fa-building input-icon"></i>
@@ -218,7 +138,7 @@ if (file_exists($odsFile)) {
 
 
                     <!-- 6. LOCATION -->
-                    <div class="form-group col-6">
+                    <div class="form-group col-4">
                         <label for="location">Location</label>
                         <div class="form-control-wrapper">
                             <i class="fa-solid fa-location-dot input-icon"></i>
@@ -227,7 +147,7 @@ if (file_exists($odsFile)) {
                     </div>
 
                     <!-- 7. HARDWARE DETAILS -->
-                    <div class="form-group col-6">
+                    <div class="form-group col-4">
                         <label for="hardware_details">Hardware Details</label>
                         <div class="form-control-wrapper">
                             <i class="fa-solid fa-microchip input-icon"></i>
@@ -237,7 +157,7 @@ if (file_exists($odsFile)) {
 
 
                     <!-- 8. PRODUCT CATEGORY -->
-                    <div class="form-group col-6">
+                    <div class="form-group col-4">
                         <label for="product_category">Product Category</label>
                         <div class="form-control-wrapper select-wrapper">
                             <i class="fa-solid fa-cubes input-icon"></i>
@@ -263,7 +183,7 @@ if (file_exists($odsFile)) {
                     </div>
 
                     <!-- 9. ISSUE CATEGORY -->
-                    <div class="form-group col-6">
+                    <div class="form-group col-4">
                         <label for="issue_category">Issue Category</label>
                         <div class="form-control-wrapper autocomplete-wrapper">
                             <i class="fa-solid fa-tags input-icon"></i>
@@ -272,12 +192,38 @@ if (file_exists($odsFile)) {
                         </div>
                     </div>
 
-                    <!-- 10. TICKET ID -->
-                    <div class="form-group col-6">
+                    <!-- 10. STATUS -->
+                    <div class="form-group col-4">
+                        <label for="support_status">Status</label>
+                        <div class="form-control-wrapper select-wrapper">
+                            <i class="fa-solid fa-circle-info input-icon"></i>
+                            <select id="support_status" name="support_status" class="form-control">
+                                <option value="" selected>-- Select Status --</option>
+                                <option value="Closed">Closed</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Under Observation">Under Observation</option>
+                                <option value="Escalated">Escalated</option>
+                                <option value="Escalated to Presales">Escalated to Presales</option>
+                                <option value="Closed-Device Replaced">Closed-Device Replaced</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 11. TICKET ID -->
+                    <div class="form-group col-4">
                         <label for="ticket_id">Ticket ID</label>
                         <div class="form-control-wrapper">
                             <i class="fa-solid fa-ticket input-icon"></i>
                             <input type="text" id="ticket_id" name="ticket_id" class="form-control" placeholder="Enter Ticket ID or Reason">
+                        </div>
+                    </div>
+
+                    <!-- 12. CASE ID -->
+                    <div class="form-group col-4">
+                        <label for="case_id">Case ID</label>
+                        <div class="form-control-wrapper">
+                            <i class="fa-solid fa-folder-open input-icon"></i>
+                            <input type="text" id="case_id" name="case_id" class="form-control" placeholder="Enter Case ID">
                         </div>
                     </div>
 
@@ -545,11 +491,13 @@ if (file_exists($odsFile)) {
           const location = $('#location').val().trim();
           const hardware = $('#hardware_details').val().trim();
           const ticket = $('#ticket_id').val().trim();
+          const caseId = $('#case_id').val().trim();
           const dept = $('#department_select').length ? $('#department_select').val() : '';
           const prodCat = $('#product_category').val();
           const issueCat = $('#issue_category').val().trim();
+          const supportStatus = $('#support_status').val();
 
-          if (!agent && !fromDate && !toDate && !companyName && !location && !hardware && !ticket && !dept && !prodCat && !issueCat) {
+          if (!agent && !fromDate && !toDate && !companyName && !location && !hardware && !ticket && !caseId && !dept && !prodCat && !issueCat && !supportStatus) {
             e.preventDefault();
             showNotification('Please enter at least one search criteria to search.', 'error');
           }

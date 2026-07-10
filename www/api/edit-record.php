@@ -112,7 +112,7 @@ if (strcasecmp($user_department, $record_department) !== 0) {
 // Retrieve form values with sanitization/trimming
 $data = [
     'date' => trim($_POST['date'] ?? ''),
-    'agent' => trim($_POST['agent'] ?? $_SESSION['real_name'] ?? $_SESSION['username']),
+    'agent' => strtoupper(trim($_POST['agent'] ?? $_SESSION['real_name'] ?? $_SESSION['username'] ?? '')),
     'company_name' => trim($_POST['company_name'] ?? ''),
     'location' => trim($_POST['location'] ?? ''),
     'region' => trim($_POST['region'] ?? ''),
@@ -151,6 +151,15 @@ foreach ($requiredFields as $field) {
     }
 }
 
+// Validate email format
+if (!empty($data['email']) && !preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.com$/i', $data['email'])) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Email must end with .com'
+    ]);
+    exit;
+}
+
 // Every edit to any record must be saved as a new record with suffix and same case_id,
 // EXCEPT when the same agent edits their own record on the same day.
 $case_id = !empty($existing['case_id']) ? $existing['case_id'] : (!empty($existing['record_id']) ? $existing['record_id'] : $existing['id']);
@@ -176,19 +185,11 @@ if ($save_as_new) {
         }
     }
 
-    if (empty($suffixes)) {
-        $next_suffix = 'A';
+    $numeric_suffixes = array_filter($suffixes, 'is_numeric');
+    if (empty($numeric_suffixes)) {
+        $next_suffix = 1;
     } else {
-        // Sort suffixes by length first, then alphabetically
-        usort($suffixes, function($a, $b) {
-            if (strlen($a) !== strlen($b)) {
-                return strlen($a) - strlen($b);
-            }
-            return strcmp($a, $b);
-        });
-        $max_suffix = end($suffixes);
-        $next_suffix = $max_suffix;
-        $next_suffix++;
+        $next_suffix = max(array_map('intval', $numeric_suffixes)) + 1;
     }
 
     $new_record_id = $case_id . '_' . $next_suffix;

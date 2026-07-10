@@ -76,6 +76,29 @@ $stmt = $db->prepare($query);
 $stmt->execute(['agent' => $agentUsername]);
 $records = $stmt->fetchAll();
 
+// Find the max ID for each case_id in this table
+$case_ids = array_unique(array_filter(array_column($records, 'case_id')));
+$max_ids = [];
+if (!empty($case_ids)) {
+    $placeholders = [];
+    $params_max = [];
+    foreach ($case_ids as $index => $cid) {
+        $key = "cid_" . $index;
+        $placeholders[] = ":" . $key;
+        $params_max[$key] = $cid;
+    }
+    $in_clause = implode(',', $placeholders);
+    $maxStmt = $db->prepare("SELECT case_id, MAX(id) as max_id FROM `$tableName` WHERE case_id IN ($in_clause) GROUP BY case_id");
+    $maxStmt->execute($params_max);
+    $max_ids = $maxStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+}
+
+foreach ($records as &$record) {
+    $cid = $record['case_id'];
+    $record['is_latest'] = isset($max_ids[$cid]) ? ($record['id'] == $max_ids[$cid]) : true;
+}
+unset($record);
+
 echo json_encode([
     'success' => true,
     'count' => count($records),

@@ -148,23 +148,14 @@ if ($action === 'fetch_users') {
 
 } elseif ($action === 'edit_user') {
     $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
-    $real_name = isset($_POST['real_name']) ? trim($_POST['real_name']) : '';
     $password = isset($_POST['password']) ? $_POST['password'] : '';
     $department = isset($_POST['department']) ? trim($_POST['department']) : '';
     $user_type = isset($_POST['user_type']) ? trim($_POST['user_type']) : '';
 
-    if (empty($id) || empty($real_name) || empty($department) || empty($user_type)) {
+    if (empty($id) || empty($department) || empty($user_type)) {
         echo json_encode([
             'success' => false,
             'message' => 'All fields except password are required'
-        ]);
-        exit;
-    }
-
-    if (strlen($real_name) < 2) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Real name must be at least 2 characters'
         ]);
         exit;
     }
@@ -196,18 +187,16 @@ if ($action === 'fetch_users') {
         }
 
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-        $updateStmt = $db->prepare("UPDATE users SET real_name = :real_name, password = :password, department = :department, user_type = :user_type WHERE id = :id");
+        $updateStmt = $db->prepare("UPDATE users SET password = :password, department = :department, user_type = :user_type WHERE id = :id");
         $updateStmt->execute([
-            'real_name' => $real_name,
             'password' => $hashed_password,
             'department' => $department,
             'user_type' => $user_type,
             'id' => $id
         ]);
     } else {
-        $updateStmt = $db->prepare("UPDATE users SET real_name = :real_name, department = :department, user_type = :user_type WHERE id = :id");
+        $updateStmt = $db->prepare("UPDATE users SET department = :department, user_type = :user_type WHERE id = :id");
         $updateStmt->execute([
-            'real_name' => $real_name,
             'department' => $department,
             'user_type' => $user_type,
             'id' => $id
@@ -216,8 +205,6 @@ if ($action === 'fetch_users') {
 
     // If editing self, update active session parameters
     if ($id === intval($_SESSION['id'])) {
-        $_SESSION['real_name'] = $real_name;
-        $_SESSION['full_name'] = $real_name;
         $_SESSION['department'] = $department;
     }
 

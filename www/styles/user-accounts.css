@@ -112,9 +112,10 @@
 }
 
 .accounts-table th {
-    background-color: #ef6b8a;
+    background-color: #5876cb;
+    /* background: linear-gradient(135deg, #6372c5 0%, #1085e2 100%); */
     color: white;
-    font-weight: 600;
+    font-weight: 650;
     padding: 14px 18px;
     border-bottom: 1px solid var(--border-color);
     text-transform: uppercase;
@@ -159,7 +160,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    background: linear-gradient(135deg, #6790d3 0%, #1159c2 100%);
     color: #ffffff;
     font-weight: 700;
     font-size: 14px;
@@ -234,7 +235,7 @@
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    background: linear-gradient(135deg, #6b8bd2 0%, #4166ce 100%);
     color: #ffffff;
     box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
 }
@@ -551,6 +552,64 @@
 
 .btn-action-delete:disabled {
     color: var(--text-secondary);
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #f1f5f9;
+    border-color: var(--border-color);
+}
+
+/* Pagination Styling */
+.pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.pagination-info {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.pagination-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background-color: #ffffff;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+    background-color: rgba(52, 152, 219, 0.05);
+}
+
+.pagination-btn.active {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);
+}
+
+.pagination-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     background-color: #f1f5f9;
