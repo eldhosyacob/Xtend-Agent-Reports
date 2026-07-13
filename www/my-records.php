@@ -161,124 +161,6 @@ require_once __DIR__ . '/config/auth_check.php';
 
     </div>
 
-    <!-- Glassmorphism Detailed Record View Modal -->
-    <div class="modal-overlay" id="details-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div class="modal-content-card">
-        <header class="modal-header">
-          <h2 id="modal-title"><i class="fa-solid fa-file-invoice"></i> Record Details</h2>
-          <button class="modal-close-btn" id="modal-close" aria-label="Close details dialog">&times;</button>
-        </header>
-        <div class="modal-body">
-          <form class="details-grid" onsubmit="return false;">
-            
-            <div class="detail-item">
-              <label>Record ID</label>
-              <div class="value-box" id="detail-record-id"></div>
-            </div>
-            <div class="detail-item">
-              <label>Date</label>
-              <div class="value-box" id="detail-date"></div>
-            </div>
-            
-            <div class="detail-item">
-              <label>Agent Name</label>
-              <div class="value-box" id="detail-agent"></div>
-            </div>
-            <div class="detail-item">
-              <label>Company Name</label>
-              <div class="value-box" id="detail-company-name"></div>
-            </div>
-
-            <div class="detail-item">
-              <label>Location</label>
-              <div class="value-box" id="detail-location"></div>
-            </div>
-            <div class="detail-item">
-              <label>Region</label>
-              <div class="value-box" id="detail-region"></div>
-            </div>
-
-            <div class="detail-item">
-              <label>Email</label>
-              <div class="value-box" id="detail-email"></div>
-            </div>
-            <div class="detail-item">
-              <label>Phone</label>
-              <div class="value-box" id="detail-phone"></div>
-            </div>
-
-            <div class="detail-item">
-              <label>Contact Details</label>
-              <div class="value-box" id="detail-contact-details"></div>
-            </div>
-            <div class="detail-item">
-              <label>Product Category</label>
-              <div class="value-box" id="detail-product-category"></div>
-            </div>
-
-            <div class="detail-item">
-              <label>Issue Category</label>
-              <div class="value-box" id="detail-issue-category"></div>
-            </div>
-            <div class="detail-item">
-              <label>Issue Type</label>
-              <div class="value-box" id="detail-issue-type"></div>
-            </div>
-
-            <div class="detail-item full-width">
-              <label>Issue Notes/Details</label>
-              <textarea class="value-box" id="detail-issue-details" readonly></textarea>
-            </div>
-
-            <div class="detail-item">
-              <label>Support Category</label>
-              <div class="value-box" id="detail-support-category"></div>
-            </div>
-            
-            <div class="detail-item full-width">
-              <label>Software Details</label>
-              <textarea class="value-box" id="detail-software-details" readonly></textarea>
-            </div>
-            
-            <div class="detail-item full-width">
-              <label>Hardware Details</label>
-              <textarea class="value-box" id="detail-hardware-details" readonly></textarea>
-            </div>
-            
-            <div class="detail-item full-width">
-              <label>Solution</label>
-              <textarea class="value-box" id="detail-solution" readonly></textarea>
-            </div>
-            
-            <div class="detail-item">
-              <label>Support Start Time</label>
-              <div class="value-box" id="detail-start-time"></div>
-            </div>
-
-            <div class="detail-item">
-              <label>Support End Time</label>
-              <div class="value-box" id="detail-end-time"></div>
-            </div>
-
-            <div class="detail-item">
-              <label>Total Time</label>
-              <div class="value-box" id="detail-total-time"></div>
-            </div>
-            
-            <div class="detail-item">
-              <label>Support Status</label>
-              <div class="value-box" id="detail-support-status"></div>
-            </div>
-            
-            <div class="detail-item">
-              <label>Ticket ID / Reason</label>
-              <div class="value-box" id="detail-ticket-id"></div>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-    
     <?php include 'components/header-sidebar.php'; ?>
     
     <script src="plugins/jquery-3.7.1.min.js"></script>
@@ -339,12 +221,7 @@ require_once __DIR__ . '/config/auth_check.php';
           }
         });
 
-        // Close details modal
-        $('#modal-close, #details-modal').on('click', function(e) {
-          if (e.target === this) {
-            closeModal();
-          }
-        });
+
 
         // Setup Prev/Next click events
         $('#btn-prev').on('click', function() {
@@ -548,7 +425,7 @@ require_once __DIR__ . '/config/auth_check.php';
           // Bind view buttons
           $('.btn-action-view').off('click').on('click', function() {
             const recordId = $(this).attr('data-record-id');
-            showDetails(recordId);
+            window.location.href = 'view-record.php?record_id=' + encodeURIComponent(recordId);
           });
 
           // Draw pagination controls
@@ -614,52 +491,7 @@ require_once __DIR__ . '/config/auth_check.php';
           });
         }
 
-        function showDetails(recordId) {
-          const record = allRecords.find(r => String(getRecordIdentifier(r)) === String(recordId));
-          if (!record) return;
 
-          // Utility to handle empty values cleanly
-          function valOrDash(val) {
-            if (val === null || val === undefined) return '—';
-            const str = String(val).trim();
-            return str !== '' ? str : '—';
-          }
-
-          // Populate modal fields
-          $('#detail-record-id').text(valOrDash(getRecordIdentifier(record)));
-          $('#detail-date').text(valOrDash(record.date));
-          $('#detail-agent').text(valOrDash(record.agent));
-          $('#detail-company-name').text(valOrDash(record.company_name));
-          $('#detail-location').text(valOrDash(record.location));
-          $('#detail-region').text(valOrDash(record.region));
-          
-          $('#detail-email').text(valOrDash(record.email));
-          $('#detail-phone').text(valOrDash(record.phone));
-          $('#detail-contact-details').text(valOrDash(record.contact_details));
-          $('#detail-product-category').text(valOrDash(record.product_category));
-          
-          $('#detail-issue-category').text(valOrDash(record.issue_category));
-          $('#detail-issue-type').text(valOrDash(record.issue_type));
-          
-          
-          $('#detail-issue-details').val(valOrDash(record.issue_details));
-          $('#detail-support-category').text(valOrDash(record.support_category));
-          $('#detail-software-details').val(valOrDash(record.software_details));
-          $('#detail-hardware-details').val(valOrDash(record.hardware_details));
-          $('#detail-solution').val(valOrDash(record.solution));
-          $('#detail-start-time').text(valOrDash(record.support_start_time));
-          $('#detail-end-time').text(valOrDash(record.support_end_time));
-          $('#detail-total-time').text(valOrDash(record.total_time));
-          $('#detail-support-status').text(valOrDash(record.support_status));
-          $('#detail-ticket-id').text(valOrDash(record.ticket_id)); // reason field
-
-          // Open Modal
-          $('#details-modal').addClass('active');
-        }
-
-        function closeModal() {
-          $('#details-modal').removeClass('active');
-        }
 
         function escapeHtml(text) {
           if (!text) return '';

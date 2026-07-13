@@ -1,0 +1,98 @@
+/* View-record custom overrides to align and style read-only form */
+.form-control[readonly] {
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
+  color: #0f172a;
+  cursor: not-allowed;
+}
+
+.detail-header-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.record-id-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.record-id-title i {
+  color: var(--accent-indigo);
+}
+
+.badge-dept {
+  background: linear-gradient(135deg, #46cebc 0%, #3ca89a 100%);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.badge-dept.ivr {
+  background: linear-gradient(135deg, #d0675f 0%, #a8544e 100%);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 20px;
+}
+
+/* Textareas and icon alignments to replace inline CSS */
+.grid-form textarea.form-control {
+  min-height: 100px;
+  resize: none;
+}
+
+.grid-form .col-12 .input-icon {
+  top: 18px;
+}
+
+/* Restore sidebar, hamburger-menu and overlay visibility hidden by new_record.css */
+.sidebar-container {
+  display: flex !important;
+}
+
+.hamburger-menu {
+  display: flex !important;
+}
+
+/* On desktop, hide hamburger menu (matching standard header-sidebar styling) */
+@media (min-width: 769px) {
+  .hamburger-menu {
+    display: none !important;
+  }
+}
+
+.new-record-page-container.page-containers {
+  padding-left: 260px !important;
+  padding-right: 24px !important;
+}
+
+.form-card-wrapper {
+  margin-left: 20px !important;
+  margin-right: auto !important;
+}
+
+@media (max-width: 768px) {
+  .new-record-page-container.page-containers {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+
+  .form-card-wrapper {
+    margin: 0 auto !important;
+  }
+}

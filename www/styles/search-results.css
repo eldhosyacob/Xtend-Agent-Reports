@@ -438,137 +438,7 @@
     display: block;
 }
 
-/* Glassmorphism Details Modal */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(6px);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-}
 
-.modal-overlay.active {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.modal-content-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 24px;
-    width: 90%;
-    max-width: 750px;
-    max-height: 85vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-    transform: translateY(20px);
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    overflow: hidden;
-}
-
-.modal-overlay.active .modal-content-card {
-    transform: translateY(0);
-}
-
-.modal-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #f8fafc;
-}
-
-.modal-header h2 {
-    font-size: 18px;
-    font-weight: 700;
-    margin: 0;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.modal-close-btn {
-    background: transparent;
-    border: none;
-    font-size: 18px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.modal-close-btn:hover {
-    background-color: #cbd5e1;
-    color: var(--text-primary);
-}
-
-.modal-body {
-    padding: 24px;
-    overflow-y: auto;
-    flex: 1;
-}
-
-.details-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-}
-
-.detail-item {
-    display: flex;
-    flex-direction: column;
-}
-
-.detail-item.full-width {
-    grid-column: span 2;
-}
-
-.detail-item label {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 4px;
-}
-
-.detail-item .value-box {
-    font-size: 13px;
-    color: var(--text-primary);
-    background: #f8fafc;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 10px 14px;
-    min-height: 18px;
-    word-break: break-word;
-}
-
-.detail-item textarea.value-box {
-    min-height: 80px;
-    resize: none;
-    outline: none;
-    font-family: inherit;
-    font-size: 13px;
-    width: 100%;
-    box-sizing: border-box;
-}
 
 /* Skeleton Loading Animation */
 .skeleton-line {
@@ -600,23 +470,7 @@
     }
 }
 
-/* Custom Scrollbar for Modal and Page */
-.modal-body::-webkit-scrollbar {
-    width: 6px;
-}
 
-.modal-body::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.modal-body::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
-}
-
-.modal-body::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-}
 
 /* Helper size classes for skeleton */
 .skeleton-line.w-70 {
@@ -660,13 +514,7 @@
         max-width: 100%;
     }
 
-    .details-grid {
-        grid-template-columns: 1fr;
-    }
 
-    .detail-item.full-width {
-        grid-column: span 1;
-    }
 }
 
 /* Pagination Styling */

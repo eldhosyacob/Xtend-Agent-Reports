@@ -518,7 +518,7 @@ textarea.form-control::-webkit-scrollbar-thumb:hover {
 }
 
 .fa-clock {
-    color: #ea580c;
+    color: #4fbdb3;
 }
 
 .fa-question {
@@ -634,8 +634,15 @@ textarea.form-control::-webkit-scrollbar-thumb:hover {
 }
 
 @keyframes pulse-icon {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
 }
 
 @keyframes pulse-dot {
@@ -643,10 +650,12 @@ textarea.form-control::-webkit-scrollbar-thumb:hover {
         transform: scale(0.9);
         box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
     }
+
     70% {
         transform: scale(1.1);
         box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
     }
+
     100% {
         transform: scale(0.9);
         box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
@@ -662,7 +671,7 @@ textarea.form-control::-webkit-scrollbar-thumb:hover {
         gap: 12px;
         padding-top: 10px;
     }
-    
+
     .timer-widget {
         position: relative;
         left: auto;
