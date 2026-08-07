@@ -5,6 +5,28 @@ require_once 'config/auth_check.php';
 // Resolve user details and profile photo path
 $user_id = isset($_SESSION['id']) ? $_SESSION['id'] : '';
 $user_full_name = isset($_SESSION['full_name']) ? $_SESSION['full_name'] : 'Admin';
+$user_department = isset($_SESSION['department']) ? $_SESSION['department'] : '';
+
+// Retrieve department from database if not set in session (fallback)
+if (empty($user_department) && isset($db) && !empty($user_id)) {
+    try {
+        $stmt = $db->prepare("SELECT department FROM users WHERE id = :id");
+        $stmt->execute(['id' => $user_id]);
+        $user_dep = $stmt->fetchColumn();
+        if ($user_dep) {
+            $user_department = $user_dep;
+            $_SESSION['department'] = $user_dep;
+        }
+    } catch (PDOException $e) {
+        error_log("Database error fetching user department: " . $e->getMessage());
+    }
+}
+
+// Determine default selected tab ('voice_logger' or 'ivr') based on user's department
+$default_dept = 'voice_logger';
+if (strcasecmp($user_department, 'ivr') === 0) {
+    $default_dept = 'ivr';
+}
 
 // Extract first name for the greeting (e.g. "Hello, Eldhos!")
 $user_first_name = 'Admin';
@@ -85,10 +107,10 @@ if (!empty($user_id)) {
       <!-- Department Tabs (Pill Buttons) -->
       <div class="tabs-wrapper">
         <div class="tabs-container">
-          <button class="tab-btn active" data-dept="voice_logger">
+          <button class="tab-btn<?php echo $default_dept === 'voice_logger' ? ' active' : ''; ?>" data-dept="voice_logger">
             <i class="fa-solid fa-microphone-lines"></i> Voice Logger
           </button>
-          <button class="tab-btn" data-dept="ivr">
+          <button class="tab-btn<?php echo $default_dept === 'ivr' ? ' active' : ''; ?>" data-dept="ivr">
             <i class="fa-solid fa-phone-volume"></i> IVR
           </button>
         </div>
@@ -115,7 +137,7 @@ if (!empty($user_id)) {
           </div>
           <div class="stat-details">
             <span class="stat-value" id="valActiveAgents">-</span>
-            <span class="stat-label">Total Active Agents</span>
+            <span class="stat-label">Total Agents</span>
           </div>
         </div>
 
@@ -127,6 +149,17 @@ if (!empty($user_id)) {
           <div class="stat-details">
             <span class="stat-value" id="valAgentsActiveToday">-</span>
             <span class="stat-label" id="lblAgentsActiveToday">Agents Active Today</span>
+          </div>
+        </div>
+
+        <!-- Card 5: Support Hours -->
+        <div class="stat-card support-hours-card">
+          <div class="stat-icon">
+            <i class="fa-solid fa-clock"></i>
+          </div>
+          <div class="stat-details">
+            <span class="stat-value" id="valSupportHours">-</span>
+            <span class="stat-label" id="lblSupportHours">Support Hours</span>
           </div>
         </div>
       </div>
@@ -161,7 +194,8 @@ if (!empty($user_id)) {
                   <th>Username</th>
                   <th>Role</th>
                   <th id="thAgentTimeframeRecords">Today's Records</th>
-                  <th>Last Active</th>
+                  <th>Support Time</th>
+                  <th>Last Record</th>
                 </tr>
               </thead>
               <tbody id="agentTableBody">
@@ -180,11 +214,16 @@ if (!empty($user_id)) {
     <script src="plugins/jquery-3.7.1.min.js"></script>
     <script>
       $(document).ready(function() {
-        let currentDept = 'voice_logger';
+        let currentDept = '<?php echo $default_dept; ?>';
         let currentRange = 'today';
 
         // Load statistics on initialization
         loadDashboardStats(currentDept, currentRange);
+
+        // Auto-refresh stats silently every 30 seconds
+        setInterval(function() {
+          loadDashboardStats(currentDept, currentRange, true);
+        }, 30000);
 
         // Tab selection click handler
         $('.tab-btn').on('click', function() {
@@ -201,6 +240,23 @@ if (!empty($user_id)) {
         $('#date-range-filter').on('change', function() {
           currentRange = $(this).val() || 'today';
           loadDashboardStats(currentDept, currentRange);
+        });
+
+        // Click handlers for stats cards to navigate to detail pages
+        $('.today-card').on('click', function() {
+          window.location.href = 'today-records.php?department=' + encodeURIComponent(currentDept) + '&range=' + encodeURIComponent(currentRange);
+        });
+
+        $('.agents-card').on('click', function() {
+          window.location.href = 'total-agents.php?department=' + encodeURIComponent(currentDept);
+        });
+
+        $('.active-card').on('click', function() {
+          window.location.href = 'active-users.php?department=' + encodeURIComponent(currentDept) + '&range=' + encodeURIComponent(currentRange);
+        });
+
+        $('.support-hours-card').on('click', function() {
+          window.location.href = 'support-hours.php?department=' + encodeURIComponent(currentDept) + '&range=' + encodeURIComponent(currentRange);
         });
 
         // Helper function to map statuses to standard theme colors
@@ -222,9 +278,11 @@ if (!empty($user_id)) {
         }
 
         // Fetch dashboard stats from backend API
-        function loadDashboardStats(department, range) {
-          // Display the loader overlay
-          $('#dashboardLoading').addClass('active');
+        function loadDashboardStats(department, range, isSilent = false) {
+          // Display the loader overlay only if not a silent background refresh
+          if (!isSilent) {
+            $('#dashboardLoading').addClass('active');
+          }
 
           range = range || currentRange;
 
@@ -237,20 +295,17 @@ if (!empty($user_id)) {
               if (response.success) {
                 // Dynamically update card labels and headers based on range
                 let rangeLabel = "Today's Records";
-                let activeLabel = "Agents Active Today";
+                let activeLabel = "Active Users";
                 let thLabel = "Today's Records";
                 
                 if (range === 'week') {
                   rangeLabel = "This Week's Records";
-                  activeLabel = "Agents Active This Week";
                   thLabel = "This Week's Records";
                 } else if (range === 'month') {
                   rangeLabel = "This Month's Records";
-                  activeLabel = "Agents Active This Month";
                   thLabel = "This Month's Records";
                 } else if (range === 'year') {
                   rangeLabel = "This Year's Records";
-                  activeLabel = "Agents Active This Year";
                   thLabel = "This Year's Records";
                 }
 
@@ -258,10 +313,11 @@ if (!empty($user_id)) {
                 $('#lblAgentsActiveToday').text(activeLabel);
                 $('#thAgentTimeframeRecords').text(thLabel);
 
-                // 1. Animate card values
+                // 1. Animate / Update card values
                 animateCardValue($('#valTodayRecords'), response.summary.timeframe_records);
-                animateCardValue($('#valActiveAgents'), response.summary.active_agents);
-                animateCardValue($('#valAgentsActiveToday'), response.summary.agents_active_timeframe);
+                animateCardValue($('#valActiveAgents'), response.summary.total_agents || response.summary.active_agents);
+                animateCardValue($('#valAgentsActiveToday'), response.summary.online_agents || response.summary.agents_active_timeframe);
+                $('#valSupportHours').text(response.summary.total_support_hours || '00:00:00');
 
                 // 2. Render Status Breakdown
                 const $statusContainer = $('#statusListContainer');
@@ -281,8 +337,9 @@ if (!empty($user_id)) {
                           <span class="status-name">
                             <span class="status-dot" style="background-color: ${color}"></span>
                             ${escapeHtml(statusName)}
+                            <span class="status-count">${count}</span>
                           </span>
-                          <span class="status-count">${count} (${pct}%)</span>
+                          <span class="status-pct">${pct}%</span>
                         </div>
                         <div class="progress-bar-wrapper">
                           <div class="progress-bar" style="width: ${pct}%; background-color: ${color}"></div>
@@ -325,14 +382,13 @@ if (!empty($user_id)) {
 
                     // Format timeframe count badge
                     const timeframeVal = parseInt(agent.timeframe_records || 0);
-                    const rangeLabelText = range === 'today' ? 'today' : (range === 'week' ? 'this week' : (range === 'month' ? 'this month' : 'this year'));
                     const timeframeBadge = timeframeVal > 0 ? 
-                      `<span class="record-count-today">+${timeframeVal} ${rangeLabelText}</span>` : 
+                      `<span class="record-count-today">${timeframeVal}</span>` : 
                       `<span class="record-count-zero">-</span>`;
 
                     // Format date
                     const dateObj = new Date(agent.last_active);
-                    const formattedDate = isNaN(dateObj.getTime()) ? '-' : dateObj.toLocaleDateString('en-US', {
+                    const formattedDate = isNaN(dateObj.getTime()) ? (agent.last_active || '-') : dateObj.toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric'
@@ -342,7 +398,10 @@ if (!empty($user_id)) {
                       <tr>
                         <td>
                           <div class="agent-profile">
-                            <div class="agent-avatar">${escapeHtml(initials) || '?'}</div>
+                            <span class="online-status-dot ${agent.is_online ? 'online' : 'offline'}" title="${agent.is_online ? 'Online' : 'Offline'}"></span>
+                            <div class="agent-avatar">
+                              <img src="${agent.profile_photo_url}" alt="${escapeHtml(agent.agent_name)}" class="agent-avatar-img">
+                            </div>
                             <div class="agent-meta">
                               <span class="agent-realname">${escapeHtml(agent.agent_name)}</span>
                             </div>
@@ -351,7 +410,8 @@ if (!empty($user_id)) {
                         <td><span style="font-family: monospace;">${escapeHtml(agent.username)}</span></td>
                         <td><span class="badge ${roleClass}">${escapeHtml(agent.role)}</span></td>
                         <td>${timeframeBadge}</td>
-                        <td><span class="agent-last-active">${formattedDate}</span></td>
+                        <td><span style="font-family: monospace; font-weight: 700; color: #d97706;">${escapeHtml(agent.timeframe_support_time || '00:00:00')}</span></td>
+                        <td><span class="agent-last-active">${escapeHtml(formattedDate)}</span></td>
                       </tr>
                     `;
                     $agentBody.append(html);
@@ -359,10 +419,10 @@ if (!empty($user_id)) {
                 } else {
                   $agentBody.append(`
                     <tr>
-                      <td colspan="5">
+                      <td colspan="6">
                         <div class="empty-state">
                           <i class="fa-solid fa-users-slash"></i>
-                          <p>No agent activity documented for this department.</p>
+                          <p>No active users found for this department.</p>
                         </div>
                       </td>
                     </tr>

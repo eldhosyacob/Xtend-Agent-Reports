@@ -18,6 +18,71 @@
     --card-hover-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
+[data-theme="dark"] {
+    --bg-dark: #0b0f19;
+    --card-bg: #151c2c;
+    --border-color: #27354a;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .accounts-header {
+    background-color: #151c2c;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .accounts-title {
+    background: linear-gradient(135deg, #f1f5f9 30%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .accounts-table th {
+    background-color: #1e293b;
+    color: #94a3b8;
+    border-bottom: 1px solid #27354a;
+}
+
+[data-theme="dark"] .accounts-table td {
+    border-bottom: 1px solid #27354a;
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .accounts-table tbody tr:hover {
+    background-color: #1e293b;
+}
+
+[data-theme="dark"] .accounts-card {
+    color: none;
+    background: none;
+    border: none;
+}
+
+[data-theme="dark"] .modal-content {
+    background-color: #151c2c;
+    border: 1px solid #465b7a;
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .modal-header {
+    border-color: #27354a;
+}
+
+[data-theme="dark"] .modal-footer {
+    border-color: #27354a;
+}
+
+[data-theme="dark"] .form-control {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .form-label {
+    color: #a7b9d2;
+}
+
 .accounts-page-container {
     background-color: var(--bg-dark);
     font-family: 'Plus Jakarta Sans', sans-serif;

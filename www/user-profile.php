@@ -42,7 +42,7 @@ foreach ($allowed_extensions as $ext) {
     <div class="profile-header">
       <div class="profile-title-section">
         <h1 class="profile-title">User Profile</h1>
-        <p class="profile-subtitle">Manage your personal details, credentials, and profile picture.</p>
+        <p class="profile-subtitle">Manage your credentials and profile picture.</p>
       </div>
     </div>
 

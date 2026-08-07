@@ -1,5 +1,5 @@
 <?php
-require_once('../config/session.php');
+require_once __DIR__ . '/../config/session.php';
 
 header('Content-Type: application/json');
 
@@ -33,6 +33,14 @@ if (!$db) {
     exit;
 }
 
+// Update current user's last activity since they are active on the dashboard
+try {
+    $updateActivity = $db->prepare("UPDATE users SET last_activity = NOW() WHERE id = :id");
+    $updateActivity->execute(['id' => $_SESSION['id']]);
+} catch (PDOException $e) {
+    error_log("Failed to update last activity in dashboard stats API: " . $e->getMessage());
+}
+
 // Get requested department, default to voice_logger
 $dept = isset($_GET['department']) ? trim($_GET['department']) : 'voice_logger';
 
@@ -52,18 +60,20 @@ if ($dept === 'voice_logger' || strcasecmp($dept, 'Voice Logger') === 0) {
     exit;
 }
 
-// Fetch all users to create a lookup map in PHP
-$usersQuery = "SELECT username, real_name, department, user_type FROM users";
-$usersStmt = $db->query($usersQuery);
+// Normalized department value for DB matching (e.g. 'voice logger' or 'ivr')
+$normalizedDept = strtolower(str_replace('_', ' ', $dept));
+
+// Fetch all users in the corresponding department (including 'manager' which is common to all departments)
+$usersQuery = "SELECT id, username, real_name, department, user_type, last_activity, (last_activity IS NOT NULL AND last_activity >= NOW() - INTERVAL 600 MINUTE) as is_online FROM users WHERE LOWER(REPLACE(department, '_', ' ')) = :dept OR LOWER(REPLACE(department, '_', ' ')) = 'manager'";
+$usersStmt = $db->prepare($usersQuery);
+$usersStmt->execute(['dept' => $normalizedDept]);
 $usersList = $usersStmt->fetchAll(PDO::FETCH_ASSOC);
 
-$userMap = [];
+$totalAgentsCount = count($usersList);
+$onlineAgentsCount = 0;
 foreach ($usersList as $u) {
-    $realNameKey = strtoupper(trim($u['real_name']));
-    
-    // Index strictly by real_name to align with the users' actual names
-    if ($realNameKey !== '') {
-        $userMap[$realNameKey] = $u;
+    if (!empty($u['is_online'])) {
+        $onlineAgentsCount++;
     }
 }
 
@@ -89,6 +99,14 @@ $totalRecords = (int)($totalStmt->fetch()['total'] ?? 0);
 // 2. Timeframe Records Count
 $timeframeStmt = $db->query("SELECT COUNT(*) as timeframe_count FROM `$tableName` WHERE $dateCondition");
 $timeframeRecords = (int)($timeframeStmt->fetch()['timeframe_count'] ?? 0);
+
+// 2b. Timeframe Support Hours
+$timeframeHoursStmt = $db->query("SELECT SUM(COALESCE(TIME_TO_SEC(`total_time`), 0)) as total_sec FROM `$tableName` WHERE $dateCondition");
+$totalSupportSec = (int)($timeframeHoursStmt->fetch()['total_sec'] ?? 0);
+$h = floor($totalSupportSec / 3600);
+$m = floor(($totalSupportSec % 3600) / 60);
+$s = $totalSupportSec % 60;
+$formattedSupportHours = sprintf('%02d:%02d:%02d', $h, $m, $s);
 
 // 3. Status Breakdown
 $allowedStatuses = [
@@ -132,81 +150,93 @@ foreach ($orderedStatuses as $statusName) {
     ];
 }
 
-// 4. Agent Performance & Activity Details
+// 4. Fetch Support/IVR record metrics and total time for agents in this department
 $agentQuery = "
     SELECT 
         `agent` as agent_name, 
         COUNT(*) as total_records, 
         SUM(CASE WHEN $dateCondition THEN 1 ELSE 0 END) as timeframe_records, 
+        SUM(COALESCE(TIME_TO_SEC(`total_time`), 0)) as total_seconds,
+        SUM(CASE WHEN $dateCondition THEN COALESCE(TIME_TO_SEC(`total_time`), 0) ELSE 0 END) as timeframe_seconds,
         MAX(`date`) as last_active 
     FROM `$tableName` 
-    GROUP BY `agent` 
-    ORDER BY timeframe_records DESC, total_records DESC
+    GROUP BY `agent`
 ";
 $agentStmt = $db->query($agentQuery);
-$agentsData = $agentStmt->fetchAll(PDO::FETCH_ASSOC);
+$recordsData = $agentStmt->fetchAll(PDO::FETCH_ASSOC);
 
-$agentsActiveTimeframe = 0;
+$recordsMap = [];
+foreach ($recordsData as $r) {
+    $key = strtoupper(trim($r['agent_name']));
+    if ($key !== '') {
+        $recordsMap[$key] = $r;
+    }
+}
+
+// Build agent details list showing users and active contributors
 $agentsList = [];
-$othersTotal = 0;
-$othersTimeframe = 0;
-$othersLastActive = null;
+$allowed_extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+$processedKeys = [];
 
-foreach ($agentsData as $row) {
-    $agentName = trim($row['agent_name']);
-    $agentNameKey = strtoupper($agentName);
+foreach ($usersList as $matchedUser) {
+    if (empty($matchedUser['is_online'])) {
+        continue;
+    }
+
+    $realNameKey = strtoupper(trim($matchedUser['real_name']));
+    $usernameKey = strtoupper(trim($matchedUser['username']));
     
-    $timeframeCount = (int)$row['timeframe_records'];
-    
-    // Only include this agent if they exist in the users table
-    if (isset($userMap[$agentNameKey])) {
-        $matchedUser = $userMap[$agentNameKey];
-        if ($timeframeCount > 0) {
-            $agentsActiveTimeframe++;
-        }
+    $matchedRecord = $recordsMap[$realNameKey] ?? ($recordsMap[$usernameKey] ?? null);
 
-        $details = [
-            'agent_name' => $matchedUser['real_name'] ?: $agentName,
-            'username' => $matchedUser['username'] ?: '-',
-            'role' => $matchedUser['user_type'] ?: 'Agent',
-            'department' => $matchedUser['department'] ?: $deptLabel,
-            'total_records' => (int)$row['total_records'],
-            'timeframe_records' => $timeframeCount,
-            'last_active' => $row['last_active']
-        ];
+    $timeframeCount = $matchedRecord ? (int)$matchedRecord['timeframe_records'] : 0;
+    $totalCount = $matchedRecord ? (int)$matchedRecord['total_records'] : 0;
+    $lastActive = $matchedRecord ? $matchedRecord['last_active'] : null;
+    $tfSec = $matchedRecord ? (int)$matchedRecord['timeframe_seconds'] : 0;
+    $tfH = floor($tfSec / 3600);
+    $tfM = floor(($tfSec % 3600) / 60);
+    $tfS = $tfSec % 60;
+    $timeframeSupportTime = sprintf('%02d:%02d:%02d', $tfH, $tfM, $tfS);
 
-        $agentsList[] = $details;
-    } else {
-        // Accumulate stats for any unregistered names
-        $othersTotal += (int)$row['total_records'];
-        $othersTimeframe += $timeframeCount;
-        
-        if ($row['last_active']) {
-            if ($othersLastActive === null || strcmp($row['last_active'], $othersLastActive) > 0) {
-                $othersLastActive = $row['last_active'];
+    // Resolve profile picture
+    $profile_photo_url = 'images/default-avatar.png';
+    if (!empty($matchedUser['id'])) {
+        foreach ($allowed_extensions as $ext) {
+            $photo_path = __DIR__ . '/../images/profile/' . $matchedUser['id'] . '.' . $ext;
+            if (file_exists($photo_path)) {
+                $profile_photo_url = 'images/profile/' . $matchedUser['id'] . '.' . $ext . '?t=' . filemtime($photo_path);
+                break;
             }
         }
     }
-}
 
-// Append "Others" row if we accumulated any unregistered records
-if ($othersTotal > 0) {
-    if ($othersTimeframe > 0) {
-        $agentsActiveTimeframe++;
-    }
-    
     $agentsList[] = [
-        'agent_name' => 'Others',
-        'username' => '-',
-        'role' => '-',
-        'department' => $deptLabel,
-        'total_records' => $othersTotal,
-        'timeframe_records' => $othersTimeframe,
-        'last_active' => $othersLastActive ?: '-'
+        'agent_name' => $matchedUser['real_name'] ?: $matchedUser['username'],
+        'username' => $matchedUser['username'] ?: '-',
+        'role' => $matchedUser['user_type'] ?: 'Agent',
+        'department' => $matchedUser['department'] ?: $deptLabel,
+        'total_records' => $totalCount,
+        'timeframe_records' => $timeframeCount,
+        'timeframe_support_time' => $timeframeSupportTime,
+        'last_active' => $lastActive ?: ($matchedUser['last_activity'] ? date('Y-m-d', strtotime($matchedUser['last_activity'])) : '-'),
+        'profile_photo_url' => $profile_photo_url,
+        'is_online' => true,
+        'last_activity' => $matchedUser['last_activity']
     ];
 }
 
-$activeAgentsCount = count($agentsList);
+// Sort agents by timeframe_records DESC, timeframe_seconds DESC, total_records DESC, agent_name ASC
+usort($agentsList, function($a, $b) {
+    if ($a['timeframe_records'] !== $b['timeframe_records']) {
+        return $b['timeframe_records'] <=> $a['timeframe_records'];
+    }
+    if ($a['timeframe_support_time'] !== $b['timeframe_support_time']) {
+        return strcmp($b['timeframe_support_time'], $a['timeframe_support_time']);
+    }
+    if ($a['total_records'] !== $b['total_records']) {
+        return $b['total_records'] <=> $a['total_records'];
+    }
+    return strcasecmp($a['agent_name'], $b['agent_name']);
+});
 
 // Send response
 echo json_encode([
@@ -216,8 +246,12 @@ echo json_encode([
     'summary' => [
         'total_records' => $totalRecords,
         'timeframe_records' => $timeframeRecords,
-        'active_agents' => $activeAgentsCount,
-        'agents_active_timeframe' => $agentsActiveTimeframe
+        'total_agents' => $totalAgentsCount,
+        'online_agents' => $onlineAgentsCount,
+        'active_agents' => $totalAgentsCount,
+        'agents_active_timeframe' => $onlineAgentsCount,
+        'total_support_hours' => $formattedSupportHours,
+        'total_support_seconds' => $totalSupportSec
     ],
     'status_breakdown' => $statusBreakdown,
     'agent_details' => $agentsList

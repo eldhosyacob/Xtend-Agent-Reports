@@ -17,6 +17,73 @@
     --error-color: #ef4444;
 }
 
+[data-theme="dark"] {
+    --bg-dark: #0b0f19;
+    --card-bg: #151c2c;
+    --border-color: #27354a;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --input-bg: #1e293b;
+    --input-border: #334155;
+}
+
+[data-theme="dark"] .form-header h2 {
+    background: linear-gradient(135deg, #f1f5f9 30%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .form-control {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] select.form-control {
+    background-color: #1e293b;
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .form-control-wrapper i.input-icon {
+    /* color: #94a3b8; */
+}
+
+[data-theme="dark"] .custom-select-btn {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .custom-select-dropdown {
+    background-color: #151c2c;
+    border-color: #27354a;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .checkbox-label {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .checkbox-label:hover {
+    background-color: #1e293b;
+}
+
+[data-theme="dark"] .autocomplete-suggestions {
+    background-color: #151c2c;
+    border-color: #27354a;
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .autocomplete-suggestion {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .autocomplete-suggestion:hover,
+[data-theme="dark"] .autocomplete-suggestion.active {
+    background-color: #1e293b;
+    color: #38bdf8;
+}
+
 /* Page container styling */
 .search-page-container {
     background-color: var(--bg-dark);
@@ -274,7 +341,7 @@ select.form-control {
 .btn-secondary {
     background: #f1f5f9;
     color: #475569;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #c9d4d9;
 }
 
 .btn-secondary:hover {

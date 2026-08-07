@@ -26,6 +26,10 @@ if ($db) {
             header('Location: index.php?error=session_expired');
             exit;
         }
+
+        // Update user's last activity
+        $updateActivity = $db->prepare("UPDATE users SET last_activity = NOW() WHERE id = :id");
+        $updateActivity->execute(['id' => $_SESSION['id']]);
     } catch (PDOException $e) {
         // Evaluate if this should be a hard failure or just log it
         error_log("Session check error: " . $e->getMessage());

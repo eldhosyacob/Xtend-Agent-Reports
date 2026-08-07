@@ -65,8 +65,9 @@ if (isset($_GET['hardware_details']) && trim($_GET['hardware_details']) !== '') 
     $params['hardware_details'] = '%' . trim($_GET['hardware_details']) . '%';
 }
 if (isset($_GET['ticket_id']) && trim($_GET['ticket_id']) !== '') {
-    $conditions[] = "`ticket_id` LIKE :ticket_id";
+    $conditions[] = "(`ticket_id` LIKE :ticket_id OR `reason` LIKE :ticket_id_reason)";
     $params['ticket_id'] = '%' . trim($_GET['ticket_id']) . '%';
+    $params['ticket_id_reason'] = '%' . trim($_GET['ticket_id']) . '%';
 }
 if (isset($_GET['case_id']) && trim($_GET['case_id']) !== '') {
     $conditions[] = "`case_id` LIKE :case_id";
@@ -135,6 +136,7 @@ fputcsv($output, [
     'Date',
     'Agent Name',
     'Company Name',
+    'Dealer Name',
     'Location',
     'Region',
     'Email',
@@ -147,6 +149,7 @@ fputcsv($output, [
     'Support Category',
     'Software Details',
     'Hardware Details',
+    'Product Model',
     'Solution',
     'Support Start Time',
     'Support End Time',
@@ -164,6 +167,7 @@ foreach ($all_records as $r) {
         $r['date'] ?? '',
         $r['agent'] ?? '',
         $r['company_name'] ?? '',
+        $r['dealer_name'] ?? '',
         $r['location'] ?? '',
         $r['region'] ?? '',
         $r['email'] ?? '',
@@ -176,6 +180,7 @@ foreach ($all_records as $r) {
         $r['support_category'] ?? '',
         $r['software_details'] ?? '',
         $r['hardware_details'] ?? '',
+        $r['product_model'] ?? '',
         $r['solution'] ?? '',
         $r['support_start_time'] ?? '',
         $r['support_end_time'] ?? '',

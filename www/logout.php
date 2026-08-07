@@ -5,6 +5,20 @@ require_once('config/session.php');
 
 // Check if logout is confirmed
 if (isset($_GET['confirm']) && $_GET['confirm'] === 'yes') {
+  // Update last_activity to NULL in database before clearing session
+  if (isset($_SESSION['id'])) {
+    require_once 'config/database.php';
+    $db = getDatabaseConnection();
+    if ($db) {
+      try {
+        $updateActivity = $db->prepare("UPDATE users SET last_activity = NULL WHERE id = :id");
+        $updateActivity->execute(['id' => $_SESSION['id']]);
+      } catch (PDOException $e) {
+        error_log("Logout database error: " . $e->getMessage());
+      }
+    }
+  }
+
   // Unset all session variables
   $_SESSION = array();
 

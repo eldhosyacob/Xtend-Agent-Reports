@@ -76,3 +76,17 @@
     border-top-right-radius: 16px;
     border-bottom-right-radius: 16px;
 }
+
+[data-theme="dark"] .pending-records-table th {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .pending-records-table tbody tr {
+    background: #151c2c;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .pending-records-table tbody tr:hover {
+    background: #1e293b;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}

@@ -47,10 +47,23 @@ if (!$user) {
 }
 
 $user_department = trim($user['department']);
+$selected_department = trim($_POST['department'] ?? $_GET['department'] ?? '');
 
 // Route insertion to the correct table based on user's department
 $tableName = '';
-if (strcasecmp($user_department, 'Voice Logger') === 0) {
+if (strcasecmp($user_department, 'Manager') === 0) {
+    if (strcasecmp($selected_department, 'Voice Logger') === 0) {
+        $tableName = 'support_details';
+    } elseif (strcasecmp($selected_department, 'IVR') === 0) {
+        $tableName = 'ivr_details';
+    } else {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Please select a valid department (Voice Logger or IVR).'
+        ]);
+        exit;
+    }
+} elseif (strcasecmp($user_department, 'Voice Logger') === 0) {
     $tableName = 'support_details';
 } elseif (strcasecmp($user_department, 'IVR') === 0) {
     $tableName = 'ivr_details';
@@ -67,6 +80,7 @@ $data = [
     'date' => trim($_POST['date'] ?? ''),
     'agent' => trim($_POST['agent'] ?? ''),
     'company_name' => trim($_POST['company_name'] ?? ''),
+    'dealer_name' => trim($_POST['dealer_name'] ?? ''),
     'location' => trim($_POST['location'] ?? ''),
     'region' => trim($_POST['region'] ?? ''),
     'contact_details' => trim($_POST['contact_details'] ?? ''),
@@ -77,10 +91,12 @@ $data = [
     'support_category' => trim($_POST['support_category'] ?? ''),
     'software_details' => trim($_POST['software_details'] ?? ''),
     'hardware_details' => trim($_POST['hardware_details'] ?? ''),
+    'product_model' => trim($_POST['product_model'] ?? ''),
     'solution' => trim($_POST['solution'] ?? ''),
     'total_time' => trim($_POST['total_time'] ?? ''),
-    'support_status' => trim($_POST['support_status'] ?? ''),
-    'ticket_id' => trim($_POST['reason'] ?? ''), // maps reason to ticket_id
+    'support_status' => !empty($_POST['support_status']) ? trim($_POST['support_status']) : 'Pending',
+    'reason' => trim($_POST['reason'] ?? ''),
+    'ticket_id' => trim($_POST['ticket_id'] ?? ''),
     'email' => !empty($_POST['email']) ? trim($_POST['email']) : null,
     'phone' => !empty($_POST['phone']) ? trim($_POST['phone']) : null,
     'support_start_time' => !empty($_POST['support_start_time']) ? trim($_POST['support_start_time']) : null,
@@ -88,8 +104,16 @@ $data = [
 ];
 
 // Perform backend validation for strictly required fields
+if ($data['company_name'] === '' && $data['dealer_name'] === '') {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Missing required field: Either Company Name or Dealer Name must be provided.'
+    ]);
+    exit;
+}
+
 $requiredFields = [
-    'date', 'agent', 'company_name', 'location', 'region', 'contact_details',
+    'date', 'agent', 'location', 'region', 'contact_details',
     'product_category', 'issue_category', 'issue_type', 'issue_details',
     'support_category', 'total_time', 'support_status'
 ];
@@ -104,10 +128,10 @@ foreach ($requiredFields as $field) {
 }
 
 // Validate email format
-if (!empty($data['email']) && !preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.com$/i', $data['email'])) {
+if (!empty($data['email']) && !preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|co\.in|in|org|net|sg)$/i', $data['email'])) {
     echo json_encode([
         'success' => false,
-        'message' => 'Email must end with .com'
+        'message' => 'Email must end with .com, .co.in, .in, .org, .net, or .sg'
     ]);
     exit;
 }
@@ -203,12 +227,72 @@ if (!$success) {
     exit;
 }
 
+if ($success && !empty($data['support_start_time']) && !empty($data['support_end_time'])) {
+    $historyStmt = $db->prepare("INSERT INTO `support_time_history` (`record_id`, `support_start_time`, `support_end_time`) VALUES (:record_id, :support_start_time, :support_end_time)");
+    $historyStmt->execute([
+        'record_id' => $record_id,
+        'support_start_time' => $data['support_start_time'],
+        'support_end_time' => $data['support_end_time']
+    ]);
+}
+
+if ($success && !empty($data['support_status'])) {
+    // Check the most recent status in history for this case to avoid double/duplicate entry
+    $checkHistoryStmt = $db->prepare("SELECT `support_status` FROM `support_status_history` WHERE `case_id` = :case_id ORDER BY `id` DESC LIMIT 1");
+    $checkHistoryStmt->execute(['case_id' => $record_id]);
+    $lastHistory = $checkHistoryStmt->fetch();
+    if (!$lastHistory || strcasecmp(trim($lastHistory['support_status']), trim($data['support_status'])) !== 0) {
+        $statusHistoryStmt = $db->prepare("INSERT INTO `support_status_history` (`case_id`, `agent`, `support_status`, `date`) VALUES (:case_id, :agent, :support_status, :date)");
+        $statusHistoryStmt->execute([
+            'case_id' => $record_id,
+            'agent' => $data['agent'],
+            'support_status' => $data['support_status'],
+            'date' => (!empty($data['date']) && !empty($data['support_end_time'])) ? ($data['date'] . ' ' . $data['support_end_time']) : date('Y-m-d H:i:s')
+        ]);
+    }
+}
+
+// Handle uploaded files if provided
+$uploadedFiles = [];
+if (!empty($_FILES['uploaded_files'])) {
+    $dateFolder = (!empty($data['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['date'])) ? $data['date'] : date('Y-m-d');
+    $uploadDir = __DIR__ . '/../file-uploads/' . $dateFolder . '/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+    
+    $files = $_FILES['uploaded_files'];
+    $fileCount = is_array($files['name']) ? count($files['name']) : 0;
+    
+    if ($fileCount > 4) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Maximum 4 files can be uploaded at a time.'
+        ]);
+        exit;
+    }
+
+    for ($i = 0; $i < $fileCount; $i++) {
+        if (isset($files['error'][$i]) && $files['error'][$i] === UPLOAD_ERR_OK) {
+            $tmpName = $files['tmp_name'][$i];
+            $origName = basename($files['name'][$i]);
+            $cleanName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $origName);
+            $uniqueFilename = $record_id . '_' . uniqid() . '_' . $cleanName;
+            $destPath = $uploadDir . $uniqueFilename;
+            if (move_uploaded_file($tmpName, $destPath)) {
+                $uploadedFiles[] = $dateFolder . '/' . $uniqueFilename;
+            }
+        }
+    }
+}
+
 echo json_encode([
     'success' => true,
     'message' => 'Record successfully created!',
     'data' => [
         'record_id' => $record_id,
-        'table' => $tableName
+        'table' => $tableName,
+        'uploaded_files' => $uploadedFiles
     ]
 ]);
 ?>

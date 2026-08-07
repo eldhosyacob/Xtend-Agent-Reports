@@ -37,8 +37,8 @@ if (password_verify($password, $user['password'])) {
     session_regenerate_id(true);
     $new_session_id = session_id();
 
-    // Update user's session_id in database
-    $updateStmt = $db->prepare("UPDATE users SET session_id = :session_id WHERE id = :id");
+    // Update user's session_id and last_activity in database
+    $updateStmt = $db->prepare("UPDATE users SET session_id = :session_id, last_activity = NOW() WHERE id = :id");
     $updateStmt->execute([
         'session_id' => $new_session_id,
         'id' => $user['id']

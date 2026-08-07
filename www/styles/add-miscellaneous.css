@@ -1,0 +1,303 @@
+/* Add Miscellaneous Styles */
+
+.miscellaneous-page-container {
+  padding: 30px 40px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.misc-card {
+  width: 100%;
+  max-width: 780px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  margin-top: 20px;
+  transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.misc-card-header {
+  padding: 28px 32px;
+  background: linear-gradient(135deg, #18ad9f 0%, #18678e 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.misc-header-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.misc-header-text h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+}
+
+.misc-header-text p {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 400;
+}
+
+.misc-card-body {
+  padding: 32px;
+}
+
+/* Form Styles */
+.misc-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.misc-form-row {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.misc-form-row-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.misc-form-row-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.misc-form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.misc-form-group label .required-star {
+  color: #ef4444;
+}
+
+.misc-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.misc-input-icon {
+  position: absolute;
+  left: 14px;
+  font-size: 15px;
+  color: var(--text-secondary);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.misc-form-control {
+  width: 100%;
+  height: 46px;
+  padding: 0 16px 0 42px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text-primary);
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.25s ease;
+}
+
+textarea.misc-form-control {
+  height: 100px;
+  min-height: 90px;
+  padding: 12px 16px 12px 42px;
+  resize: vertical;
+}
+
+.misc-input-wrapper-textarea {
+  align-items: flex-start;
+}
+
+.misc-input-wrapper-textarea .misc-input-icon {
+  top: 14px;
+}
+
+select.misc-form-control {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+.misc-form-control:focus {
+  border-color: #18ad9f;
+  box-shadow: 0 0 0 3px rgba(24, 173, 159, 0.2);
+}
+
+.misc-form-control[readonly] {
+  background-color: var(--border-light);
+  cursor: not-allowed;
+  font-weight: 600;
+  color: #18ad9f;
+}
+
+/* Action Buttons */
+.misc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn-misc-submit {
+  height: 46px;
+  padding: 0 28px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, #18ad9f 0%, #18678e 100%);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(24, 173, 159, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-misc-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(24, 173, 159, 0.4);
+}
+
+.btn-misc-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-misc-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-misc-reset {
+  height: 46px;
+  padding: 0 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-misc-reset:hover {
+  background-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+/* Alert Toast */
+.misc-alert {
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  display: none;
+  animation: slideInDown 0.3s ease forwards;
+}
+
+.misc-alert-success {
+  background-color: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #15803d;
+}
+
+[data-theme="dark"] .misc-alert-success {
+  color: #4ade80;
+}
+
+.misc-alert-error {
+  background-color: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #b91c1c;
+}
+
+[data-theme="dark"] .misc-alert-error {
+  color: #f87171;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .misc-form-row-2,
+  .misc-form-row-3 {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .miscellaneous-page-container {
+    padding: 16px;
+  }
+  
+  .misc-card-header {
+    padding: 20px;
+  }
+
+  .misc-card-body {
+    padding: 20px;
+  }
+
+  .misc-actions {
+    flex-direction: column-reverse;
+  }
+
+  .btn-misc-submit, .btn-misc-reset {
+    width: 100%;
+    justify-content: center;
+  }
+}

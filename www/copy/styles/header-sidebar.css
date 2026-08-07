@@ -344,12 +344,13 @@
 .sidebar-link {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 18px;
   padding: 12px 20px;
   color: #ecf0f1;
   text-decoration: none;
   transition: all 0.3s ease;
   position: relative;
+  font-weight: 650px;
 }
 
 .sidebar-link::before {
@@ -375,8 +376,8 @@
 
 .sidebar-menu-item.active .sidebar-link {
   background-color: rgba(52, 152, 219, 0.15);
-  color: #3498db;
-  font-weight: 500;
+  color: #dba134;
+  font-weight: 650;
 }
 
 .sidebar-menu-item.active .sidebar-link::before {
@@ -389,6 +390,7 @@
 
 .sidebar-link span {
   font-size: 14px;
+  font-weight: 650px;
 }
 
 
@@ -522,7 +524,7 @@
   /* Muted text color */
   text-decoration: none;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }

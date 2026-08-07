@@ -42,7 +42,7 @@ if (!$record) {
 // Fetch user's department from session/DB
 $user_department = isset($_SESSION['department']) ? $_SESSION['department'] : '';
 $record_department = ($tableName === 'support_details') ? 'Voice Logger' : 'IVR';
-if (strcasecmp($user_department, $record_department) !== 0) {
+if (strcasecmp($user_department, 'Manager') !== 0 && strcasecmp($user_department, $record_department) !== 0) {
     die("Error: You are not authorized to view this record.");
 }
 
@@ -77,6 +77,86 @@ if ($db) {
         error_log("Failed to fetch clients list from DB: " . $e->getMessage());
     }
 }
+
+// Fetch IVR Issue Categories if user belongs to IVR department
+$ivrIssues = [];
+if (isset($user_department) && strtolower($user_department) === 'ivr') {
+    $ivrCacheFile = dirname(__DIR__, 1) . '/cache/issue_categories_ivr.json';
+    if (file_exists($ivrCacheFile)) {
+        $ivrCacheData = json_decode(file_get_contents($ivrCacheFile), true);
+        if (is_array($ivrCacheData) && isset($ivrCacheData['categories'])) {
+            foreach ($ivrCacheData['categories'] as $cat) {
+                if (isset($cat['issues']) && is_array($cat['issues'])) {
+                    $ivrIssues = array_merge($ivrIssues, $cat['issues']);
+                }
+            }
+            $ivrIssues = array_values(array_unique($ivrIssues));
+        }
+    }
+    
+    if (empty($ivrIssues)) {
+        $ivrOdsFile = dirname(__DIR__, 1) . '/uploads/IssueCategory/IssueCategoryIVR.ods';
+        if (file_exists($ivrOdsFile)) {
+            try {
+                require_once __DIR__ . '/vendor/autoload.php';
+                $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($ivrOdsFile);
+                $worksheet = $spreadsheet->getActiveSheet();
+                $highestRow = $worksheet->getHighestRow();
+                $highestColumn = $worksheet->getHighestColumn();
+                $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
+                
+                for ($col = 1; $col <= $highestColumnIndex; $col++) {
+                    for ($row = 2; $row <= $highestRow; $row++) {
+                        $val = $worksheet->getCell([$col, $row])->getValue();
+                        if ($val !== null && trim((string)$val) !== '') {
+                            $ivrIssues[] = trim((string)$val);
+                        }
+                    }
+                }
+                $ivrIssues = array_values(array_unique($ivrIssues));
+            } catch (Exception $e) {
+                // Fail silently
+            }
+        }
+    }
+}
+
+// Fetch IVR Product Categories if user belongs to IVR department
+$ivrProducts = [];
+if (isset($user_department) && strtolower($user_department) === 'ivr') {
+    $prodCacheFile = dirname(__DIR__, 1) . '/cache/product_categories_ivr.json';
+    $prodOdsFile = dirname(__DIR__, 1) . '/uploads/IssueCategory/ProductCategoryIVR.ods';
+    
+    if (file_exists($prodCacheFile) && file_exists($prodOdsFile) && filemtime($prodOdsFile) === filemtime($prodCacheFile)) {
+        $ivrProducts = json_decode(file_get_contents($prodCacheFile), true);
+    }
+    
+    if (empty($ivrProducts) && file_exists($prodOdsFile)) {
+        try {
+            require_once __DIR__ . '/vendor/autoload.php';
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($prodOdsFile);
+            $worksheet = $spreadsheet->getActiveSheet();
+            $highestRow = $worksheet->getHighestRow();
+            for ($row = 1; $row <= $highestRow; $row++) {
+                $val = $worksheet->getCell([1, $row])->getValue();
+                if ($val !== null && trim((string)$val) !== '') {
+                    $ivrProducts[] = trim((string)$val);
+                }
+            }
+            $ivrProducts = array_values(array_unique($ivrProducts));
+            
+            // Cache it
+            $cacheDir = dirname($prodCacheFile);
+            if (!is_dir($cacheDir)) {
+                mkdir($cacheDir, 0755, true);
+            }
+            file_put_contents($prodCacheFile, json_encode($ivrProducts, JSON_UNESCAPED_UNICODE));
+            touch($prodCacheFile, filemtime($prodOdsFile));
+        } catch (Exception $e) {
+            // Fail silently
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -86,7 +166,7 @@ if ($db) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Add New Record | Xtend Agent Reports</title>
+    <title>Add New Record (<?php echo htmlspecialchars($record['record_id'] ?: $record_id); ?>) | Xtend Agent Reports</title>
     <link rel="shortcut icon" href="images/favicon.png" />
     <link rel="stylesheet" href="styles/header-sidebar.css">
     <link rel="stylesheet" href="styles/new_record.css">
@@ -105,7 +185,7 @@ if ($db) {
               <div class="timer-display" id="runningTimer">00:00:00</div>
             </div>
           </div>
-          <h2>Create New Record</h2>
+          <h2>Create New Record (<?php echo htmlspecialchars($record['record_id'] ?: $record_id); ?>)</h2>
           <p>Complete the fields below in sequence to document a new support session.</p>
         </div>
 
@@ -118,7 +198,7 @@ if ($db) {
               <label for="date">Date</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-calendar input-icon"></i>
-                <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($record['date']); ?>" required>
+                <input type="date" id="date" name="date" class="form-control" value="<?php echo htmlspecialchars($record['date']); ?>" readonly required>
               </div>
             </div>
 
@@ -145,8 +225,18 @@ if ($db) {
               <label for="company_name">Company Name</label>
               <div class="form-control-wrapper autocomplete-wrapper">
                 <i class="fa-regular fa-building input-icon"></i>
-                <input type="text" id="company_name" name="company_name" class="form-control" placeholder="Enter company / client name" value="<?php echo htmlspecialchars($record['company_name']); ?>" autocomplete="off" readonly required>
+                <input type="text" id="company_name" name="company_name" class="form-control" placeholder="Enter company / client name" value="<?php echo htmlspecialchars($record['company_name']); ?>" autocomplete="off" readonly>
                 <div class="autocomplete-suggestions" id="companySuggestions"></div>
+              </div>
+            </div>
+
+            <!-- DEALER NAME -->
+            <div class="form-group col-6">
+              <label for="dealer_name">Dealer Name</label>
+              <div class="form-control-wrapper autocomplete-wrapper">
+                <i class="fa-solid fa-user-tie input-icon"></i>
+                <input type="text" id="dealer_name" name="dealer_name" class="form-control" placeholder="Enter dealer name" value="<?php echo htmlspecialchars($record['dealer_name'] ?? ''); ?>" autocomplete="off" readonly>
+                <div class="autocomplete-suggestions" id="dealerSuggestions"></div>
               </div>
             </div>
 
@@ -178,7 +268,7 @@ if ($db) {
               <label for="email">Email</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-envelope input-icon"></i>
-                <input type="email" id="email" name="email" class="form-control" placeholder="Contact person email" value="<?php echo htmlspecialchars($record['email']); ?>" pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[cC][oO][mM]" title="Please enter an email address ending with .com">
+                <input type="email" id="email" name="email" class="form-control" placeholder="Contact person email" value="<?php echo htmlspecialchars($record['email']); ?>" pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.([cC][oO][mM]|[cC][oO]\.[iI][nN]|[iI][nN]|[oO][rR][gG]|[nN][eE][tT]|[sS][gG])" title="Please enter a valid email address (.com, .co.in, .in, .org, .net, or .sg)">
               </div>
             </div>
 
@@ -187,7 +277,7 @@ if ($db) {
               <label for="phone">Phone</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-phone input-icon"></i>
-                <input type="number" id="phone" name="phone" class="form-control" placeholder="Contact person phone" value="<?php echo htmlspecialchars($record['phone']); ?>" required>
+                <input type="text" id="phone" name="phone" class="form-control" placeholder="Contact person phone" value="<?php echo htmlspecialchars($record['phone']); ?>" required>
               </div>
             </div>
 
@@ -196,40 +286,73 @@ if ($db) {
               <label for="contact_details">Contact Details</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-address-book input-icon"></i>
-                <input type="text" id="contact_details" name="contact_details" class="form-control" placeholder="Contact person name, phone, email" value="<?php echo htmlspecialchars($record['contact_details']); ?>" required>
+                <input type="text" id="contact_details" name="contact_details" class="form-control" placeholder="Contact person details" value="<?php echo htmlspecialchars($record['contact_details']); ?>" required>
               </div>
             </div>
 
             <!-- 9. PRODUCT CATEGORY -->
             <div class="form-group col-6">
               <label for="product_category">Product Category</label>
-              <div class="form-control-wrapper select-wrapper">
-                <i class="fa-solid fa-cubes input-icon"></i>
-                <select id="product_category" name="product_category" class="form-control" required>
-                  <option value="" disabled <?php echo empty($record['product_category']) ? 'selected' : ''; ?>>Select Product Category</option>
-                  <?php
-                  $products = [
-                    "ANALOG_LOGGER", "PRI_LOGGER", "DIGITAL_EXTENSION", "IP_LOGGER",
-                    "XTEND_SMARTLOG", "CALLBILLING", "CMS_HO", "IVR_GATEWAY",
-                    "STANDALONE_LOGGER", "ACTIVE_LOGGER", "XTEND_ONCALL", "XTEND_VX",
-                    "XTEND_SX2", "XTEND_SX", "LINUX_STANDALONE"
-                  ];
-                  foreach ($products as $p) {
-                      echo '<option value="' . $p . '" ' . getSelected($p, $record['product_category']) . '>' . $p . '</option>';
-                  }
-                  ?>
-                </select>
-              </div>
+              <?php if (isset($user_department) && strtolower($user_department) === 'ivr'): ?>
+                <div class="form-control-wrapper select-wrapper">
+                  <i class="fa-solid fa-cubes input-icon"></i>
+                  <select id="product_category" name="product_category" class="form-control" required>
+                    <option value="" disabled <?php echo empty($record['product_category']) ? 'selected' : ''; ?>>Select Product Category</option>
+                    <?php
+                    foreach ($ivrProducts as $prod) {
+                        echo '<option value="' . htmlspecialchars($prod) . '" ' . getSelected($prod, $record['product_category'] ?? '') . '>' . htmlspecialchars($prod) . '</option>';
+                    }
+                    ?>
+                  </select>
+                </div>
+              <?php else: ?>
+                <div class="form-control-wrapper select-wrapper">
+                  <i class="fa-solid fa-cubes input-icon"></i>
+                  <select id="product_category" name="product_category" class="form-control" required>
+                    <option value="" disabled <?php echo empty($record['product_category']) ? 'selected' : ''; ?>>Select Product Category</option>
+                    <?php
+                    $products = [
+                      "ANALOG_LOGGER", "PRI_LOGGER", "DIGITAL_EXTENSION", "IP_LOGGER",
+                      "XTEND_SMARTLOG", "CALLBILLING", "CMS_HO", "IVR_GATEWAY",
+                      "STANDALONE_LOGGER", "ACTIVE_LOGGER", "XTEND_ONCALL", "XTEND_VX",
+                      "XTEND_SX2", "XTEND_SX", "LINUX_STANDALONE"
+                    ];
+                    foreach ($products as $p) {
+                        echo '<option value="' . $p . '" ' . getSelected($p, $record['product_category']) . '>' . $p . '</option>';
+                    }
+                    ?>
+                  </select>
+                </div>
+              <?php endif; ?>
             </div>
 
             <!-- 10. ISSUE CATEGORY -->
             <div class="form-group col-6">
               <label for="issue_category">Issue Category</label>
-              <div class="form-control-wrapper autocomplete-wrapper">
-                <i class="fa-solid fa-tags input-icon"></i>
-                <input type="text" id="issue_category" name="issue_category" class="form-control" placeholder="<?php echo empty($record['product_category']) ? 'Select Product Category first' : 'Search or select issue category...'; ?>" value="<?php echo htmlspecialchars($record['issue_category']); ?>" autocomplete="off" required <?php echo empty($record['product_category']) ? 'disabled' : ''; ?>>
-                <div class="autocomplete-suggestions" id="issueCategorySuggestions"></div>
-              </div>
+              <?php if (isset($user_department) && strtolower($user_department) === 'ivr'): ?>
+                <div class="form-control-wrapper select-wrapper">
+                  <i class="fa-solid fa-tags input-icon"></i>
+                  <select id="issue_category" name="issue_category" class="form-control" required>
+                    <option value="" disabled <?php echo empty($record['issue_category']) ? 'selected' : ''; ?>>Select Issue Category</option>
+                    <?php
+                    foreach ($ivrIssues as $issue) {
+                        echo '<option value="' . htmlspecialchars($issue) . '" ' . getSelected($issue, $record['issue_category'] ?? '') . '>' . htmlspecialchars($issue) . '</option>';
+                    }
+                    ?>
+                  </select>
+                </div>
+              <?php else: ?>
+                <div class="form-control-wrapper autocomplete-wrapper">
+                  <i class="fa-solid fa-tags input-icon"></i>
+                  <input type="text" id="issue_category" name="issue_category" class="form-control" 
+                    placeholder="<?php echo empty($record['product_category']) ? 'Select Product Category first' : 'Search or select issue category...'; ?>" 
+                    value="<?php echo htmlspecialchars($record['issue_category'] ?? ''); ?>" 
+                    autocomplete="off" 
+                    required 
+                    <?php echo empty($record['product_category']) ? 'disabled' : ''; ?>>
+                  <div class="autocomplete-suggestions" id="issueCategorySuggestions"></div>
+                </div>
+              <?php endif; ?>
             </div>
 
             <!-- 11. ISSUE TYPE -->
@@ -285,7 +408,16 @@ if ($db) {
               <label for="hardware_details">Hardware Details</label>
               <div class="form-control-wrapper">
                 <i class="fa-solid fa-microchip input-icon"></i>
-                <input type="text" id="hardware_details" name="hardware_details" class="form-control" placeholder="Specify the hardware details" value="<?php echo htmlspecialchars($record['hardware_details']); ?>">
+                <input type="text" id="hardware_details" name="hardware_details" class="form-control" placeholder="Specify the hardware ID" value="<?php echo htmlspecialchars($record['hardware_details']); ?>">
+              </div>
+            </div>
+
+            <!-- PRODUCT MODEL -->
+            <div class="form-group col-6">
+              <label for="product_model">Product Model</label>
+              <div class="form-control-wrapper">
+                <i class="fa-solid fa-box-open input-icon"></i>
+                <input type="text" id="product_model" name="product_model" class="form-control" placeholder="Specify product model" value="<?php echo htmlspecialchars($record['product_model'] ?? ''); ?>">
               </div>
             </div>
 
@@ -343,14 +475,36 @@ if ($db) {
             </div>
 
             <!-- 19. REASON -->
-            <div class="form-group col-12">
+            <div class="form-group col-6">
               <label for="reason">Reason</label>
               <div class="form-control-wrapper">
                 <i class="fa-solid fa-question input-icon" style="top: 18px;"></i>
-                <textarea id="reason" name="reason" class="form-control" placeholder="Specify the reason"><?php echo htmlspecialchars($record['ticket_id'] ?? ''); ?></textarea>
+                <textarea id="reason" name="reason" class="form-control" placeholder="Specify the reason"><?php echo htmlspecialchars($record['reason'] ?? ''); ?></textarea>
               </div>
             </div>
 
+            <!-- 20. TICKET ID -->
+            <div class="form-group col-6">
+              <label for="ticket_id">Ticket Id</label>
+              <div class="form-control-wrapper">
+                <i class="fa-solid fa-ticket input-icon"></i>
+                <input type="text" id="ticket_id" name="ticket_id" class="form-control" placeholder="Specify Ticket ID" value="<?php echo htmlspecialchars($record['ticket_id'] ?? ''); ?>">
+              </div>
+            </div>
+
+            <!-- 21. ATTACHMENTS (FILE UPLOAD) -->
+            <div class="form-group col-12">
+              <label for="uploaded_files">Attachments (PDF, Images, CSV, etc.)</label>
+              <div class="file-upload-wrapper">
+                <input type="file" id="uploaded_files" name="uploaded_files[]" class="file-upload-input" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.csv,.doc,.docx,.xls,.xlsx,.zip,.txt">
+                <div class="file-upload-content">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <div class="file-upload-text">Drag & drop files here or <span>browse</span></div>
+                  <div class="file-upload-hint">Supports PDF, Images, CSV, Documents (Max: 4 files at a time, 10MB per file)</div>
+                </div>
+              </div>
+              <div class="file-list-preview" id="fileListPreview"></div>
+            </div>
 
             <!-- Form Action Buttons -->
             <div class="form-actions">
@@ -397,6 +551,81 @@ if ($db) {
         $('textarea').on('input', function() {
           this.style.height = 'auto';
           this.style.height = (this.scrollHeight + 2) + 'px';
+        });
+
+        // Interactive file upload accumulation & removal handler
+        let selectedFiles = [];
+
+        function renderFilePreview() {
+          const $preview = $('#fileListPreview').empty();
+          const fileInput = $('#uploaded_files')[0];
+
+          if (fileInput) {
+            try {
+              const dt = new DataTransfer();
+              selectedFiles.forEach(f => dt.items.add(f));
+              fileInput.files = dt.files;
+            } catch (e) {
+              // Fallback
+            }
+          }
+
+          selectedFiles.forEach((file, index) => {
+            let iconClass = 'fa-regular fa-file';
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (['pdf'].includes(ext)) iconClass = 'fa-regular fa-file-pdf';
+            else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) iconClass = 'fa-regular fa-file-image';
+            else if (['csv', 'xls', 'xlsx'].includes(ext)) iconClass = 'fa-regular fa-file-excel';
+            else if (['doc', 'docx'].includes(ext)) iconClass = 'fa-regular fa-file-word';
+            else if (['zip', 'rar', '7z'].includes(ext)) iconClass = 'fa-regular fa-file-zipper';
+
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            const sizeText = file.size >= 1024 * 1024 ? sizeMB + ' MB' : Math.round(file.size / 1024) + ' KB';
+
+            const $item = $(`
+              <div class="file-preview-item">
+                <div class="file-preview-info">
+                  <i class="${iconClass}"></i>
+                  <span>${file.name}</span>
+                  <span class="file-preview-size">(${sizeText})</span>
+                </div>
+                <button type="button" class="file-preview-remove" data-index="${index}" title="Remove file">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            `);
+            $preview.append($item);
+          });
+        }
+
+        $('#uploaded_files').on('change', function() {
+          const newFiles = Array.from(this.files);
+          let limitExceeded = false;
+
+          newFiles.forEach(newFile => {
+            const exists = selectedFiles.some(f => f.name === newFile.name && f.size === newFile.size);
+            if (!exists) {
+              if (selectedFiles.length < 4) {
+                selectedFiles.push(newFile);
+              } else {
+                limitExceeded = true;
+              }
+            }
+          });
+
+          if (limitExceeded) {
+            showNotification('Maximum 4 files can be uploaded at a time.', 'error');
+          }
+
+          renderFilePreview();
+        });
+
+        $('#fileListPreview').on('click', '.file-preview-remove', function() {
+          const index = parseInt($(this).data('index'), 10);
+          if (!isNaN(index) && index >= 0 && index < selectedFiles.length) {
+            selectedFiles.splice(index, 1);
+            renderFilePreview();
+          }
         });
 
         // 3. Reset form handler: Reloads page to restore DB state
@@ -614,6 +843,19 @@ if ($db) {
         $('#newRecordForm').on('submit', function(e) {
           e.preventDefault();
 
+          const fileInput = $('#uploaded_files')[0];
+          if (fileInput && fileInput.files && fileInput.files.length > 4) {
+            showNotification('Maximum 4 files can be uploaded at a time.', 'error');
+            return false;
+          }
+
+          const compName = $('#company_name').val().trim();
+          const dealerName = $('#dealer_name').val().trim();
+          if (!compName && !dealerName) {
+            showNotification('Please enter either a Company Name or a Dealer Name (or both).', 'error');
+            return false;
+          }
+
           // Set support end time
           $('#support_end_time').val(new Date().toTimeString().split(' ')[0]);
           
@@ -623,12 +865,14 @@ if ($db) {
           
           $btn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...');
           
-          const formData = $(this).serialize();
+          const formData = new FormData(this);
 
           $.ajax({
             url: 'api/edit-record.php',
             type: 'POST',
             data: formData,
+            processData: false,
+            contentType: false,
             dataType: 'json',
             success: function(response) {
               if (response.success) {
@@ -759,6 +1003,7 @@ if ($db) {
         });
 
         // 5.5. Dynamic Issue Category Autocomplete based on Product Category
+        <?php if (!isset($user_department) || strtolower($user_department) !== 'ivr'): ?>
         let issueCategories = [];
         const $issueInput = $('#issue_category');
         const $issueSuggestions = $('#issueCategorySuggestions');
@@ -767,7 +1012,9 @@ if ($db) {
         // Fetch categories when Product Category changes
         $('#product_category').on('change', function() {
           const selectedCategory = $(this).val();
+          
           $issueInput.val('').prop('disabled', true).attr('placeholder', 'Loading issue categories...');
+          
           $issueSuggestions.empty().hide();
           issueCategories = [];
 
@@ -784,7 +1031,7 @@ if ($db) {
             success: function(response) {
               if (response.success && Array.isArray(response.data)) {
                 issueCategories = response.data;
-                $issueInput.prop('disabled', false).attr('placeholder', 'Search or select issue category...');
+                $issueInput.prop('disabled', false).attr('placeholder', 'Search, select or enter issue category...');
               } else {
                 showNotification(response.message || 'Failed to load issue categories.', 'error');
                 $issueInput.attr('placeholder', 'Error loading categories');
@@ -873,6 +1120,7 @@ if ($db) {
             $issueSuggestions.scrollTop($issueSuggestions.scrollTop() + itemTop);
           }
         }
+        <?php endif; ?>
 
         // 6. Live Session Stopwatch Timer
         

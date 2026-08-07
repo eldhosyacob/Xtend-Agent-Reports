@@ -3,10 +3,12 @@
 require_once 'config/auth_check.php';
 
 $company_name = trim($_GET['company_name'] ?? '');
+$dealer_name = trim($_GET['dealer_name'] ?? '');
 $add_to_company_list = intval($_GET['add_to_company_list'] ?? 0);
+$selected_department = trim($_GET['department'] ?? '');
 
-if ($company_name === '') {
-    die("Error: Client name is required to view pending records.");
+if ($company_name === '' && $dealer_name === '') {
+    die("Error: Client name or dealer name is required to view pending records.");
 }
 ?>
 
@@ -31,7 +33,10 @@ if ($company_name === '') {
       <!-- Page Header -->
       <header class="page-header-wrapper">
         <div class="page-title-section pending-records-title-wrapper">
-          <div class="pending-records-page-title">Pending Records for <span class="client-name-highlight"><?php echo htmlspecialchars($company_name); ?></span></div>
+          <div class="pending-records-page-title">Pending Records for <span class="client-name-highlight"><?php 
+            $titleParts = array_filter([$company_name, $dealer_name]);
+            echo htmlspecialchars(implode(' / ', $titleParts)); 
+          ?></span></div>
           <!-- <p>The client has existing pending or active support logs. Reopen one or proceed to create a new session.</p> -->
         </div>
         <div class="header-actions">
@@ -48,6 +53,10 @@ if ($company_name === '') {
           <div class="results-info-badge" id="results-badge">
             Checking for pending records...
           </div>
+          <div class="search-input-wrapper">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            <input type="text" id="search-pending-records" class="search-control" placeholder="Search Record ID, Location, Hardware..." aria-label="Search pending records">
+          </div>
         </div>
 
         <!-- Floating-Row Table View -->
@@ -60,7 +69,8 @@ if ($company_name === '') {
                 <th scope="col">Date</th>
                 <th scope="col">Agent</th>
                 <th scope="col">Product Category</th>
-                <th scope="col">Department</th>
+                <th scope="col">Location</th>
+                <th scope="col">Hardware Details</th>
                 <th scope="col">Status</th>
                 <th scope="col">Actions</th>
               </tr>
@@ -74,6 +84,7 @@ if ($company_name === '') {
                 <td><div class="skeleton-line w-50"></div></td>
                 <td><div class="skeleton-line w-70"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
               </tr>
@@ -83,6 +94,7 @@ if ($company_name === '') {
                 <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-line w-50"></div></td>
                 <td><div class="skeleton-line w-70"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
@@ -112,8 +124,10 @@ if ($company_name === '') {
     <script>
       $(document).ready(function() {
         const companyName = <?php echo json_encode($company_name); ?>;
+        const dealerName = <?php echo json_encode($dealer_name); ?>;
         const addToCompanyList = <?php echo json_encode($add_to_company_list); ?>;
         let pendingRecords = [];
+        let filteredRecords = [];
         let currentPage = 1;
         const pageSize = 10;
 
@@ -137,13 +151,12 @@ if ($company_name === '') {
           $.ajax({
             url: 'api/fetch-pending-records.php',
             type: 'GET',
-            data: { company_name: companyName },
+            data: { company_name: companyName, dealer_name: dealerName },
             dataType: 'json',
             success: function(response) {
               if (response.success) {
                 pendingRecords = response.data;
-                $('#results-badge').text('Total Pending Records: ' + pendingRecords.length);
-                renderPendingRecords(pendingRecords);
+                filterRecords();
               } else {
                 $('#results-badge').text('Error loading pending records');
                 alert('Error loading records: ' + response.message);
@@ -156,6 +169,27 @@ if ($company_name === '') {
           });
         }
 
+        function filterRecords() {
+          const query = $('#search-pending-records').val().trim().toLowerCase();
+          if (!query) {
+            filteredRecords = pendingRecords;
+          } else {
+            filteredRecords = pendingRecords.filter(function(r) {
+              const recordId = String(getRecordIdentifier(r)).toLowerCase();
+              const location = String(r.location || '').toLowerCase();
+              const hardwareDetails = String(r.hardware_details || '').toLowerCase();
+              return recordId.includes(query) || location.includes(query) || hardwareDetails.includes(query);
+            });
+          }
+          currentPage = 1;
+          $('#results-badge').text('Total Pending Records: ' + filteredRecords.length);
+          renderPendingRecords(filteredRecords);
+        }
+
+        $('#search-pending-records').on('input', function() {
+          filterRecords();
+        });
+
         function renderPendingRecords(records) {
           const $tbody = $('#records-tbody');
           $tbody.empty();
@@ -163,7 +197,7 @@ if ($company_name === '') {
           if (records.length === 0) {
             $tbody.html(`
               <tr>
-                <td colspan="8">
+                <td colspan="9">
                   <div class="table-empty-state">
                     <i class="fa-solid fa-folder-open"></i>
                     <h3>No Active Pending Records Found</h3>
@@ -197,10 +231,11 @@ if ($company_name === '') {
               statusClass = 'status-escalated';
             }
 
+            const deptVal = r.record_department || r.department || '';
             let reopenBtn = '';
             if (statusLower !== 'closed' && statusLower !== 'closed-device replaced' && r.is_latest !== false) {
               reopenBtn = `
-                <a href="edit-record.php?record_id=${escapeHtml(getRecordIdentifier(r))}" target="_blank" class="btn-action-reopen" data-record-id="${escapeHtml(getRecordIdentifier(r))}" data-company-name="${escapeHtml(r.company_name || '')}" title="Reopen Record">
+                <a href="edit-record.php?record_id=${escapeHtml(getRecordIdentifier(r))}&department=${escapeHtml(deptVal)}" target="_blank" class="btn-action-reopen" data-record-id="${escapeHtml(getRecordIdentifier(r))}" data-department="${escapeHtml(deptVal)}" data-company-name="${escapeHtml(r.company_name || '')}" data-dealer-name="${escapeHtml(r.dealer_name || '')}" title="Reopen Record">
                   <i class="fa-solid fa-folder-open"></i>
                 </a>`;
             }
@@ -212,14 +247,15 @@ if ($company_name === '') {
                 <td>${escapeHtml(r.date || '—')}</td>
                 <td>${escapeHtml(r.agent || '—')}</td>
                 <td>${escapeHtml(r.product_category || '—')}</td>
-                <td><span class="dept-badge">${escapeHtml(r.record_department || '—')}</span></td>
+                <td>${escapeHtml(r.location || '—')}</td>
+                <td>${escapeHtml(r.hardware_details || '—')}</td>
                 <td>
                   <span class="status-pill ${statusClass}">
                     <i class="fa-solid fa-circle"></i> ${escapeHtml(rawStatus)}
                   </span>
                 </td>
                 <td class="actions-cell">
-                  <button class="btn-action-view" data-record-id="${escapeHtml(getRecordIdentifier(r))}" title="View Details">
+                  <button class="btn-action-view" data-record-id="${escapeHtml(getRecordIdentifier(r))}" data-department="${escapeHtml(deptVal)}" title="View Details">
                     <i class="fa-solid fa-eye"></i>
                   </button>
                   ${reopenBtn}
@@ -231,7 +267,10 @@ if ($company_name === '') {
           // Bind view buttons
           $('.btn-action-view').off('click').on('click', function() {
             const recordId = $(this).attr('data-record-id');
-            window.location.href = 'view-record.php?record_id=' + encodeURIComponent(recordId);
+            const dept = $(this).attr('data-department') || '';
+            let url = 'view-record.php?record_id=' + encodeURIComponent(recordId);
+            if (dept) url += '&department=' + encodeURIComponent(dept);
+            window.location.href = url;
           });
 
           // Draw pagination controls
@@ -240,19 +279,27 @@ if ($company_name === '') {
 
 
 
+        const selectedDepartment = <?php echo json_encode($selected_department); ?>;
+
         // Create record directly button
         $('#btn-create-record-direct').on('click', function() {
           const $btn = $(this);
           const originalHtml = $btn.html();
           $btn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Creating...');
 
+          const postData = { 
+            company_name: companyName,
+            dealer_name: dealerName,
+            add_to_company_list: addToCompanyList
+          };
+          if (selectedDepartment) {
+            postData.department = selectedDepartment;
+          }
+
           $.ajax({
             url: 'api/create-pending-record.php',
             type: 'POST',
-            data: { 
-              company_name: companyName,
-              add_to_company_list: addToCompanyList
-            },
+            data: postData,
             dataType: 'json',
             success: function(response) {
               if (response.success) {
@@ -305,7 +352,7 @@ if ($company_name === '') {
                 const btn = $('<button class="page-num-btn">' + fillPage + '</button>');
                 btn.on('click', function() {
                   currentPage = fillPage;
-                  renderPendingRecords(pendingRecords);
+                  renderPendingRecords(filteredRecords);
                   scrollToTableTop();
                 });
                 $pagesContainer.append(btn);
@@ -321,7 +368,7 @@ if ($company_name === '') {
             btn.on('click', function() {
               if (currentPage !== page) {
                 currentPage = page;
-                renderPendingRecords(pendingRecords);
+                renderPendingRecords(filteredRecords);
                 scrollToTableTop();
               }
             });
@@ -334,16 +381,16 @@ if ($company_name === '') {
         $('#btn-prev').on('click', function() {
           if (currentPage > 1) {
             currentPage--;
-            renderPendingRecords(pendingRecords);
+            renderPendingRecords(filteredRecords);
             scrollToTableTop();
           }
         });
 
         $('#btn-next').on('click', function() {
-          const totalPages = Math.ceil(pendingRecords.length / pageSize);
+          const totalPages = Math.ceil(filteredRecords.length / pageSize);
           if (currentPage < totalPages) {
             currentPage++;
-            renderPendingRecords(pendingRecords);
+            renderPendingRecords(filteredRecords);
             scrollToTableTop();
           }
         });
@@ -353,6 +400,13 @@ if ($company_name === '') {
             scrollTop: $('.report-card-wrapper').offset().top - 20
           }, 300);
         }
+
+        // Listen for record updates from other tabs
+        window.addEventListener('storage', function(e) {
+          if (e.key === 'record_updated') {
+            window.location.reload();
+          }
+        });
 
         // Initialize loading
         loadPendingRecords();

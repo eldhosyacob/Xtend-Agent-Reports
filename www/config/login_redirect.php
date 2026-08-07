@@ -4,6 +4,12 @@ require_once('config/session.php');
 
 
 if (isset($_SESSION['id']) && isset($_SESSION['username'])) {
-    header('Location: dashboard.php');
+     
+    session_destroy();
+
+
+  // Redirect to login page
+  header('Location: index.php');
+    // header('Location: dashboard.php');
     exit;
 }

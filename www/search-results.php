@@ -62,8 +62,10 @@ require_once __DIR__ . '/config/auth_check.php';
                 <th scope="col">Date</th>
                 <th scope="col">Agent</th>
                 <th scope="col">Company Name</th>
+                <th scope="col">Dealer Name</th>
+                <th scope="col">Location</th>
                 <th scope="col">Product Category</th>
-                <th scope="col">Ticket ID/Reason</th>
+                <th scope="col">Hardware Details</th>
                 <th scope="col">Status</th>
                 <th scope="col">Actions</th>
               </tr>
@@ -77,7 +79,9 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td><div class="skeleton-line w-50"></div></td>
                 <td><div class="skeleton-line w-70"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
-                <td><div class="skeleton-line w-50"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
               </tr>
@@ -88,7 +92,9 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td><div class="skeleton-line w-50"></div></td>
                 <td><div class="skeleton-line w-70"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
-                <td><div class="skeleton-line w-50"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
               </tr>
@@ -99,7 +105,9 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td><div class="skeleton-line w-50"></div></td>
                 <td><div class="skeleton-line w-70"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
-                <td><div class="skeleton-line w-50"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
               </tr>
@@ -174,13 +182,19 @@ require_once __DIR__ . '/config/auth_check.php';
               const recId = String(getRecordIdentifier(r)).toLowerCase();
               const agent = (r.agent || '').toLowerCase();
               const comp = (r.company_name || '').toLowerCase();
+              const dealer = (r.dealer_name || '').toLowerCase();
+              const loc = (r.location || '').toLowerCase();
               const prod = (r.product_category || '').toLowerCase();
+              const hw = (r.hardware_details || '').toLowerCase();
               const status = (r.support_status || '').toLowerCase();
               const ticket = (r.ticket_id || '').toLowerCase();
               return recId.indexOf(val) > -1 || 
                      agent.indexOf(val) > -1 || 
                      comp.indexOf(val) > -1 || 
+                     dealer.indexOf(val) > -1 ||
+                     loc.indexOf(val) > -1 ||
                      prod.indexOf(val) > -1 || 
+                     hw.indexOf(val) > -1 ||
                      status.indexOf(val) > -1 ||
                      ticket.indexOf(val) > -1;
             });
@@ -236,7 +250,9 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td><div class="skeleton-line w-50"></div></td>
                 <td><div class="skeleton-line w-70"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
-                <td><div class="skeleton-line w-50"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
               </tr>`;
@@ -249,7 +265,7 @@ require_once __DIR__ . '/config/auth_check.php';
         function showError(msg) {
           $('#records-tbody').html(`
             <tr>
-              <td colspan="9" class="table-error-cell">
+              <td colspan="11" class="table-error-cell">
                 <i class="fa-solid fa-triangle-exclamation"></i>
                 ${msg}
               </td>
@@ -265,7 +281,7 @@ require_once __DIR__ . '/config/auth_check.php';
           if (records.length === 0) {
             $tbody.html(`
               <tr>
-                <td colspan="9">
+                <td colspan="11">
                   <div class="table-empty-state">
                     <i class="fa-solid fa-folder-open"></i>
                     <h3>No Search Results</h3>
@@ -301,10 +317,11 @@ require_once __DIR__ . '/config/auth_check.php';
             }
 
             // Edit Reopen Button mapping
+            const deptVal = r.record_department || r.department || '';
             let reopenBtn = '';
             if (statusLower !== 'closed' && statusLower !== 'closed-device replaced' && r.is_latest !== false) {
               reopenBtn = `
-                <a href="edit-record.php?record_id=${escapeHtml(getRecordIdentifier(r))}" target="_blank" class="btn-action-reopen" data-record-id="${escapeHtml(getRecordIdentifier(r))}" data-company-name="${escapeHtml(r.company_name || '')}" title="Reopen Record">
+                <a href="edit-record.php?record_id=${escapeHtml(getRecordIdentifier(r))}&department=${escapeHtml(deptVal)}" target="_blank" class="btn-action-reopen" data-record-id="${escapeHtml(getRecordIdentifier(r))}" data-department="${escapeHtml(deptVal)}" data-company-name="${escapeHtml(r.company_name || '')}" data-dealer-name="${escapeHtml(r.dealer_name || '')}" title="Reopen Record">
                   <i class="fa-solid fa-folder-open"></i>
                 </a>`;
             }
@@ -318,15 +335,17 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td>${escapeHtml(r.date || '—')}</td>
                 <td>${escapeHtml(r.agent || '—')}</td>
                 <td class="company-name-cell">${escapeHtml(r.company_name)}</td>
+                <td>${escapeHtml(r.dealer_name || '—')}</td>
+                <td>${escapeHtml(r.location || '—')}</td>
                 <td>${escapeHtml(r.product_category || '—')}</td>
-                <td><span class="ticket-id-badge">${escapeHtml(r.ticket_id || '—')}</span></td>
+                <td>${escapeHtml(r.hardware_details || '—')}</td>
                 <td>
                   <span class="status-pill ${statusClass}">
                     <i class="fa-solid fa-circle"></i> ${escapeHtml(rawStatus)}
                   </span>
                 </td>
                 <td class="actions-cell">
-                  <button class="btn-action-view" data-record-id="${escapeHtml(getRecordIdentifier(r))}" title="View Details">
+                  <button class="btn-action-view" data-record-id="${escapeHtml(getRecordIdentifier(r))}" data-department="${escapeHtml(deptVal)}" title="View Details">
                     <i class="fa-solid fa-eye"></i>
                   </button>
                   ${reopenBtn}
@@ -338,7 +357,10 @@ require_once __DIR__ . '/config/auth_check.php';
           // Bind view details buttons
           $('.btn-action-view').off('click').on('click', function() {
             const recordId = $(this).attr('data-record-id');
-            window.location.href = 'view-record.php?record_id=' + encodeURIComponent(recordId);
+            const dept = $(this).attr('data-department') || '';
+            let url = 'view-record.php?record_id=' + encodeURIComponent(recordId);
+            if (dept) url += '&department=' + encodeURIComponent(dept);
+            window.location.href = url;
           });
 
           // Draw pagination controls

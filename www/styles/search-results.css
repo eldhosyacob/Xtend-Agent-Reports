@@ -29,6 +29,78 @@
     --escalated-border: #fbcfe8;
 }
 
+[data-theme="dark"] {
+    --bg-dark: #0b0f19;
+    --card-bg: #151c2c;
+    --border-color: #27354a;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+
+    --success-bg: rgba(16, 185, 129, 0.15);
+    --success-text: #34d399;
+    --success-border: rgba(16, 185, 129, 0.3);
+
+    --pending-bg: rgba(239, 68, 68, 0.15);
+    --pending-text: #f87171;
+    --pending-border: rgba(239, 68, 68, 0.3);
+
+    --observation-bg: rgba(59, 130, 246, 0.15);
+    --observation-text: #60a5fa;
+    --observation-border: rgba(59, 130, 246, 0.3);
+
+    --escalated-bg: rgba(236, 72, 153, 0.15);
+    --escalated-text: #f472b6;
+    --escalated-border: rgba(236, 72, 153, 0.3);
+}
+
+[data-theme="dark"] .page-title-section h1 {
+    background: linear-gradient(135deg, #f1f5f9 30%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .custom-search-table tbody tr td {
+    background: #151c2c;
+    border-color: #27354a;
+    color: #f1f5f9;
+    box-shadow: none;
+}
+
+[data-theme="dark"] .custom-search-table tbody tr:hover td {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .record-id-badge {
+    background: #1e293b;
+    color: #cbd5e1;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .search-control {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .results-info-badge {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .results-view-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .results-view-btn.active {
+    background: #18ad9f;
+    color: #ffffff;
+    border-color: #18ad9f;
+}
+
 /* Page container styling */
 .search-results-page-container {
     background-color: var(--bg-dark);

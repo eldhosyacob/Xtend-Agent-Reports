@@ -70,6 +70,15 @@ require_once 'config/auth_check.php';
               </div>
             </div>
 
+            <!-- DEALER NAME -->
+            <div class="form-group col-6">
+              <label>Dealer Name</label>
+              <div class="form-control-wrapper">
+                <i class="fa-solid fa-user-tie input-icon"></i>
+                <input type="text" id="dealer_name" class="form-control" readonly>
+              </div>
+            </div>
+
             <!-- 5. LOCATION -->
             <div class="form-group col-6">
               <label>Location</label>
@@ -178,6 +187,15 @@ require_once 'config/auth_check.php';
               </div>
             </div>
 
+            <!-- PRODUCT MODEL -->
+            <div class="form-group col-6">
+              <label>Product Model</label>
+              <div class="form-control-wrapper">
+                <i class="fa-solid fa-box-open input-icon"></i>
+                <input type="text" id="product_model" class="form-control" readonly>
+              </div>
+            </div>
+
             <!-- 17. SOLUTION -->
             <div class="form-group col-12">
               <label>Solution</label>
@@ -214,6 +232,16 @@ require_once 'config/auth_check.php';
               </div>
             </div>
 
+            <!-- SUPPORT TIME HISTORY -->
+            <div class="form-group col-12 support-time-history-group" id="support-time-history-group">
+              <label>Support Time History</label>
+              <div class="support-time-history-container">
+                <div class="support-time-history-list" id="support-time-history-list">
+                  <!-- Dynamically populated -->
+                </div>
+              </div>
+            </div>
+
             <!-- SUPPORT STATUS -->
             <div class="form-group col-6">
               <label>Support Status</label>
@@ -221,14 +249,36 @@ require_once 'config/auth_check.php';
                 <i class="fa-solid fa-circle-info input-icon"></i>
                 <input type="text" id="support_status" class="form-control" readonly>
               </div>
+              <div class="status-history-btn-container">
+                <button type="button" id="btn-view-status-history" class="btn-view-status-history">
+                  <i class="fa-solid fa-clock-rotate-left"></i> View History
+                </button>
+              </div>
             </div>
 
-            <!-- REASON / TICKET ID -->
-            <div class="form-group col-6">
-              <label>Ticket ID / Reason</label>
+            <!-- REASON -->
+            <div class="form-group col-12">
+              <label>Reason</label>
               <div class="form-control-wrapper">
-                <i class="fa-solid fa-question input-icon"></i>
+                <i class="fa-solid fa-question input-icon" style="top: 18px;"></i>
+                <textarea id="reason" class="form-control" readonly></textarea>
+              </div>
+            </div>
+
+            <!-- TICKET ID -->
+            <div class="form-group col-12">
+              <label>Ticket Id</label>
+              <div class="form-control-wrapper">
+                <i class="fa-solid fa-ticket input-icon"></i>
                 <input type="text" id="ticket_id" class="form-control" readonly>
+              </div>
+            </div>
+
+            <!-- ATTACHMENTS (FILE DOWNLOAD) -->
+            <div class="form-group col-12 attachments-group">
+              <label>Uploaded Attachments</label>
+              <div class="attachments-list" id="attachments-list">
+                <!-- Dynamically populated -->
               </div>
             </div>
 
@@ -243,6 +293,28 @@ require_once 'config/auth_check.php';
       </div>
     </div>
 
+    <!-- Status History Modal Dialog Overlay -->
+    <div id="statusHistoryModal" class="status-history-modal-overlay">
+      <div class="status-history-modal-content">
+        <div class="status-history-modal-header">
+          <h2 class="status-history-modal-title">
+            <i class="fa-solid fa-clock-rotate-left"></i> Status Update History
+          </h2>
+          <button type="button" class="status-history-modal-close" id="btnCloseStatusModalX" aria-label="Close modal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="status-history-modal-body">
+          <div class="status-history-timeline" id="status-history-timeline">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+        <div class="status-history-modal-actions">
+          <button type="button" class="btn btn-secondary" id="btnCloseStatusModal">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Include Sidebar & Header Component -->
     <?php include 'components/header-sidebar.php'; ?>
 
@@ -250,7 +322,9 @@ require_once 'config/auth_check.php';
     <script>
       $(document).ready(function() {
         const urlParams = new URLSearchParams(window.location.search);
-        const recordId = urlParams.get('record_id') || '';
+        const recordId = urlParams.get('record_id') || urlParams.get('id') || '';
+        const department = urlParams.get('department') || urlParams.get('dept') || '';
+        let statusHistory = [];
 
         if (!recordId) {
           alert('Error: Record ID is required.');
@@ -263,10 +337,95 @@ require_once 'config/auth_check.php';
           history.back();
         });
 
+        function getStatusBadgeClass(status) {
+          const s = String(status).toLowerCase();
+          if (s.includes('closed')) return 'badge-closed';
+          if (s.includes('pending')) return 'badge-pending';
+          if (s.includes('observation')) return 'badge-under-observation';
+          if (s.includes('escalated')) return 'badge-escalated';
+          return 'badge-default';
+        }
+
+        function getTimelineItemClass(status) {
+          const s = String(status).toLowerCase();
+          if (s.includes('closed')) return 'status-closed';
+          if (s.includes('pending')) return 'status-pending';
+          if (s.includes('observation')) return 'status-under-observation';
+          if (s.includes('escalated')) return 'status-escalated';
+          return '';
+        }
+
+        function formatTimelineDate(dateStr) {
+          if (!dateStr) return '';
+          try {
+            const d = new Date(dateStr.replace(' ', 'T'));
+            if (isNaN(d.getTime())) return dateStr;
+            return d.toLocaleString('en-US', { 
+              month: 'short', 
+              day: 'numeric', 
+              year: 'numeric', 
+              hour: 'numeric', 
+              minute: '2-digit', 
+              hour12: true 
+            });
+          } catch (e) {
+            return dateStr;
+          }
+        }
+
+        // View status history click action
+        $('#btn-view-status-history').on('click', function() {
+          const timeline = $('#status-history-timeline');
+          timeline.empty();
+          
+          if (statusHistory.length === 0) {
+            timeline.append('<div class="timeline-empty">No status updates recorded for this case.</div>');
+          } else {
+            statusHistory.forEach(function(item, idx) {
+              const slNo = idx + 1;
+              const badgeClass = getStatusBadgeClass(item.support_status);
+              const timelineClass = getTimelineItemClass(item.support_status);
+              const formattedDate = formatTimelineDate(item.date);
+              const dateHtml = formattedDate ? `
+                <div class="timeline-time">
+                  <i class="fa-regular fa-calendar"></i> <span>${formattedDate}</span>
+                </div>
+              ` : '';
+              const html = `
+                <div class="timeline-item ${timelineClass}">
+                  <div class="timeline-marker"></div>
+                  <div class="timeline-content">
+                    <div class="timeline-header">
+                      <span class="timeline-sl-no">Sl No. ${slNo}</span>
+                      <span class="timeline-status-badge ${badgeClass}">${item.support_status}</span>
+                    </div>
+                    <div class="timeline-agent">Updated by: <strong>${item.agent}</strong></div>
+                    ${dateHtml}
+                  </div>
+                </div>
+              `;
+              timeline.append(html);
+            });
+          }
+          $('#statusHistoryModal').addClass('active');
+        });
+
+        // Close modal actions
+        $('#btnCloseStatusModal, #btnCloseStatusModalX').on('click', function() {
+          $('#statusHistoryModal').removeClass('active');
+        });
+
+        $('#statusHistoryModal').on('click', function(e) {
+          if ($(e.target).is('#statusHistoryModal')) {
+            $(this).removeClass('active');
+          }
+        });
+
         // Fetch details from the API
-        $.getJSON('api/fetch-record-details.php', { record_id: recordId }, function(res) {
+        $.getJSON('api/fetch-record-details.php', { record_id: recordId, department: department }, function(res) {
           if (res.success && res.data) {
             const data = res.data;
+            statusHistory = data.status_history || [];
             
             function valOrDash(val) {
               if (val === null || val === undefined) return '—';
@@ -280,6 +439,7 @@ require_once 'config/auth_check.php';
             $('#agent').val(valOrDash(data.agent));
             $('#department').val(valOrDash(data.department));
             $('#company_name').val(valOrDash(data.company_name));
+            $('#dealer_name').val(valOrDash(data.dealer_name));
             $('#location').val(valOrDash(data.location));
             $('#region').val(valOrDash(data.region));
             $('#email').val(valOrDash(data.email));
@@ -292,12 +452,90 @@ require_once 'config/auth_check.php';
             $('#support_category').val(valOrDash(data.support_category));
             $('#software_details').val(valOrDash(data.software_details));
             $('#hardware_details').val(valOrDash(data.hardware_details));
+            $('#product_model').val(valOrDash(data.product_model));
             $('#solution').val(valOrDash(data.solution));
             $('#support_start_time').val(valOrDash(data.support_start_time));
             $('#support_end_time').val(valOrDash(data.support_end_time));
             $('#total_time').val(valOrDash(data.total_time));
             $('#support_status').val(valOrDash(data.support_status));
+            $('#reason').val(valOrDash(data.reason));
             $('#ticket_id').val(valOrDash(data.ticket_id));
+
+            // Populate Support Time History
+            const historyList = $('#support-time-history-list');
+            historyList.empty();
+            if (data.time_history && data.time_history.length > 0) {
+              $('#support-time-history-group').show();
+              data.time_history.forEach(function(item, idx) {
+                let durationStr = '';
+                if (item.support_start_time && item.support_end_time) {
+                  const startParts = item.support_start_time.split(':');
+                  const endParts = item.support_end_time.split(':');
+                  const startSecs = parseInt(startParts[0] || 0)*3600 + parseInt(startParts[1] || 0)*60 + parseInt(startParts[2] || 0);
+                  const endSecs = parseInt(endParts[0] || 0)*3600 + parseInt(endParts[1] || 0)*60 + parseInt(endParts[2] || 0);
+                  let diffSecs = endSecs - startSecs;
+                  if (diffSecs < 0) diffSecs += 24*3600; // handle cross-midnight
+                  
+                  const hrs = Math.floor(diffSecs / 3600);
+                  const mins = Math.floor((diffSecs % 3600) / 60);
+                  const secs = diffSecs % 60;
+                  
+                  const parts = [];
+                  if (hrs > 0) parts.push(hrs + ' hr' + (hrs > 1 ? 's' : ''));
+                  if (mins > 0) parts.push(mins + ' min' + (mins > 1 ? 's' : ''));
+                  if (secs > 0 || parts.length === 0) parts.push(secs + ' sec' + (secs > 1 ? 's' : ''));
+                  durationStr = parts.join(' ');
+                }
+                
+                const html = `
+                  <div class="history-item">
+                    <div class="history-item-times">
+                      <i class="fa-regular fa-clock"></i>
+                      <span>Session ${idx + 1}: <strong>${item.support_start_time}</strong> &mdash; <strong>${item.support_end_time}</strong></span>
+                    </div>
+                    ${durationStr ? `<div class="history-item-duration">${durationStr}</div>` : ''}
+                  </div>
+                `;
+                historyList.append(html);
+              });
+            } else {
+              $('#support-time-history-group').hide();
+            }
+
+            // Populate Uploaded Attachments
+            const attachmentsList = $('#attachments-list');
+            attachmentsList.empty();
+            if (data.attachments && data.attachments.length > 0) {
+              data.attachments.forEach(function(att) {
+                const ext = att.name.split('.').pop().toLowerCase();
+                let iconClass = 'fa-regular fa-file';
+                if (['pdf'].includes(ext)) iconClass = 'fa-regular fa-file-pdf';
+                else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) iconClass = 'fa-regular fa-file-image';
+                else if (['csv', 'xls', 'xlsx'].includes(ext)) iconClass = 'fa-regular fa-file-excel';
+                else if (['doc', 'docx'].includes(ext)) iconClass = 'fa-regular fa-file-word';
+                else if (['zip', 'rar', '7z'].includes(ext)) iconClass = 'fa-regular fa-file-zipper';
+
+                const html = `
+                  <div class="attachment-card">
+                    <div class="attachment-info">
+                      <div class="attachment-icon">
+                        <i class="${iconClass}"></i>
+                      </div>
+                      <div class="attachment-details">
+                        <span class="attachment-name">${att.name}</span>
+                        <span class="attachment-meta">${att.size}</span>
+                      </div>
+                    </div>
+                    <a href="${att.url}" download class="btn-download-file">
+                      <i class="fa-solid fa-download"></i> Download
+                    </a>
+                  </div>
+                `;
+                attachmentsList.append(html);
+              });
+            } else {
+              attachmentsList.append('<div class="no-attachments-text">No files uploaded for this record.</div>');
+            }
 
             // Set badge
             const isIvr = String(data.department).toLowerCase() === 'ivr';

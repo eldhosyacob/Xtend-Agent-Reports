@@ -41,6 +41,7 @@ if (!empty($user_id)) {
     }
 }
 ?>
+<script src="js/theme.js"></script>
 
 <!-- Header -->
 <header class="header-container">
@@ -57,6 +58,10 @@ if (!empty($user_id)) {
   </div>
 
   <div class="header-right">
+    <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle dark mode" title="Toggle Theme">
+      <i class="fa-solid fa-moon theme-icon-moon"></i>
+      <i class="fa-solid fa-sun theme-icon-sun"></i>
+    </button>
     <div class="header-datetime" id="headerDateTime">
       <div class="datetime-icon-wrapper">
         <i class="fa-regular fa-clock"></i>
@@ -118,37 +123,37 @@ if (!empty($user_id)) {
                 d="M8 3.293l6 6V13.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 13.5V9.293l6-6zm5-.793V1.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293l-2-2z" />
             </svg> -->
             <i class="fa-solid fa-house"></i>
-            <span>Dashboard</span>
+            <span style="font-weight:700;">Dashboard</span>
           </a>
         </li>
         <li class="sidebar-menu-item <?php echo ($current_page == 'new-record') ? 'active' : ''; ?>">
           <a href="#" onclick="showNewRecordConfirmModal(); return false;" class="sidebar-link">
             <i class="fa-solid fa-square-plus"></i>
-            <span>Add New Record</span>
+            <span style="font-weight:700;">Add New Record</span>
           </a>
         </li>
-        <!-- <li class="sidebar-menu-item <?php echo ($current_page == 'upload-record') ? 'active' : ''; ?>">
-          <a href="upload-record.php" class="sidebar-link">
+        <li class="sidebar-menu-item <?php echo ($current_page == 'add-miscellaneous') ? 'active' : ''; ?>">
+          <a href="add-miscellaneous.php" class="sidebar-link">
             <i class="fa-solid fa-file-arrow-up"></i>
-            <span>Upload Record</span>
+            <span style="font-weight:700;">Add Miscellaneous</span>
           </a>
-        </li> -->
+        </li>
         <li class="sidebar-menu-item <?php echo ($current_page == 'my-records') ? 'active' : ''; ?>">
           <a href="my-records.php" class="sidebar-link">
             <i class="fa-solid fa-file-lines"></i>
-            <span>My Records</span>
+            <span style="font-weight:700;">My Records</span>
           </a>
         </li>
         <li class="sidebar-menu-item <?php echo ($current_page == 'search') ? 'active' : ''; ?>">
           <a href="search.php" class="sidebar-link">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <span>Search</span>
+            <span style="font-weight:700;">Search</span>
           </a>
         </li>
         <li class="sidebar-menu-item <?php echo ($current_page == 'user-profile') ? 'active' : ''; ?>">
           <a href="user-profile.php" class="sidebar-link">
             <i class="fa-solid fa-user-shield"></i>
-            <span>Profile</span>
+            <span style="font-weight:700;">Profile</span>
           </a>
         </li>
 
@@ -156,7 +161,7 @@ if (!empty($user_id)) {
         <li class="sidebar-menu-item <?php echo ($current_page == 'user-accounts') ? 'active' : ''; ?>">
           <a href="user-accounts.php" class="sidebar-link">
             <i class="fa-solid fa-users-line"></i>
-            <span>Accounts</span>
+            <span style="font-weight:700;">Accounts</span>
           </a>
         </li>
         <?php endif; ?>
@@ -169,7 +174,7 @@ if (!empty($user_id)) {
                 d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z" />
             </svg> -->
             <i class="fa-solid fa-right-from-bracket"></i>
-            <span>Logout</span>
+            <span style="font-weight:700;">Logout</span>
           </a>
         </li>
       </ul>
@@ -221,21 +226,46 @@ if (!empty($user_id)) {
       <!-- Body Content Section -->
       <div class="confirm-modal-body-section">
         <h2 class="confirm-title">Create New Record</h2>
-        <p class="confirm-description">Enter The Company Name and Click <span style="color: red;">Proceed</span> To Continue</p>
+        <p class="confirm-description">Enter Company Name or Dealer Name and Click <span style="color: red;">Proceed</span> To Continue</p>
         
         <!-- Company Name Selection Field -->
         <div class="confirm-form-group">
           <label for="modal_company_name">Company Name</label>
           <div class="form-control-wrapper autocomplete-wrapper">
             <i class="fa-regular fa-building input-icon"></i>
-            <input type="text" id="modal_company_name" name="company_name" class="form-control" placeholder="Enter company / client name" autocomplete="off" required>
+            <input type="text" id="modal_company_name" name="company_name" class="form-control" placeholder="Enter company / client name" autocomplete="off">
             <div class="autocomplete-suggestions" id="modalCompanySuggestions"></div>
+          </div>
+        </div>
+
+        <!-- Dealer Name Selection Field -->
+        <div class="confirm-form-group" style="margin-top: 15px;">
+          <label for="modal_dealer_name">Dealer Name</label>
+          <div class="form-control-wrapper autocomplete-wrapper">
+            <i class="fa-solid fa-user-tie input-icon"></i>
+            <input type="text" id="modal_dealer_name" name="dealer_name" class="form-control" placeholder="Enter dealer name" autocomplete="off">
+            <div class="autocomplete-suggestions" id="modalDealerSuggestions"></div>
           </div>
           <div id="addCompanyCheckboxContainer" class="add-company-checkbox-wrapper">
             <input type="checkbox" id="add_to_company_list" name="add_to_company_list">
             <label for="add_to_company_list">Add to company list</label>
           </div>
         </div>
+
+        <?php if (strcasecmp($user_department, 'Manager') === 0): ?>
+        <!-- Department Selection Field for Manager -->
+        <div class="confirm-form-group" style="margin-top: 15px;">
+          <label for="modal_department">Department</label>
+          <div class="form-control-wrapper">
+            <i class="fa-solid fa-sitemap input-icon"></i>
+            <select id="modal_department" name="department" class="form-control" style="padding-left: 42px;" required>
+              <option value="" disabled selected>Select Department</option>
+              <option value="Voice Logger">Voice Logger</option>
+              <option value="IVR">IVR</option>
+            </select>
+          </div>
+        </div>
+        <?php endif; ?>
 
         <div class="confirm-actions">
           <button type="button" class="btn btn-secondary" onclick="hideNewRecordConfirmModal()">
@@ -372,8 +402,10 @@ if (!empty($user_id)) {
     $(document).on('click', '.btn-action-reopen', function(e) {
       e.preventDefault();
       const recordId = $(this).attr('data-record-id');
-      const companyName = $(this).attr('data-company-name');
-      showReopenConfirmModal(recordId, companyName);
+      const companyName = ($(this).attr('data-company-name') || '').trim();
+      const dealerName = ($(this).attr('data-dealer-name') || '').trim();
+      const displayName = companyName !== '' ? companyName : (dealerName !== '' ? dealerName : '');
+      showReopenConfirmModal(recordId, displayName);
     });
 
     // Search functionality
@@ -419,9 +451,14 @@ if (!empty($user_id)) {
     $('#newRecordConfirmModal').fadeIn(200);
     // Focus and clear input
     $('#modal_company_name').val('').focus();
+    $('#modal_dealer_name').val('');
     $('#modalCompanySuggestions').empty().hide();
+    $('#modalDealerSuggestions').empty().hide();
     $('#addCompanyCheckboxContainer').hide();
     $('#add_to_company_list').prop('checked', false);
+    if ($('#modal_department').length) {
+      $('#modal_department').val('');
+    }
     modalCurrentFocus = -1;
 
     // Load clients if not already loaded
@@ -458,16 +495,20 @@ if (!empty($user_id)) {
     reopenRecordId = null;
   }
 
-  function checkCompanyExists(val) {
-    const cleanVal = val.trim();
-    if (!cleanVal || !modalClientList) {
+  function checkCompanyExists() {
+    const compVal = $('#modal_company_name').val().trim();
+    const dealerVal = $('#modal_dealer_name').val().trim();
+
+    if (!modalClientList) {
       $('#addCompanyCheckboxContainer').hide();
       $('#add_to_company_list').prop('checked', false);
       return;
     }
-    
-    const exists = modalClientList.some(client => client.toLowerCase() === cleanVal.toLowerCase());
-    if (!exists) {
+
+    const compExists = !compVal || modalClientList.some(client => client.toLowerCase() === compVal.toLowerCase());
+    const dealerExists = !dealerVal || modalClientList.some(client => client.toLowerCase() === dealerVal.toLowerCase());
+
+    if ((compVal && !compExists) || (dealerVal && !dealerExists)) {
       $('#addCompanyCheckboxContainer').css('display', 'flex');
     } else {
       $('#addCompanyCheckboxContainer').hide();
@@ -476,64 +517,71 @@ if (!empty($user_id)) {
   }
 
   function initModalAutocomplete() {
-    const $input = $('#modal_company_name');
-    const $suggestions = $('#modalCompanySuggestions');
+    const fields = [
+      { $input: $('#modal_company_name'), $suggestions: $('#modalCompanySuggestions') },
+      { $input: $('#modal_dealer_name'), $suggestions: $('#modalDealerSuggestions') }
+    ];
 
-    $input.on('input', function() {
-      const val = this.value.trim().toLowerCase();
-      $suggestions.empty().hide();
-      modalCurrentFocus = -1;
+    fields.forEach(f => {
+      const $input = f.$input;
+      const $suggestions = f.$suggestions;
 
-      checkCompanyExists(this.value);
-
-      if (!val || !modalClientList) return;
-
-      // Filter matches (case-insensitive, max 10 results)
-      const matches = modalClientList.filter(client => client.toLowerCase().includes(val)).slice(0, 10);
-
-      if (matches.length > 0) {
-        matches.forEach((match, index) => {
-          const $suggestion = $('<div class="autocomplete-suggestion"></div>')
-            .text(match)
-            .attr('data-index', index)
-            .on('click', function() {
-              $input.val(match);
-              $suggestions.empty().hide();
-              checkCompanyExists(match);
-            });
-          $suggestions.append($suggestion);
-        });
-        $suggestions.show();
-      }
-    });
-
-    // Keyboard navigation helper
-    $input.on('keydown', function(e) {
-      const $items = $suggestions.find('.autocomplete-suggestion');
-      if (!$items.length) return;
-
-      if (e.keyCode === 40) { // Arrow Down
-        modalCurrentFocus++;
-        setModalActive($items);
-        e.preventDefault();
-      } else if (e.keyCode === 38) { // Arrow Up
-        modalCurrentFocus--;
-        setModalActive($items);
-        e.preventDefault();
-      } else if (e.keyCode === 13) { // Enter
-        if (modalCurrentFocus > -1) {
-          if ($items.eq(modalCurrentFocus).length) {
-            $items.eq(modalCurrentFocus).trigger('click');
-            e.preventDefault();
-          }
-        }
-      } else if (e.keyCode === 27) { // Escape
+      $input.on('input', function() {
+        const val = this.value.trim().toLowerCase();
         $suggestions.empty().hide();
         modalCurrentFocus = -1;
-      }
+
+        checkCompanyExists();
+
+        if (!val || !modalClientList) return;
+
+        // Filter matches (case-insensitive, max 10 results)
+        const matches = modalClientList.filter(client => client.toLowerCase().includes(val)).slice(0, 10);
+
+        if (matches.length > 0) {
+          matches.forEach((match, index) => {
+            const $suggestion = $('<div class="autocomplete-suggestion"></div>')
+              .text(match)
+              .attr('data-index', index)
+              .on('click', function() {
+                $input.val(match);
+                $suggestions.empty().hide();
+                checkCompanyExists();
+              });
+            $suggestions.append($suggestion);
+          });
+          $suggestions.show();
+        }
+      });
+
+      // Keyboard navigation helper
+      $input.on('keydown', function(e) {
+        const $items = $suggestions.find('.autocomplete-suggestion');
+        if (!$items.length) return;
+
+        if (e.keyCode === 40) { // Arrow Down
+          modalCurrentFocus++;
+          setModalActive($items, $suggestions);
+          e.preventDefault();
+        } else if (e.keyCode === 38) { // Arrow Up
+          modalCurrentFocus--;
+          setModalActive($items, $suggestions);
+          e.preventDefault();
+        } else if (e.keyCode === 13) { // Enter
+          if (modalCurrentFocus > -1) {
+            if ($items.eq(modalCurrentFocus).length) {
+              $items.eq(modalCurrentFocus).trigger('click');
+              e.preventDefault();
+            }
+          }
+        } else if (e.keyCode === 27) { // Escape
+          $suggestions.empty().hide();
+          modalCurrentFocus = -1;
+        }
+      });
     });
 
-    function setModalActive($items) {
+    function setModalActive($items, $suggestions) {
       $items.removeClass('active');
       if (modalCurrentFocus >= $items.length) modalCurrentFocus = 0;
       if (modalCurrentFocus < 0) modalCurrentFocus = $items.length - 1;
@@ -554,8 +602,8 @@ if (!empty($user_id)) {
 
     // Dismiss suggestions when clicking outside
     $(document).on('click', function(e) {
-      if (!$(e.target).closest('#modal_company_name').parent().length) {
-        $suggestions.empty().hide();
+      if (!$(e.target).closest('.autocomplete-wrapper').length) {
+        $('#modalCompanySuggestions, #modalDealerSuggestions').empty().hide();
         modalCurrentFocus = -1;
       }
     });
@@ -563,10 +611,21 @@ if (!empty($user_id)) {
 
   function proceedToNewRecord() {
     const companyName = $('#modal_company_name').val().trim();
-    if (!companyName) {
-      alert('Please enter or select a Company Name.');
+    const dealerName = $('#modal_dealer_name').val().trim();
+    if (!companyName && !dealerName) {
+      alert('Please enter either a Company Name or a Dealer Name (or both).');
       $('#modal_company_name').focus();
       return;
+    }
+
+    let department = '';
+    if ($('#modal_department').length) {
+      department = $('#modal_department').val();
+      if (!department) {
+        alert('Please select a Department.');
+        $('#modal_department').focus();
+        return;
+      }
     }
 
     const $btn = $('#newRecordConfirmModal .btn-primary');
@@ -575,33 +634,47 @@ if (!empty($user_id)) {
 
     const addToCompanyList = $('#add_to_company_list').is(':checked') ? 1 : 0;
 
+    const queryData = { company_name: companyName, dealer_name: dealerName };
+    if (department) {
+      queryData.department = department;
+    }
+
     $.ajax({
       url: 'api/fetch-pending-records.php',
       type: 'GET',
-      data: { company_name: companyName },
+      data: queryData,
       dataType: 'json',
       success: function(response) {
         if (response.success && response.count > 0) {
-          window.location.href = 'view-pending-records.php?company_name=' + encodeURIComponent(companyName) + '&add_to_company_list=' + addToCompanyList;
+          let redirectUrl = 'view-pending-records.php?company_name=' + encodeURIComponent(companyName) + '&dealer_name=' + encodeURIComponent(dealerName) + '&add_to_company_list=' + addToCompanyList;
+          if (department) {
+            redirectUrl += '&department=' + encodeURIComponent(department);
+          }
+          window.location.href = redirectUrl;
         } else {
-          createPendingRecordDirectly(companyName, addToCompanyList, $btn, originalHtml);
+          createPendingRecordDirectly(companyName, dealerName, addToCompanyList, $btn, originalHtml, department);
         }
       },
       error: function() {
-        createPendingRecordDirectly(companyName, addToCompanyList, $btn, originalHtml);
+        createPendingRecordDirectly(companyName, dealerName, addToCompanyList, $btn, originalHtml, department);
       }
     });
   }
 
-  function createPendingRecordDirectly(companyName, addToCompanyList, $btn, originalHtml) {
+  function createPendingRecordDirectly(companyName, dealerName, addToCompanyList, $btn, originalHtml, department) {
     $btn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Creating...');
+    const postData = { 
+      company_name: companyName,
+      dealer_name: dealerName,
+      add_to_company_list: addToCompanyList
+    };
+    if (department) {
+      postData.department = department;
+    }
     $.ajax({
       url: 'api/create-pending-record.php',
       type: 'POST',
-      data: { 
-        company_name: companyName,
-        add_to_company_list: addToCompanyList
-      },
+      data: postData,
       dataType: 'json',
       success: function(response) {
         if (response.success) {

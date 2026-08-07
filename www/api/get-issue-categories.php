@@ -26,8 +26,15 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
-$odsFile = dirname(__DIR__, 2) . '/uploads/IssueCategory/IssueCategory.ods';
-$cacheFile = dirname(__DIR__, 2) . '/cache/issue_categories.json';
+$isIvr = isset($_SESSION['department']) && strtolower($_SESSION['department']) === 'ivr';
+
+if ($isIvr) {
+    $odsFile = dirname(__DIR__, 2) . '/uploads/IssueCategory/IssueCategoryIVR.ods';
+    $cacheFile = dirname(__DIR__, 2) . '/cache/issue_categories_ivr.json';
+} else {
+    $odsFile = dirname(__DIR__, 2) . '/uploads/IssueCategory/IssueCategory.ods';
+    $cacheFile = dirname(__DIR__, 2) . '/cache/issue_categories.json';
+}
 
 $categoryMap = [];
 $cacheValid = false;

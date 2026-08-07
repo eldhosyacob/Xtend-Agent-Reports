@@ -48,12 +48,13 @@ if (!$user) {
 
 $user_department = trim($user['department']);
 
-// Determine the table based on user's department
-$tableName = '';
+$tables_to_query = [];
 if (strcasecmp($user_department, 'Voice Logger') === 0) {
-    $tableName = 'support_details';
+    $tables_to_query = ['support_details'];
+} elseif (strcasecmp($user_department, 'IVR') === 0) {
+    $tables_to_query = ['ivr_details'];
 } else {
-    $tableName = 'ivr_details';
+    $tables_to_query = ['support_details', 'ivr_details'];
 }
 
 // Fetch records for the current logged-in agent with optional date range filter
@@ -71,40 +72,68 @@ if ($range === 'week') {
     $dateCondition = "`date` >= DATE_FORMAT(CURDATE(), '%Y-%m-01')";
 }
 
-$query = "SELECT * FROM `$tableName` WHERE $dateCondition AND UPPER(`agent`) = :agent ORDER BY `id` DESC";
-$stmt = $db->prepare($query);
-$stmt->execute(['agent' => $agentUsername]);
-$records = $stmt->fetchAll();
+$records = [];
+foreach ($tables_to_query as $tableName) {
+    $query = "SELECT * FROM `$tableName` WHERE $dateCondition AND UPPER(`agent`) = :agent ORDER BY `id` DESC";
+    $stmt = $db->prepare($query);
+    $stmt->execute(['agent' => $agentUsername]);
+    $tableRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Find the max ID for each case_id in this table
-$case_ids = array_unique(array_filter(array_column($records, 'case_id')));
-$max_ids = [];
-if (!empty($case_ids)) {
-    $placeholders = [];
-    $params_max = [];
-    foreach ($case_ids as $index => $cid) {
-        $key = "cid_" . $index;
-        $placeholders[] = ":" . $key;
-        $params_max[$key] = $cid;
+    $case_ids = array_unique(array_filter(array_column($tableRecords, 'case_id')));
+    $max_ids = [];
+    if (!empty($case_ids)) {
+        $placeholders = [];
+        $params_max = [];
+        foreach ($case_ids as $index => $cid) {
+            $key = "cid_" . $index;
+            $placeholders[] = ":" . $key;
+            $params_max[$key] = $cid;
+        }
+        $in_clause = implode(',', $placeholders);
+        $maxStmt = $db->prepare("SELECT case_id, MAX(id) as max_id FROM `$tableName` WHERE case_id IN ($in_clause) GROUP BY case_id");
+        $maxStmt->execute($params_max);
+        $max_ids = $maxStmt->fetchAll(PDO::FETCH_KEY_PAIR);
     }
-    $in_clause = implode(',', $placeholders);
-    $maxStmt = $db->prepare("SELECT case_id, MAX(id) as max_id FROM `$tableName` WHERE case_id IN ($in_clause) GROUP BY case_id");
-    $maxStmt->execute($params_max);
-    $max_ids = $maxStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    foreach ($tableRecords as &$rec) {
+        $cid = $rec['case_id'];
+        $rec['is_latest'] = isset($max_ids[$cid]) ? ($rec['id'] == $max_ids[$cid]) : true;
+        $rec['record_department'] = ($tableName === 'support_details') ? 'Voice Logger' : 'IVR';
+        $records[] = $rec;
+    }
+    unset($rec);
 }
 
-foreach ($records as &$record) {
-    $cid = $record['case_id'];
-    $record['is_latest'] = isset($max_ids[$cid]) ? ($record['id'] == $max_ids[$cid]) : true;
+// Sort all combined records by date and id DESC
+usort($records, function($a, $b) {
+    if ($a['date'] === $b['date']) {
+        return (int)$b['id'] - (int)$a['id'];
+    }
+    return strcmp($b['date'], $a['date']);
+});
+
+$totalSeconds = 0;
+foreach ($records as $rec) {
+    if (!empty($rec['total_time'])) {
+        $parts = explode(':', $rec['total_time']);
+        if (count($parts) === 3) {
+            $totalSeconds += ((int)$parts[0] * 3600) + ((int)$parts[1] * 60) + (int)$parts[2];
+        } elseif (count($parts) === 2) {
+            $totalSeconds += ((int)$parts[0] * 60) + (int)$parts[1];
+        }
+    }
 }
-unset($record);
+$tH = floor($totalSeconds / 3600);
+$tM = floor(($totalSeconds % 3600) / 60);
+$tS = $totalSeconds % 60;
+$totalSupportTime = sprintf('%02d:%02d:%02d', $tH, $tM, $tS);
 
 echo json_encode([
     'success' => true,
     'count' => count($records),
     'department' => $user_department,
-    'table' => $tableName,
     'range' => $range,
+    'total_support_time' => $totalSupportTime,
     'data' => $records
 ]);
 ?>

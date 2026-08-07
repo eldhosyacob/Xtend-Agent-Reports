@@ -29,14 +29,17 @@ if (empty($user_department)) {
 }
 $is_manager = ($user_department === 'manager');
 
-// Fetch list of agents from users table
+// Fetch list of agents from users table (filtered by department for non-managers)
 $agents = [];
-try {
-    $stmt = $db->prepare("SELECT DISTINCT real_name FROM users WHERE real_name IS NOT NULL AND TRIM(real_name) != '' ORDER BY real_name ASC");
-    $stmt->execute();
-    $agents = $stmt->fetchAll(PDO::FETCH_COLUMN);
-} catch (PDOException $e) {
-    error_log("Failed to fetch agents list: " . $e->getMessage());
+if (!$is_manager && !empty($user_department)) {
+    try {
+        $normalized_user_dept = strtolower(str_replace('_', ' ', $user_department));
+        $stmt = $db->prepare("SELECT DISTINCT real_name FROM users WHERE (LOWER(REPLACE(department, '_', ' ')) = :dept OR LOWER(REPLACE(department, '_', ' ')) = 'manager') AND real_name IS NOT NULL AND TRIM(real_name) != '' ORDER BY real_name ASC");
+        $stmt->execute(['dept' => $normalized_user_dept]);
+        $agents = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        error_log("Failed to fetch agents list: " . $e->getMessage());
+    }
 }
 
 
@@ -49,6 +52,86 @@ if ($db) {
         $clients = $stmt->fetchAll(PDO::FETCH_COLUMN);
     } catch (PDOException $e) {
         error_log("Failed to fetch clients list from DB: " . $e->getMessage());
+    }
+}
+
+// Fetch IVR Product Categories if user belongs to IVR department
+$ivrProducts = [];
+if (isset($user_department) && strtolower($user_department) === 'ivr') {
+    $prodCacheFile = dirname(__DIR__, 1) . '/cache/product_categories_ivr.json';
+    $prodOdsFile = dirname(__DIR__, 1) . '/uploads/IssueCategory/ProductCategoryIVR.ods';
+    
+    if (file_exists($prodCacheFile) && file_exists($prodOdsFile) && filemtime($prodOdsFile) === filemtime($prodCacheFile)) {
+        $ivrProducts = json_decode(file_get_contents($prodCacheFile), true);
+    }
+    
+    if (empty($ivrProducts) && file_exists($prodOdsFile)) {
+        try {
+            require_once __DIR__ . '/vendor/autoload.php';
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($prodOdsFile);
+            $worksheet = $spreadsheet->getActiveSheet();
+            $highestRow = $worksheet->getHighestRow();
+            for ($row = 1; $row <= $highestRow; $row++) {
+                $val = $worksheet->getCell([1, $row])->getValue();
+                if ($val !== null && trim((string)$val) !== '') {
+                    $ivrProducts[] = trim((string)$val);
+                }
+            }
+            $ivrProducts = array_values(array_unique($ivrProducts));
+            
+            // Cache it
+            $cacheDir = dirname($prodCacheFile);
+            if (!is_dir($cacheDir)) {
+                mkdir($cacheDir, 0755, true);
+            }
+            file_put_contents($prodCacheFile, json_encode($ivrProducts, JSON_UNESCAPED_UNICODE));
+            touch($prodCacheFile, filemtime($prodOdsFile));
+        } catch (Exception $e) {
+            // Fail silently
+        }
+    }
+}
+
+// Fetch IVR Issue Categories if user belongs to IVR department
+$ivrIssues = [];
+if (isset($user_department) && strtolower($user_department) === 'ivr') {
+    $ivrCacheFile = dirname(__DIR__, 1) . '/cache/issue_categories_ivr.json';
+    if (file_exists($ivrCacheFile)) {
+        $ivrCacheData = json_decode(file_get_contents($ivrCacheFile), true);
+        if (is_array($ivrCacheData) && isset($ivrCacheData['categories'])) {
+            foreach ($ivrCacheData['categories'] as $cat) {
+                if (isset($cat['issues']) && is_array($cat['issues'])) {
+                    $ivrIssues = array_merge($ivrIssues, $cat['issues']);
+                }
+            }
+            $ivrIssues = array_values(array_unique($ivrIssues));
+        }
+    }
+    
+    if (empty($ivrIssues)) {
+        $ivrOdsFile = dirname(__DIR__, 1) . '/uploads/IssueCategory/IssueCategoryIVR.ods';
+        if (file_exists($ivrOdsFile)) {
+            try {
+                require_once __DIR__ . '/vendor/autoload.php';
+                $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($ivrOdsFile);
+                $worksheet = $spreadsheet->getActiveSheet();
+                $highestRow = $worksheet->getHighestRow();
+                $highestColumn = $worksheet->getHighestColumn();
+                $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
+                
+                for ($col = 1; $col <= $highestColumnIndex; $col++) {
+                    for ($row = 2; $row <= $highestRow; $row++) {
+                        $val = $worksheet->getCell([$col, $row])->getValue();
+                        if ($val !== null && trim((string)$val) !== '') {
+                            $ivrIssues[] = trim((string)$val);
+                        }
+                    }
+                }
+                $ivrIssues = array_values(array_unique($ivrIssues));
+            } catch (Exception $e) {
+                // Fail silently
+            }
+        }
     }
 }
 ?>
@@ -87,6 +170,7 @@ if ($db) {
                           <option value="" selected>-- Select Department --</option>
                           <option value="ivr">IVR</option>
                           <option value="voice_logger">Voice Logger</option>
+                          <option value="manager">Manager</option>
                           </select>
                         </div>
                       </div>
@@ -163,21 +247,27 @@ if ($db) {
                             <i class="fa-solid fa-cubes input-icon"></i>
                             <select id="product_category" name="product_category" class="form-control">
                                 <option value="" selected>-- Select Product Category --</option>
-                                <option value="ANALOG_LOGGER">ANALOG_LOGGER</option>
-                                <option value="PRI_LOGGER">PRI_LOGGER</option>
-                                <option value="DIGITAL_EXTENSION">DIGITAL_EXTENSION</option>
-                                <option value="IP_LOGGER">IP_LOGGER</option>
-                                <option value="XTEND_SMARTLOG">XTEND_SMARTLOG</option>
-                                <option value="CALLBILLING">CALLBILLING</option>
-                                <option value="CMS_HO">CMS_HO</option>
-                                <option value="IVR_GATEWAY">IVR_GATEWAY</option>
-                                <option value="STANDALONE_LOGGER">STANDALONE_LOGGER</option>
-                                <option value="ACTIVE_LOGGER">ACTIVE_LOGGER</option>
-                                <option value="XTEND_ONCALL">XTEND_ONCALL</option>
-                                <option value="XTEND_VX">XTEND_VX</option>
-                                <option value="XTEND_SX2">XTEND_SX2</option>
-                                <option value="XTEND_SX">XTEND_SX</option>
-                                <option value="LINUX_STANDALONE">LINUX_STANDALONE</option>
+                                <?php if (isset($user_department) && strtolower($user_department) === 'ivr'): ?>
+                                    <?php foreach ($ivrProducts as $prod): ?>
+                                        <option value="<?php echo htmlspecialchars($prod); ?>"><?php echo htmlspecialchars($prod); ?></option>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <option value="ANALOG_LOGGER">ANALOG_LOGGER</option>
+                                    <option value="PRI_LOGGER">PRI_LOGGER</option>
+                                    <option value="DIGITAL_EXTENSION">DIGITAL_EXTENSION</option>
+                                    <option value="IP_LOGGER">IP_LOGGER</option>
+                                    <option value="XTEND_SMARTLOG">XTEND_SMARTLOG</option>
+                                    <option value="CALLBILLING">CALLBILLING</option>
+                                    <option value="CMS_HO">CMS_HO</option>
+                                    <option value="IVR_GATEWAY">IVR_GATEWAY</option>
+                                    <option value="STANDALONE_LOGGER">STANDALONE_LOGGER</option>
+                                    <option value="ACTIVE_LOGGER">ACTIVE_LOGGER</option>
+                                    <option value="XTEND_ONCALL">XTEND_ONCALL</option>
+                                    <option value="XTEND_VX">XTEND_VX</option>
+                                    <option value="XTEND_SX2">XTEND_SX2</option>
+                                    <option value="XTEND_SX">XTEND_SX</option>
+                                    <option value="LINUX_STANDALONE">LINUX_STANDALONE</option>
+                                <?php endif; ?>
                             </select>
                         </div>
                     </div>
@@ -185,11 +275,23 @@ if ($db) {
                     <!-- 9. ISSUE CATEGORY -->
                     <div class="form-group col-4">
                         <label for="issue_category">Issue Category</label>
-                        <div class="form-control-wrapper autocomplete-wrapper">
-                            <i class="fa-solid fa-tags input-icon"></i>
-                            <input type="text" id="issue_category" name="issue_category" class="form-control" placeholder="Select Product Category first" autocomplete="off" disabled>
-                            <div class="autocomplete-suggestions" id="issueCategorySuggestions"></div>
-                        </div>
+                        <?php if (isset($user_department) && strtolower($user_department) === 'ivr'): ?>
+                            <div class="form-control-wrapper select-wrapper">
+                                <i class="fa-solid fa-tags input-icon"></i>
+                                <select id="issue_category" name="issue_category" class="form-control">
+                                    <option value="" selected>-- Select Issue Category --</option>
+                                    <?php foreach ($ivrIssues as $issue): ?>
+                                        <option value="<?php echo htmlspecialchars($issue); ?>"><?php echo htmlspecialchars($issue); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php else: ?>
+                            <div class="form-control-wrapper autocomplete-wrapper">
+                                <i class="fa-solid fa-tags input-icon"></i>
+                                <input type="text" id="issue_category" name="issue_category" class="form-control" placeholder="Select Product Category first" autocomplete="off" disabled>
+                                <div class="autocomplete-suggestions" id="issueCategorySuggestions"></div>
+                            </div>
+                        <?php endif; ?>
                     </div>
 
                     <!-- 10. STATUS -->
@@ -246,6 +348,29 @@ if ($db) {
     <script src="plugins/jquery-3.7.1.min.js"></script>
     <script>
       $(document).ready(function() {
+        // Set maximum date for calendars to today (hide future days and year)
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        $('#from_date').attr('max', todayStr);
+        $('#to_date').attr('max', todayStr);
+
+        // Date range validation on change
+        $('#from_date, #to_date').on('change', function() {
+          const fromDate = $('#from_date').val();
+          const toDate = $('#to_date').val();
+
+          if (fromDate && toDate) {
+            if (new Date(fromDate) > new Date(toDate)) {
+              alert('From Date cannot be greater than To Date. Also, To Date should be greater than or equal to From Date.');
+              $(this).val('');
+            }
+          }
+        });
+
         // Autocomplete suggestions loading
         const clientList = <?php echo json_encode($clients); ?> || [];
         const $input = $('#company_name');
@@ -335,6 +460,7 @@ if ($db) {
         });
 
         // Dynamic Issue Category Autocomplete based on Product Category
+        <?php if (!isset($user_department) || strtolower($user_department) !== 'ivr'): ?>
         let issueCategories = [];
         const $issueInput = $('#issue_category');
         const $issueSuggestions = $('#issueCategorySuggestions');
@@ -449,6 +575,42 @@ if ($db) {
             $issueSuggestions.scrollTop($issueSuggestions.scrollTop() + itemTop);
           }
         }
+        <?php endif; ?>
+
+        // Dynamic Agent Name loading based on Department select for Manager
+        $('#department_select').on('change', function() {
+          const selectedDept = $(this).val();
+          const $agentSelect = $('#agent');
+
+          $agentSelect.html('<option value="" selected>-- Select Agent --</option>');
+
+          if (!selectedDept) {
+            return;
+          }
+
+          $.ajax({
+            url: 'api/get-agents.php',
+            type: 'GET',
+            data: { department: selectedDept },
+            dataType: 'json',
+            success: function(response) {
+              if (response.success && Array.isArray(response.data)) {
+                response.data.forEach(function(agentName) {
+                  $agentSelect.append(
+                    $('<option></option>')
+                      .val(agentName)
+                      .text(agentName.toUpperCase())
+                  );
+                });
+              } else {
+                showNotification(response.message || 'Failed to load agents.', 'error');
+              }
+            },
+            error: function() {
+              showNotification('Failed to load agents from server.', 'error');
+            }
+          });
+        });
 
         // Reset button logic
         $('#resetBtn').on('click', function() {
@@ -458,6 +620,9 @@ if ($db) {
             $issueSuggestions.empty().hide();
             $issueInput.prop('disabled', true).attr('placeholder', 'Select Product Category first');
             issueCategories = [];
+            if ($('#department_select').length) {
+              $('#agent').html('<option value="" selected>-- Select Agent --</option>');
+            }
           }
         });
 
@@ -500,6 +665,16 @@ if ($db) {
           if (!agent && !fromDate && !toDate && !companyName && !location && !hardware && !ticket && !caseId && !dept && !prodCat && !issueCat && !supportStatus) {
             e.preventDefault();
             showNotification('Please enter at least one search criteria to search.', 'error');
+            return;
+          }
+
+          // Date validation: from date must be less than or equal to to date
+          if (fromDate && toDate) {
+            if (new Date(fromDate) > new Date(toDate)) {
+              e.preventDefault();
+              alert('From Date cannot be greater than To Date. Also, To Date should be greater than or equal to From Date.');
+              return;
+            }
           }
         });
       });

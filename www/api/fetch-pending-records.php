@@ -25,10 +25,11 @@ if (!$db) {
 }
 
 $company_name = trim($_GET['company_name'] ?? $_POST['company_name'] ?? '');
-if ($company_name === '') {
+$dealer_name = trim($_GET['dealer_name'] ?? $_POST['dealer_name'] ?? '');
+if ($company_name === '' && $dealer_name === '') {
     echo json_encode([
         'success' => false,
-        'message' => 'Company name is required'
+        'message' => 'Either Company name or Dealer name is required'
     ]);
     exit;
 }
@@ -47,6 +48,7 @@ if (!$user) {
 }
 
 $user_department = trim($user['department']);
+$selected_department = trim($_GET['department'] ?? '');
 
 // Determine tables to query
 $tables_to_query = [];
@@ -55,16 +57,35 @@ if (strcasecmp($user_department, 'Voice Logger') === 0) {
 } elseif (strcasecmp($user_department, 'IVR') === 0) {
     $tables_to_query = ['ivr_details'];
 } else {
-    $tables_to_query = ['support_details', 'ivr_details'];
+    if (strcasecmp($selected_department, 'Voice Logger') === 0) {
+        $tables_to_query = ['support_details'];
+    } elseif (strcasecmp($selected_department, 'IVR') === 0) {
+        $tables_to_query = ['ivr_details'];
+    } else {
+        $tables_to_query = ['support_details', 'ivr_details'];
+    }
 }
 
 $all_records = [];
 
 foreach ($tables_to_query as $table) {
-    // Query records other than 'Closed' and 'Closed-Device Replaced' matching the company name
-    $query = "SELECT * FROM `$table` WHERE LOWER(`company_name`) = LOWER(:company_name) AND LOWER(`support_status`) NOT IN ('closed', 'closed-device replaced')";
+    // Build match SQL based on provided company_name / dealer_name
+    $whereClause = [];
+    $queryParams = [];
+    if ($company_name !== '') {
+        $whereClause[] = "LOWER(`company_name`) = LOWER(:company_name)";
+        $queryParams['company_name'] = $company_name;
+    }
+    if ($dealer_name !== '') {
+        $whereClause[] = "LOWER(`dealer_name`) = LOWER(:dealer_name)";
+        $queryParams['dealer_name'] = $dealer_name;
+    }
+    $matchSql = "(" . implode(" OR ", $whereClause) . ")";
+
+    // Query records other than 'Closed' and 'Closed-Device Replaced' matching the company name / dealer name
+    $query = "SELECT * FROM `$table` WHERE $matchSql AND LOWER(`support_status`) NOT IN ('closed', 'closed-device replaced')";
     $stmt = $db->prepare($query);
-    $stmt->execute(['company_name' => $company_name]);
+    $stmt->execute($queryParams);
     $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Find the max ID for each case_id in this table to set is_latest

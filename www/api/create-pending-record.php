@@ -47,10 +47,23 @@ if (!$user) {
 }
 
 $user_department = trim($user['department']);
+$selected_department = trim($_POST['department'] ?? $_GET['department'] ?? '');
 
 // Route insertion to the correct table based on user's department
 $tableName = '';
-if (strcasecmp($user_department, 'Voice Logger') === 0) {
+if (strcasecmp($user_department, 'Manager') === 0) {
+    if (strcasecmp($selected_department, 'Voice Logger') === 0) {
+        $tableName = 'support_details';
+    } elseif (strcasecmp($selected_department, 'IVR') === 0) {
+        $tableName = 'ivr_details';
+    } else {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Please select a valid department (Voice Logger or IVR).'
+        ]);
+        exit;
+    }
+} elseif (strcasecmp($user_department, 'Voice Logger') === 0) {
     $tableName = 'support_details';
 } elseif (strcasecmp($user_department, 'IVR') === 0) {
     $tableName = 'ivr_details';
@@ -98,11 +111,13 @@ if ($row_ivr && $row_ivr['max_num'] !== null) {
 // Prepare baseline data
 $agent_name = isset($_SESSION['real_name']) ? strtoupper($_SESSION['real_name']) : strtoupper($_SESSION['username']);
 $company_name = isset($_POST['company_name']) ? trim($_POST['company_name']) : '';
+$dealer_name = isset($_POST['dealer_name']) ? trim($_POST['dealer_name']) : '';
 
 $data = [
     'date' => date('Y-m-d'),
     'agent' => $agent_name,
     'company_name' => $company_name,
+    'dealer_name' => $dealer_name,
     'location' => '',
     'region' => '',
     'contact_details' => '',
@@ -113,9 +128,11 @@ $data = [
     'support_category' => '',
     'software_details' => '',
     'hardware_details' => '',
+    'product_model' => '',
     'solution' => '',
     'total_time' => '00:00:00',
     'support_status' => 'Pending',
+    'reason' => '',
     'ticket_id' => '',
     'email' => null,
     'phone' => null,
@@ -179,14 +196,20 @@ if (!$success) {
     exit;
 }
 
-// Add new company to company_list table if requested
+
+// Add new company / dealer to company_list table if requested
 $add_to_company_list = isset($_POST['add_to_company_list']) ? (int)$_POST['add_to_company_list'] : 0;
-if ($add_to_company_list && !empty($company_name)) {
-    $checkStmt = $db->prepare("SELECT COUNT(*) FROM company_list WHERE LOWER(company_name) = LOWER(:company_name)");
-    $checkStmt->execute(['company_name' => $company_name]);
-    if ($checkStmt->fetchColumn() == 0) {
-        $insertCompanyStmt = $db->prepare("INSERT INTO company_list (company_name) VALUES (:company_name)");
-        $insertCompanyStmt->execute(['company_name' => strtoupper($company_name)]);
+if ($add_to_company_list) {
+    $names_to_add = array_filter([$company_name, $dealer_name]);
+    foreach ($names_to_add as $name) {
+        if (!empty($name)) {
+            $checkStmt = $db->prepare("SELECT COUNT(*) FROM company_list WHERE LOWER(company_name) = LOWER(:name)");
+            $checkStmt->execute(['name' => $name]);
+            if ($checkStmt->fetchColumn() == 0) {
+                $insertCompanyStmt = $db->prepare("INSERT INTO company_list (company_name) VALUES (:name)");
+                $insertCompanyStmt->execute(['name' => strtoupper($name)]);
+            }
+        }
     }
 }
 
