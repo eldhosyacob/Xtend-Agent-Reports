@@ -15,6 +15,11 @@ $current_user_name = isset($_SESSION['full_name']) && !empty($_SESSION['full_nam
     ? $_SESSION['full_name'] 
     : (isset($_SESSION['real_name']) && !empty($_SESSION['real_name']) ? $_SESSION['real_name'] : (isset($_SESSION['username']) ? $_SESSION['username'] : ''));
 
+// Get current user department & role
+$user_department = isset($_SESSION['department']) ? trim($_SESSION['department']) : '';
+$user_role = isset($_SESSION['role']) ? trim($_SESSION['role']) : '';
+$is_manager = (strcasecmp($user_department, 'Manager') === 0 || strcasecmp($user_role, 'manager') === 0);
+
 // Fetch categories from miscellaneous_categories table
 $categories = [];
 try {
@@ -34,6 +39,7 @@ $default_date = date('Y-m-d');
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <title>Add Miscellaneous</title>
+    <link rel="shortcut icon" href="images/favicon.png" />
     <link rel="stylesheet" href="styles/header-sidebar.css">
     <link rel="stylesheet" href="styles/common.css">
     <link rel="stylesheet" href="styles/add-miscellaneous.css">
@@ -57,8 +63,8 @@ $default_date = date('Y-m-d');
           <div id="miscAlertContainer" class="misc-alert"></div>
 
           <form id="addMiscellaneousForm" autocomplete="off">
-            <!-- Row 1: Date & Agent -->
-            <div class="misc-form-row misc-form-row-2">
+            <!-- Row 1: Date, Agent & Department -->
+            <div class="misc-form-row misc-form-row-3">
               <!-- Date Field -->
               <div class="misc-form-group">
                 <label for="misc_date">Date <span class="required-star">*</span></label>
@@ -74,6 +80,24 @@ $default_date = date('Y-m-d');
                 <div class="misc-input-wrapper">
                   <i class="fa-regular fa-user misc-input-icon"></i>
                   <input type="text" id="misc_agent" name="agent" class="misc-form-control" value="<?php echo htmlspecialchars($current_user_name); ?>" required readonly>
+                </div>
+              </div>
+
+              <!-- Department Field -->
+              <div class="misc-form-group">
+                <label for="misc_department">Department <span class="required-star">*</span></label>
+                <div class="misc-input-wrapper">
+                  <i class="fa-solid fa-sitemap misc-input-icon"></i>
+                  <?php if ($is_manager): ?>
+                    <select id="misc_department" name="department" class="misc-form-control" required>
+                      <option value="" disabled selected>Select Department</option>
+                      <option value="Voice Logger">Voice Logger</option>
+                      <option value="IVR">IVR</option>
+                      <option value="Manager">Manager</option>
+                    </select>
+                  <?php else: ?>
+                    <input type="text" id="misc_department" name="department" class="misc-form-control" value="<?php echo htmlspecialchars($user_department); ?>" required readonly>
+                  <?php endif; ?>
                 </div>
               </div>
             </div>
@@ -101,7 +125,7 @@ $default_date = date('Y-m-d');
                 <label for="misc_description">Description</label>
                 <div class="misc-input-wrapper misc-input-wrapper-textarea">
                   <i class="fa-solid fa-align-left misc-input-icon"></i>
-                  <textarea id="misc_description" name="description" class="misc-form-control" placeholder="Enter activity description or remarks..."></textarea>
+                  <textarea id="misc_description" name="description" class="misc-form-control" placeholder="Enter activity description or remarks..." required></textarea>
                 </div>
               </div>
             </div>
@@ -154,7 +178,7 @@ $default_date = date('Y-m-d');
     <?php include 'components/header-sidebar.php'; ?>
 
     <script src="plugins/jquery-3.7.1.min.js"></script>
-    <script src="js/add-miscellaneous.js"></script>
+    <script src="js/add-miscellaneous.js?v=<?php echo time(); ?>"></script>
 
   </body>
 

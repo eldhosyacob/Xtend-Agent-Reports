@@ -38,6 +38,42 @@
   color: var(--accent-indigo);
 }
 
+.header-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-reopen-header {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #FF5722 0%, #4f46e5 100%);
+  color: #ffffff !important;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.25);
+  transition: all 0.2s ease;
+}
+
+.btn-reopen-header:hover {
+  /* background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%); */
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(99, 102, 241, 0.35);
+  text-decoration: none;
+}
+
+.btn-reopen-header:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(99, 102, 241, 0.2);
+}
+
 .badge-dept {
   background: linear-gradient(135deg, #46cebc 0%, #3ca89a 100%);
   color: white;

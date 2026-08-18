@@ -65,9 +65,8 @@ if (isset($_GET['hardware_details']) && trim($_GET['hardware_details']) !== '') 
     $params['hardware_details'] = '%' . trim($_GET['hardware_details']) . '%';
 }
 if (isset($_GET['ticket_id']) && trim($_GET['ticket_id']) !== '') {
-    $conditions[] = "(`ticket_id` LIKE :ticket_id OR `reason` LIKE :ticket_id_reason)";
+    $conditions[] = "`ticket_id` LIKE :ticket_id";
     $params['ticket_id'] = '%' . trim($_GET['ticket_id']) . '%';
-    $params['ticket_id_reason'] = '%' . trim($_GET['ticket_id']) . '%';
 }
 if (isset($_GET['case_id']) && trim($_GET['case_id']) !== '') {
     $conditions[] = "`case_id` LIKE :case_id";
@@ -155,7 +154,8 @@ fputcsv($output, [
     'Support End Time',
     'Total Time',
     'Support Status',
-    'Ticket ID / Reason'
+    'Reason',
+    'Ticket ID'
 ]);
 
 // Loop through records and output each row
@@ -186,6 +186,7 @@ foreach ($all_records as $r) {
         $r['support_end_time'] ?? '',
         $r['total_time'] ?? '',
         $r['support_status'] ?? '',
+        $r['reason'] ?? '',
         $r['ticket_id'] ?? ''
     ]);
 }

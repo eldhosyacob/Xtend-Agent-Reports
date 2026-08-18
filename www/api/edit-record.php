@@ -295,14 +295,32 @@ if ($save_as_new) {
     $returned_record_id = $existing['record_id'] ?: $record_id;
 }
 
-// Insert support start and end times into support_time_history (preserve full history)
+// Upsert support start and end times into support_time_history (preserve full history without duplicating active session)
 if (!empty($data['support_start_time']) && !empty($data['support_end_time'])) {
-    $historyStmt = $db->prepare("INSERT INTO `support_time_history` (`record_id`, `support_start_time`, `support_end_time`) VALUES (:record_id, :support_start_time, :support_end_time)");
-    $historyStmt->execute([
+    $hist_date = !empty($data['date']) ? $data['date'] : date('Y-m-d');
+    $checkHist = $db->prepare("SELECT `id` FROM `support_time_history` WHERE `record_id` = :record_id AND `support_start_time` = :start_time AND `date` = :date ORDER BY `id` DESC LIMIT 1");
+    $checkHist->execute([
         'record_id' => $returned_record_id,
-        'support_start_time' => $data['support_start_time'],
-        'support_end_time' => $data['support_end_time']
+        'start_time' => $data['support_start_time'],
+        'date' => $hist_date
     ]);
+    $existingHist = $checkHist->fetch();
+
+    if ($existingHist) {
+        $updateHist = $db->prepare("UPDATE `support_time_history` SET `support_end_time` = :end_time WHERE `id` = :id");
+        $updateHist->execute([
+            'end_time' => $data['support_end_time'],
+            'id' => $existingHist['id']
+        ]);
+    } else {
+        $historyStmt = $db->prepare("INSERT INTO `support_time_history` (`record_id`, `support_start_time`, `support_end_time`, `date`) VALUES (:record_id, :support_start_time, :support_end_time, :date)");
+        $historyStmt->execute([
+            'record_id' => $returned_record_id,
+            'support_start_time' => $data['support_start_time'],
+            'support_end_time' => $data['support_end_time'],
+            'date' => $hist_date
+        ]);
+    }
 
     // Recalculate total_time by summing entries in support_time_history for this specific record_id
     $allHistoryStmt = $db->prepare("SELECT support_start_time, support_end_time FROM `support_time_history` WHERE `record_id` = :record_id");
@@ -366,6 +384,15 @@ if (!empty($_FILES['uploaded_files'])) {
         echo json_encode([
             'success' => false,
             'message' => 'Maximum 4 files can be uploaded at a time.'
+        ]);
+        exit;
+    }
+
+    $totalSize = is_array($files['size']) ? array_sum($files['size']) : 0;
+    if ($totalSize > 10 * 1024 * 1024) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Total size of attachments cannot exceed 10MB.'
         ]);
         exit;
     }

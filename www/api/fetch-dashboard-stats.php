@@ -115,13 +115,14 @@ $allowedStatuses = [
     'Under Observation',
     'Escalated',
     'Escalated to Presales',
-    'Closed-Device Replaced'
+    'Closed-Device Replaced',
+    'Closed-No Response'
 ];
 
 $statusQuery = "
     SELECT `support_status` as status, COUNT(*) as count 
     FROM `$tableName` 
-    WHERE `support_status` IN ('Closed', 'Pending', 'Under Observation', 'Escalated', 'Escalated to Presales', 'Closed-Device Replaced') 
+    WHERE `support_status` IN ('Closed', 'Pending', 'Under Observation', 'Escalated', 'Escalated to Presales', 'Closed-Device Replaced', 'Closed-No Response') 
       AND $dateCondition
     GROUP BY `support_status`
 ";
@@ -139,7 +140,8 @@ $orderedStatuses = [
     'Under Observation',
     'Escalated',
     'Escalated to Presales',
-    'Closed-Device Replaced'
+    'Closed-Device Replaced',
+    'Closed-No Response'
 ];
 
 $statusBreakdown = [];

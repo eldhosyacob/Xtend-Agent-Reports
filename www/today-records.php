@@ -67,6 +67,7 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
           <option value="Escalated" <?php echo $default_status === 'Escalated' ? 'selected' : ''; ?>>Escalated</option>
           <option value="Escalated to Presales" <?php echo $default_status === 'Escalated to Presales' ? 'selected' : ''; ?>>Escalated to Presales</option>
           <option value="Closed-Device Replaced" <?php echo $default_status === 'Closed-Device Replaced' ? 'selected' : ''; ?>>Closed-Device Replaced</option>
+          <option value="Closed-No Response" <?php echo $default_status === 'Closed-No Response' ? 'selected' : ''; ?>>Closed-No Response</option>
         </select>
       </div>
     </div>
@@ -81,14 +82,13 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
         <table class="records-table">
           <thead>
             <tr>
+              <th>Date</th>
               <th>Agent</th>
               <th>Company Name</th>
               <th>Dealer Name</th>
               <th>Location</th>
               <th>Issue Category</th>
-              <th>Date</th>
               <th>Support Status</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="recordsTableBody">

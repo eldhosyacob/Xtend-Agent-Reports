@@ -84,7 +84,8 @@ $(document).ready(function () {
 
     const dateVal = $('#misc_date').val().trim();
     const agentVal = $('#misc_agent').val().trim();
-    const categoryVal = $('#misc_category').val().trim();
+    const departmentVal = $('#misc_department').val() ? $('#misc_department').val().trim() : '';
+    const categoryVal = $('#misc_category').val() ? $('#misc_category').val().trim() : '';
     const descriptionVal = $('#misc_description').val().trim();
     const startTimeVal = $('#misc_start_time').val();
     const endTimeVal = $('#misc_end_time').val();
@@ -99,6 +100,12 @@ $(document).ready(function () {
     if (!agentVal) {
       showAlert('Please select an Agent.', 'error');
       $('#misc_agent').focus();
+      return;
+    }
+
+    if (!departmentVal) {
+      showAlert('Please select a Department.', 'error');
+      $('#misc_department').focus();
       return;
     }
 
@@ -117,6 +124,7 @@ $(document).ready(function () {
       data: {
         date: dateVal,
         agent: agentVal,
+        department: departmentVal,
         miscellaneous_category: categoryVal,
         description: descriptionVal,
         start_time: startTimeVal,
@@ -133,6 +141,9 @@ $(document).ready(function () {
           $('#misc_start_time').val('');
           $('#misc_end_time').val('');
           $('#misc_total_time').val('');
+          if ($('#misc_department').is('select')) {
+            $('#misc_department').val('');
+          }
         } else {
           showAlert((response && response.message) ? response.message : 'An error occurred while saving.', 'error');
         }
@@ -158,5 +169,8 @@ $(document).ready(function () {
     $('#misc_start_time').val('');
     $('#misc_end_time').val('');
     $('#misc_total_time').val('');
+    if ($('#misc_department').is('select')) {
+      $('#misc_department').val('');
+    }
   });
 });

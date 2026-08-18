@@ -96,9 +96,8 @@ if (isset($_GET['hardware_details']) && trim($_GET['hardware_details']) !== '') 
     $params['hardware_details'] = '%' . trim($_GET['hardware_details']) . '%';
 }
 if (isset($_GET['ticket_id']) && trim($_GET['ticket_id']) !== '') {
-    $conditions[] = "(`ticket_id` LIKE :ticket_id OR `reason` LIKE :ticket_id_reason)";
+    $conditions[] = "`ticket_id` LIKE :ticket_id";
     $params['ticket_id'] = '%' . trim($_GET['ticket_id']) . '%';
-    $params['ticket_id_reason'] = '%' . trim($_GET['ticket_id']) . '%';
 }
 if (isset($_GET['case_id']) && trim($_GET['case_id']) !== '') {
     $conditions[] = "`case_id` LIKE :case_id";

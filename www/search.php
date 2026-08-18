@@ -134,6 +134,17 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
         }
     }
 }
+
+// Fetch Miscellaneous Categories from DB
+$miscCategories = [];
+if ($db) {
+    try {
+        $stmt = $db->query("SELECT categories FROM miscellaneous_categories ORDER BY categories ASC");
+        $miscCategories = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        error_log("Failed to fetch miscellaneous categories: " . $e->getMessage());
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -154,12 +165,23 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
     <div class="search-page-container page-containers">
       <div class="form-card-wrapper">
             <div class="form-header">
-            <h2> Search Records</h2>
-            <p>Complete the search criteria below to filter the records list.</p>
+              <div class="header-menu-container">
+                <div class="header-spacer"></div>
+                <h2>Search Records</h2>
+                <div class="form-control-wrapper select-wrapper header-select-wrapper">
+                  <i class="fa-solid fa-layer-group input-icon"></i>
+                  <select id="search_category_menu" class="form-control header-category-select">
+                    <option value="support_details" selected>Support Details</option>
+                    <option value="miscellaneous">Miscellaneous</option>
+                  </select>
+                </div>
+              </div>
+              <p id="searchSubheading">Use the search criteria below to filter the records list.</p>
             </div>
 
             <form method="get" action="search-results.php" autocomplete="off" id="searchForm">
-                <div class="grid-form">
+                <!-- Support Details Search Criteria Grid -->
+                <div id="supportDetailsGrid" class="grid-form">
                     <!-- 1. DEPARTMENT SELECT (If Manager) -->
                     <?php if ($is_manager): ?>
                       <div class="form-group col-4">
@@ -176,8 +198,8 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
                       </div>
                     <?php endif; ?>
 
-                <!-- 2. AGENT NAME -->
-                <div class="form-group col-4">
+                    <!-- 2. AGENT NAME -->
+                    <div class="form-group col-4">
                         <label for="agent">Agent Name</label>
                         <div class="form-control-wrapper select-wrapper">
                             <i class="fa-regular fa-user input-icon"></i>
@@ -220,8 +242,17 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
                         </div>
                     </div>
 
+                    <!-- 6. DEALER NAME -->
+                    <div class="form-group col-4">
+                        <label for="dealer_name">Dealer Name</label>
+                        <div class="form-control-wrapper autocomplete-wrapper">
+                            <i class="fa-solid fa-user-tie input-icon"></i>
+                            <input type="text" id="dealer_name" name="dealer_name" class="form-control" placeholder="Enter dealer name" autocomplete="off">
+                            <div class="autocomplete-suggestions" id="dealerSuggestions"></div>
+                        </div>
+                    </div>
 
-                    <!-- 6. LOCATION -->
+                    <!-- 7. LOCATION -->
                     <div class="form-group col-4">
                         <label for="location">Location</label>
                         <div class="form-control-wrapper">
@@ -230,7 +261,7 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
                         </div>
                     </div>
 
-                    <!-- 7. HARDWARE DETAILS -->
+                    <!-- 8. HARDWARE DETAILS -->
                     <div class="form-group col-4">
                         <label for="hardware_details">Hardware Details</label>
                         <div class="form-control-wrapper">
@@ -239,8 +270,7 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
                         </div>
                     </div>
 
-
-                    <!-- 8. PRODUCT CATEGORY -->
+                    <!-- 9. PRODUCT CATEGORY -->
                     <div class="form-group col-4">
                         <label for="product_category">Product Category</label>
                         <div class="form-control-wrapper select-wrapper">
@@ -272,7 +302,7 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
                         </div>
                     </div>
 
-                    <!-- 9. ISSUE CATEGORY -->
+                    <!-- 10. ISSUE CATEGORY -->
                     <div class="form-group col-4">
                         <label for="issue_category">Issue Category</label>
                         <?php if (isset($user_department) && strtolower($user_department) === 'ivr'): ?>
@@ -294,7 +324,7 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
                         <?php endif; ?>
                     </div>
 
-                    <!-- 10. STATUS -->
+                    <!-- 11. STATUS -->
                     <div class="form-group col-4">
                         <label for="support_status">Status</label>
                         <div class="form-control-wrapper select-wrapper">
@@ -307,20 +337,21 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
                                 <option value="Escalated">Escalated</option>
                                 <option value="Escalated to Presales">Escalated to Presales</option>
                                 <option value="Closed-Device Replaced">Closed-Device Replaced</option>
+                                <option value="Closed-No Response">Closed-No Response</option>
                             </select>
                         </div>
                     </div>
 
-                    <!-- 11. TICKET ID -->
+                    <!-- 12. TICKET ID -->
                     <div class="form-group col-4">
                         <label for="ticket_id">Ticket ID</label>
                         <div class="form-control-wrapper">
                             <i class="fa-solid fa-ticket input-icon"></i>
-                            <input type="text" id="ticket_id" name="ticket_id" class="form-control" placeholder="Enter Ticket ID or Reason">
+                            <input type="text" id="ticket_id" name="ticket_id" class="form-control" placeholder="Enter Ticket ID">
                         </div>
                     </div>
 
-                    <!-- 12. CASE ID -->
+                    <!-- 13. CASE ID -->
                     <div class="form-group col-4">
                         <label for="case_id">Case ID</label>
                         <div class="form-control-wrapper">
@@ -328,16 +359,85 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
                             <input type="text" id="case_id" name="case_id" class="form-control" placeholder="Enter Case ID">
                         </div>
                     </div>
+                </div>
 
-                    <!-- Form Action Buttons -->
-                    <div class="form-actions">
-                        <button type="button" id="resetBtn" class="btn btn-secondary">
-                            <i class="fa-solid fa-rotate-left"></i> Reset
-                        </button>
-                        <button type="submit" id="searchBtn" class="btn btn-primary">
-                            <i class="fa-solid fa-magnifying-glass"></i> Search
-                        </button>
+                <!-- Miscellaneous Search Criteria Grid -->
+                <div id="miscellaneousGrid" class="grid-form" style="display: none;">
+                    <?php if ($is_manager): ?>
+                      <div class="form-group col-4">
+                        <label for="misc_department_select">Department</label>
+                        <div class="form-control-wrapper select-wrapper">
+                            <i class="fa-solid fa-sitemap input-icon"></i>
+                          <select id="misc_department_select" name="department" class="form-control">
+                          <option value="" selected>-- Select Department --</option>
+                          <option value="Voice Logger">Voice Logger</option>
+                          <option value="IVR">IVR</option>
+                          <option value="Manager">Manager</option>
+                          </select>
+                        </div>
+                      </div>
+                    <?php endif; ?>
+
+                    <!-- Agent Name -->
+                    <div class="form-group col-4">
+                        <label for="misc_agent">Agent Name</label>
+                        <div class="form-control-wrapper select-wrapper">
+                            <i class="fa-regular fa-user input-icon"></i>
+                            <select id="misc_agent" name="agent" class="form-control">
+                                <option value="" selected>-- Select Agent --</option>
+                                <?php foreach ($agents as $agentName): ?>
+                                    <option value="<?php echo htmlspecialchars($agentName); ?>">
+                                        <?php echo htmlspecialchars(strtoupper($agentName)); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
+
+                    <!-- From Date -->
+                    <div class="form-group col-4">
+                        <label for="misc_from_date">From Date</label>
+                        <div class="form-control-wrapper">
+                            <i class="fa-regular fa-calendar input-icon"></i>
+                            <input type="date" id="misc_from_date" name="from_date" class="form-control">
+                        </div>
+                    </div>
+
+                    <!-- To Date -->
+                    <div class="form-group col-4">
+                        <label for="misc_to_date">To Date</label>
+                        <div class="form-control-wrapper">
+                            <i class="fa-regular fa-calendar input-icon"></i>
+                            <input type="date" id="misc_to_date" name="to_date" class="form-control">
+                        </div>
+                    </div>
+
+                    <!-- Miscellaneous Category -->
+                    <div class="form-group col-4">
+                        <label for="misc_category">Miscellaneous Category</label>
+                        <div class="form-control-wrapper select-wrapper">
+                            <i class="fa-solid fa-layer-group input-icon"></i>
+                            <select id="misc_category" name="miscellaneous_category" class="form-control">
+                                <option value="" selected>-- Select Category --</option>
+                                <?php foreach ($miscCategories as $cat): ?>
+                                    <option value="<?php echo htmlspecialchars($cat); ?>">
+                                        <?php echo htmlspecialchars($cat); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Action Buttons -->
+                <div class="form-actions">
+                    <button type="button" id="resetBtn" class="btn btn-secondary">
+                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    </button>
+                    <button type="submit" id="searchBtn" class="btn btn-primary">
+                        <i class="fa-solid fa-magnifying-glass"></i> Search
+                    </button>
+                </div>
                 </div>
             </form>
         </div>
@@ -355,13 +455,14 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
         const dd = String(today.getDate()).padStart(2, '0');
         const todayStr = `${yyyy}-${mm}-${dd}`;
 
-        $('#from_date').attr('max', todayStr);
-        $('#to_date').attr('max', todayStr);
+        $('#from_date, #misc_from_date').attr('max', todayStr);
+        $('#to_date, #misc_to_date').attr('max', todayStr);
 
         // Date range validation on change
-        $('#from_date, #to_date').on('change', function() {
-          const fromDate = $('#from_date').val();
-          const toDate = $('#to_date').val();
+        $('#from_date, #to_date, #misc_from_date, #misc_to_date').on('change', function() {
+          const isMisc = $(this).attr('id').startsWith('misc_');
+          const fromDate = isMisc ? $('#misc_from_date').val() : $('#from_date').val();
+          const toDate = isMisc ? $('#misc_to_date').val() : $('#to_date').val();
 
           if (fromDate && toDate) {
             if (new Date(fromDate) > new Date(toDate)) {
@@ -371,89 +472,111 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
           }
         });
 
-        // Autocomplete suggestions loading
-        const clientList = <?php echo json_encode($clients); ?> || [];
-        const $input = $('#company_name');
-        const $suggestions = $('#companySuggestions');
-        let currentFocus = -1;
-
-        $input.on('input', function() {
-          const val = this.value.trim().toLowerCase();
-          $suggestions.empty().hide();
-          currentFocus = -1;
-
-          if (!val) return;
-
-          // Filter client list matches (case-insensitive, max 10 matches)
-          const matches = clientList.filter(client => client.toLowerCase().includes(val)).slice(0, 10);
-
-          if (matches.length > 0) {
-            matches.forEach((match, index) => {
-              const $suggestion = $('<div class="autocomplete-suggestion"></div>')
-                .text(match)
-                .attr('data-index', index)
-                .on('click', function() {
-                  $input.val(match);
-                  $suggestions.empty().hide();
-                });
-              $suggestions.append($suggestion);
-            });
-            $suggestions.show();
+        // Toggle search category grid and form action
+        $('#search_category_menu').on('change', function() {
+          const mode = $(this).val();
+          if (mode === 'miscellaneous') {
+            $('#supportDetailsGrid').hide().find('input, select').prop('disabled', true);
+            $('#miscellaneousGrid').show().find('input, select').prop('disabled', false);
+            $('#searchForm').attr('action', 'miscellaneous-search-results.php');
+            $('#searchSubheading').text('Use the search criteria below to filter miscellaneous records.');
+          } else {
+            $('#miscellaneousGrid').hide().find('input, select').prop('disabled', true);
+            $('#supportDetailsGrid').show().find('input, select').prop('disabled', false);
+            $('#searchForm').attr('action', 'search-results.php');
+            $('#searchSubheading').text('Use the search criteria below to filter the records list.');
           }
-        });
+        }).trigger('change');
 
-        // Autocomplete Keyboard navigation
-        $input.on('keydown', function(e) {
-          const $items = $suggestions.find('.autocomplete-suggestion');
-          if (!$items.length) return;
+        // Autocomplete suggestions loading for Company Name & Dealer Name
+        const clientList = <?php echo json_encode($clients); ?> || [];
 
-          if (e.keyCode === 40) { // Arrow Down
-            currentFocus++;
-            setActive($items);
-            e.preventDefault();
-          } else if (e.keyCode === 38) { // Arrow Up
-            currentFocus--;
-            setActive($items);
-            e.preventDefault();
-          } else if (e.keyCode === 13) { // Enter
-            if (currentFocus > -1) {
-              if ($items.eq(currentFocus).length) {
-                $items.eq(currentFocus).trigger('click');
-                e.preventDefault();
-              }
-            }
-          } else if (e.keyCode === 27) { // Escape
+        function setupAutocomplete($input, $suggestions) {
+          let currentFocus = -1;
+
+          $input.on('input', function() {
+            const val = this.value.trim().toLowerCase();
             $suggestions.empty().hide();
             currentFocus = -1;
-          }
-        });
 
-        function setActive($items) {
-          $items.removeClass('active');
-          if (currentFocus >= $items.length) currentFocus = 0;
-          if (currentFocus < 0) currentFocus = $items.length - 1;
-          const $activeItem = $items.eq(currentFocus);
-          $activeItem.addClass('active');
+            if (!val) return;
 
-          // Scroll helper
-          const containerHeight = $suggestions.height();
-          const itemHeight = $activeItem.outerHeight();
-          const itemTop = $activeItem.position().top;
+            // Filter client list matches (case-insensitive, max 10 matches)
+            const matches = clientList.filter(client => client.toLowerCase().includes(val)).slice(0, 10);
 
-          if (itemTop + itemHeight > containerHeight) {
-            $suggestions.scrollTop($suggestions.scrollTop() + itemTop + itemHeight - containerHeight);
-          } else if (itemTop < 0) {
-            $suggestions.scrollTop($suggestions.scrollTop() + itemTop);
+            if (matches.length > 0) {
+              matches.forEach((match, index) => {
+                const $suggestion = $('<div class="autocomplete-suggestion"></div>')
+                  .text(match)
+                  .attr('data-index', index)
+                  .on('click', function() {
+                    $input.val(match);
+                    $suggestions.empty().hide();
+                  });
+                $suggestions.append($suggestion);
+              });
+              $suggestions.show();
+            }
+          });
+
+          // Autocomplete Keyboard navigation
+          $input.on('keydown', function(e) {
+            const $items = $suggestions.find('.autocomplete-suggestion');
+            if (!$items.length) return;
+
+            if (e.keyCode === 40) { // Arrow Down
+              currentFocus++;
+              setActive($items);
+              e.preventDefault();
+            } else if (e.keyCode === 38) { // Arrow Up
+              currentFocus--;
+              setActive($items);
+              e.preventDefault();
+            } else if (e.keyCode === 13) { // Enter
+              if (currentFocus > -1) {
+                if ($items.eq(currentFocus).length) {
+                  $items.eq(currentFocus).trigger('click');
+                  e.preventDefault();
+                }
+              }
+            } else if (e.keyCode === 27) { // Escape
+              $suggestions.empty().hide();
+              currentFocus = -1;
+            }
+          });
+
+          function setActive($items) {
+            $items.removeClass('active');
+            if (currentFocus >= $items.length) currentFocus = 0;
+            if (currentFocus < 0) currentFocus = $items.length - 1;
+            const $activeItem = $items.eq(currentFocus);
+            $activeItem.addClass('active');
+
+            // Scroll helper
+            const containerHeight = $suggestions.height();
+            const itemHeight = $activeItem.outerHeight();
+            const itemTop = $activeItem.position().top;
+
+            if (itemTop + itemHeight > containerHeight) {
+              $suggestions.scrollTop($suggestions.scrollTop() + itemTop + itemHeight - containerHeight);
+            } else if (itemTop < 0) {
+              $suggestions.scrollTop($suggestions.scrollTop() + itemTop);
+            }
           }
         }
+
+        setupAutocomplete($('#company_name'), $('#companySuggestions'));
+        setupAutocomplete($('#dealer_name'), $('#dealerSuggestions'));
 
         // Close autocomplete when clicking outside
         $(document).on('click', function(e) {
           if (!$(e.target).closest('#company_name').parent().length) {
-            $suggestions.empty().hide();
-            currentFocus = -1;
+            $('#companySuggestions').empty().hide();
           }
-          if (!$(e.target).closest('#issue_category').parent().length) {
+          if (!$(e.target).closest('#dealer_name').parent().length) {
+            $('#dealerSuggestions').empty().hide();
+          }
+          if (typeof $issueSuggestions !== 'undefined' && !$(e.target).closest('#issue_category').parent().length) {
             $issueSuggestions.empty().hide();
             issueCurrentFocus = -1;
           }
@@ -578,15 +701,15 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
         <?php endif; ?>
 
         // Dynamic Agent Name loading based on Department select for Manager
-        $('#department_select').on('change', function() {
+        $('#department_select, #misc_department_select').on('change', function() {
           const selectedDept = $(this).val();
           const $agentSelect = $('#agent');
+          const $miscAgentSelect = $('#misc_agent');
 
           $agentSelect.html('<option value="" selected>-- Select Agent --</option>');
+          $miscAgentSelect.html('<option value="" selected>-- Select Agent --</option>');
 
-          if (!selectedDept) {
-            return;
-          }
+          if (!selectedDept) return;
 
           $.ajax({
             url: 'api/get-agents.php',
@@ -596,11 +719,9 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
             success: function(response) {
               if (response.success && Array.isArray(response.data)) {
                 response.data.forEach(function(agentName) {
-                  $agentSelect.append(
-                    $('<option></option>')
-                      .val(agentName)
-                      .text(agentName.toUpperCase())
-                  );
+                  const optionHtml = $('<option></option>').val(agentName).text(agentName.toUpperCase());
+                  $agentSelect.append(optionHtml.clone());
+                  $miscAgentSelect.append(optionHtml.clone());
                 });
               } else {
                 showNotification(response.message || 'Failed to load agents.', 'error');
@@ -617,12 +738,11 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
           if (confirm('Are you sure you want to clear the search criteria?')) {
             $('#searchForm')[0].reset();
             $suggestions.empty().hide();
-            $issueSuggestions.empty().hide();
-            $issueInput.prop('disabled', true).attr('placeholder', 'Select Product Category first');
-            issueCategories = [];
-            if ($('#department_select').length) {
-              $('#agent').html('<option value="" selected>-- Select Agent --</option>');
+            if (typeof $issueSuggestions !== 'undefined') $issueSuggestions.empty().hide();
+            if (typeof $issueInput !== 'undefined') {
+              $issueInput.prop('disabled', true).attr('placeholder', 'Select Product Category first');
             }
+            $('#search_category_menu').trigger('change');
           }
         });
 
@@ -649,28 +769,47 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
 
         // Form submission validation: Ensure at least one search criterion is entered
         $('#searchForm').on('submit', function(e) {
-          const agent = $('#agent').val().trim();
-          const fromDate = $('#from_date').val().trim();
-          const toDate = $('#to_date').val().trim();
-          const companyName = $('#company_name').val().trim();
-          const location = $('#location').val().trim();
-          const hardware = $('#hardware_details').val().trim();
-          const ticket = $('#ticket_id').val().trim();
-          const caseId = $('#case_id').val().trim();
-          const dept = $('#department_select').length ? $('#department_select').val() : '';
-          const prodCat = $('#product_category').val();
-          const issueCat = $('#issue_category').val().trim();
-          const supportStatus = $('#support_status').val();
+          const searchMode = $('#search_category_menu').val();
 
-          if (!agent && !fromDate && !toDate && !companyName && !location && !hardware && !ticket && !caseId && !dept && !prodCat && !issueCat && !supportStatus) {
-            e.preventDefault();
-            showNotification('Please enter at least one search criteria to search.', 'error');
-            return;
-          }
+          if (searchMode === 'miscellaneous') {
+            const agent = $('#misc_agent').val() ? $('#misc_agent').val().trim() : '';
+            const fromDate = $('#misc_from_date').val() ? $('#misc_from_date').val().trim() : '';
+            const toDate = $('#misc_to_date').val() ? $('#misc_to_date').val().trim() : '';
+            const category = $('#misc_category').val() ? $('#misc_category').val().trim() : '';
+            const dept = $('#misc_department_select').length ? $('#misc_department_select').val() : '';
 
-          // Date validation: from date must be less than or equal to to date
-          if (fromDate && toDate) {
-            if (new Date(fromDate) > new Date(toDate)) {
+            if (!agent && !fromDate && !toDate && !category && !dept) {
+              e.preventDefault();
+              showNotification('Please enter at least one search criteria to search.', 'error');
+              return;
+            }
+
+            if (fromDate && toDate && new Date(fromDate) > new Date(toDate)) {
+              e.preventDefault();
+              alert('From Date cannot be greater than To Date. Also, To Date should be greater than or equal to From Date.');
+              return;
+            }
+          } else {
+            const agent = $('#agent').val() ? $('#agent').val().trim() : '';
+            const fromDate = $('#from_date').val() ? $('#from_date').val().trim() : '';
+            const toDate = $('#to_date').val() ? $('#to_date').val().trim() : '';
+            const companyName = $('#company_name').val() ? $('#company_name').val().trim() : '';
+            const location = $('#location').val() ? $('#location').val().trim() : '';
+            const hardware = $('#hardware_details').val() ? $('#hardware_details').val().trim() : '';
+            const ticket = $('#ticket_id').val() ? $('#ticket_id').val().trim() : '';
+            const caseId = $('#case_id').val() ? $('#case_id').val().trim() : '';
+            const dept = $('#department_select').length ? $('#department_select').val() : '';
+            const prodCat = $('#product_category').val();
+            const issueCat = $('#issue_category').val() ? $('#issue_category').val().trim() : '';
+            const supportStatus = $('#support_status').val();
+
+            if (!agent && !fromDate && !toDate && !companyName && !location && !hardware && !ticket && !caseId && !dept && !prodCat && !issueCat && !supportStatus) {
+              e.preventDefault();
+              showNotification('Please enter at least one search criteria to search.', 'error');
+              return;
+            }
+
+            if (fromDate && toDate && new Date(fromDate) > new Date(toDate)) {
               e.preventDefault();
               alert('From Date cannot be greater than To Date. Also, To Date should be greater than or equal to From Date.');
               return;

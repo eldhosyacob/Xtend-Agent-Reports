@@ -82,6 +82,15 @@ require_once __DIR__ . '/config/auth_check.php';
             <span class="label">Support Time</span>
           </div>
         </div>
+        <div class="stat-card-wrapper">
+          <div class="stat-icon-box misc-time" aria-hidden="true">
+            <i class="fa-solid fa-business-time"></i>
+          </div>
+          <div class="stat-info-box">
+            <span class="value" id="stat-misc-time">—</span>
+            <span class="label">Miscellaneous Time</span>
+          </div>
+        </div>
       </section>
 
       <!-- Main Report Card -->
@@ -119,6 +128,8 @@ require_once __DIR__ . '/config/auth_check.php';
                 <th scope="col">Company Name</th>
                 <th scope="col">Dealer Name</th>
                 <th scope="col">Product Category</th>
+                <th scope="col">Location</th>
+                <th scope="col">Hardware Details</th>
                 <th scope="col">Status</th>
                 <th scope="col">Actions</th>
               </tr>
@@ -132,6 +143,8 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td><div class="skeleton-line w-70"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-line w-50"></div></td>
+                <td><div class="skeleton-line w-50"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
               </tr>
@@ -142,6 +155,8 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td><div class="skeleton-line w-70"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-line w-40"></div></td>
+                <td><div class="skeleton-line w-50"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
               </tr>
@@ -151,6 +166,8 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td><div class="skeleton-line w-50"></div></td>
                 <td><div class="skeleton-line w-65"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
+                <td><div class="skeleton-line w-50"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
@@ -227,8 +244,10 @@ require_once __DIR__ . '/config/auth_check.php';
               const comp = (r.company_name || '').toLowerCase();
               const dealer = (r.dealer_name || '').toLowerCase();
               const prod = (r.product_category || '').toLowerCase();
+              const loc = (r.location || '').toLowerCase();
+              const hw = (r.hardware_details || '').toLowerCase();
               const status = (r.support_status || '').toLowerCase();
-              return recId.indexOf(val) > -1 || comp.indexOf(val) > -1 || dealer.indexOf(val) > -1 || prod.indexOf(val) > -1 || status.indexOf(val) > -1;
+              return recId.indexOf(val) > -1 || comp.indexOf(val) > -1 || dealer.indexOf(val) > -1 || prod.indexOf(val) > -1 || loc.indexOf(val) > -1 || hw.indexOf(val) > -1 || status.indexOf(val) > -1;
             });
             displayedRecords = filtered;
             renderRecords(displayedRecords);
@@ -281,7 +300,7 @@ require_once __DIR__ . '/config/auth_check.php';
                 $('#department-badge').html('<i class="fa-solid fa-sitemap"></i> Department: ' + activeDepartment);
 
                 // Calculate and animate stats
-                updateStats(allRecords, response.total_support_time);
+                updateStats(allRecords, response.total_support_time, response.total_miscellaneous_time);
 
                 // Render rows
                 currentPage = 1;
@@ -310,6 +329,8 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td><div class="skeleton-line w-70"></div></td>
                 <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-line w-50"></div></td>
+                <td><div class="skeleton-line w-50"></div></td>
+                <td><div class="skeleton-line w-60"></div></td>
                 <td><div class="skeleton-badge"></div></td>
                 <td class="actions-cell"><div class="skeleton-line w-60 center"></div></td>
               </tr>`;
@@ -321,16 +342,16 @@ require_once __DIR__ . '/config/auth_check.php';
         function showError(msg) {
           $('#records-tbody').html(`
             <tr>
-              <td colspan="8" class="table-error-cell">
+              <td colspan="10" class="table-error-cell">
                 <i class="fa-solid fa-triangle-exclamation"></i>
                 ${msg}
               </td>
             </tr>`);
-          $('#stat-total, #stat-pending, #stat-closed, #stat-others, #stat-support-time').text('—');
+          $('#stat-total, #stat-pending, #stat-closed, #stat-others, #stat-support-time, #stat-misc-time').text('—');
           $('#pagination-wrapper').hide();
         }
 
-        function updateStats(records, totalSupportTime) {
+        function updateStats(records, totalSupportTime, totalMiscTime) {
           const range = $('#date-range-filter').val() || 'today';
           let labelText = 'Total Today';
           if (range === 'week') {
@@ -355,6 +376,7 @@ require_once __DIR__ . '/config/auth_check.php';
             supportTimeStr = calculateTotalSupportTime(records);
           }
           $('#stat-support-time').text(supportTimeStr);
+          $('#stat-misc-time').text(totalMiscTime || '00:00:00');
         }
 
         function calculateTotalSupportTime(records) {
@@ -398,7 +420,7 @@ require_once __DIR__ . '/config/auth_check.php';
           if (records.length === 0) {
             $tbody.html(`
               <tr>
-                <td colspan="8">
+                <td colspan="10">
                   <div class="table-empty-state">
                     <i class="fa-solid fa-folder-open"></i>
                     <h3>No Records Found</h3>
@@ -434,7 +456,7 @@ require_once __DIR__ . '/config/auth_check.php';
 
             const deptVal = r.record_department || r.department || '';
             let reopenBtn = '';
-            if (statusLower !== 'closed' && statusLower !== 'closed-device replaced' && r.is_latest !== false) {
+            if (!statusLower.startsWith('closed') && r.is_latest !== false) {
               reopenBtn = `
                 <a href="edit-record.php?record_id=${escapeHtml(getRecordIdentifier(r))}&department=${escapeHtml(deptVal)}" target="_blank" class="btn-action-reopen" data-record-id="${escapeHtml(getRecordIdentifier(r))}" data-department="${escapeHtml(deptVal)}" data-company-name="${escapeHtml(r.company_name || '')}" data-dealer-name="${escapeHtml(r.dealer_name || '')}" title="Reopen Record">
                   <i class="fa-solid fa-folder-open"></i>
@@ -449,6 +471,8 @@ require_once __DIR__ . '/config/auth_check.php';
                 <td class="company-name-cell">${escapeHtml(r.company_name) || '—'}</td>
                 <td>${escapeHtml(r.dealer_name) || '—'}</td>
                 <td>${escapeHtml(r.product_category || '—')}</td>
+                <td>${escapeHtml(r.location || '—')}</td>
+                <td>${escapeHtml(r.hardware_details || '—')}</td>
                 <td>
                   <span class="status-pill ${statusClass}">
                     <i class="fa-solid fa-circle"></i> ${escapeHtml(rawStatus)}

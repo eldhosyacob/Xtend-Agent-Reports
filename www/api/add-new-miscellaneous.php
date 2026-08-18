@@ -46,6 +46,19 @@ if (empty($input)) {
 
 $date = isset($input['date']) ? trim($input['date']) : '';
 $agent = isset($input['agent']) ? trim($input['agent']) : '';
+
+$session_dept = isset($_SESSION['department']) ? trim($_SESSION['department']) : '';
+$session_role = isset($_SESSION['role']) ? trim($_SESSION['role']) : '';
+$is_manager_user = (strcasecmp($session_dept, 'Manager') === 0 || strcasecmp($session_role, 'manager') === 0 || strcasecmp($session_role, 'admin') === 0);
+
+if (isset($input['department']) && trim($input['department']) !== '') {
+    $department = trim($input['department']);
+} elseif (!$is_manager_user && !empty($session_dept)) {
+    $department = $session_dept;
+} else {
+    $department = '';
+}
+
 $miscellaneous_category = isset($input['miscellaneous_category']) ? trim($input['miscellaneous_category']) : '';
 $description = isset($input['description']) ? trim($input['description']) : '';
 $start_time = isset($input['start_time']) ? trim($input['start_time']) : null;
@@ -65,6 +78,14 @@ if (empty($agent)) {
     echo json_encode([
         'success' => false,
         'message' => 'Agent is required'
+    ]);
+    exit;
+}
+
+if (empty($department)) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Department is required'
     ]);
     exit;
 }
@@ -105,11 +126,12 @@ if (!empty($start_time) && !empty($end_time) && empty($total_time)) {
 }
 
 // Insert into database using prepared statement
-$stmt = $db->prepare("INSERT INTO `miscellaneous_details` (`date`, `agent`, `miscellaneous_category`, `description`, `start_time`, `end_time`, `total_time`, `created_at`) VALUES (:date, :agent, :category, :description, :start_time, :end_time, :total_time, NOW())");
+$stmt = $db->prepare("INSERT INTO `miscellaneous_details` (`date`, `agent`, `department`, `miscellaneous_category`, `description`, `start_time`, `end_time`, `total_time`, `created_at`) VALUES (:date, :agent, :department, :category, :description, :start_time, :end_time, :total_time, NOW())");
 
 $inserted = $stmt->execute([
     'date' => $date,
     'agent' => $agent,
+    'department' => $department,
     'category' => $miscellaneous_category,
     'description' => $description !== '' ? $description : null,
     'start_time' => !empty($start_time) ? $start_time : null,

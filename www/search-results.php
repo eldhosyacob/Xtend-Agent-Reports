@@ -319,7 +319,7 @@ require_once __DIR__ . '/config/auth_check.php';
             // Edit Reopen Button mapping
             const deptVal = r.record_department || r.department || '';
             let reopenBtn = '';
-            if (statusLower !== 'closed' && statusLower !== 'closed-device replaced' && r.is_latest !== false) {
+            if (!statusLower.startsWith('closed') && r.is_latest !== false) {
               reopenBtn = `
                 <a href="edit-record.php?record_id=${escapeHtml(getRecordIdentifier(r))}&department=${escapeHtml(deptVal)}" target="_blank" class="btn-action-reopen" data-record-id="${escapeHtml(getRecordIdentifier(r))}" data-department="${escapeHtml(deptVal)}" data-company-name="${escapeHtml(r.company_name || '')}" data-dealer-name="${escapeHtml(r.dealer_name || '')}" title="Reopen Record">
                   <i class="fa-solid fa-folder-open"></i>

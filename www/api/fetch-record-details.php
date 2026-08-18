@@ -94,10 +94,16 @@ if ($record) {
 
     $case_id = !empty($record['case_id']) ? $record['case_id'] : ($record['record_id'] ?: $record_id);
 
+    // Determine if this record is the latest entry for its case
+    $stmtMax = $db->prepare("SELECT MAX(id) as max_id FROM `$tableName` WHERE COALESCE(NULLIF(case_id, ''), record_id) = :case_id");
+    $stmtMax->execute(['case_id' => $case_id]);
+    $maxRow = $stmtMax->fetch(PDO::FETCH_ASSOC);
+    $record['is_latest'] = ($maxRow && !empty($maxRow['max_id'])) ? ((int)$record['id'] === (int)$maxRow['max_id']) : true;
+
     $target_record_id = !empty($record['record_id']) ? $record['record_id'] : $record_id;
 
     // Query support_time_history for only the corresponding record_id
-    $historyStmt = $db->prepare("SELECT record_id, support_start_time, support_end_time FROM `support_time_history` WHERE `record_id` = :record_id ORDER BY id ASC");
+    $historyStmt = $db->prepare("SELECT record_id, support_start_time, support_end_time, date FROM `support_time_history` WHERE `record_id` = :record_id ORDER BY id ASC");
     $historyStmt->execute(['record_id' => $target_record_id]);
     $timeHistory = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -106,7 +112,8 @@ if ($record) {
         $timeHistory = [[
             'record_id' => $target_record_id,
             'support_start_time' => $record['support_start_time'],
-            'support_end_time' => $record['support_end_time']
+            'support_end_time' => $record['support_end_time'],
+            'date' => $record['date'] ?? date('Y-m-d')
         ]];
     }
 

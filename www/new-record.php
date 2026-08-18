@@ -286,7 +286,7 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
               <label for="contact_details">Contact Details</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-address-book input-icon"></i>
-                <input type="text" id="contact_details" name="contact_details" class="form-control" placeholder="Contact person details" value="<?php echo htmlspecialchars($record['contact_details']); ?>" required>
+                <input type="text" id="contact_details" name="contact_details" class="form-control" placeholder="Contact person details" value="<?php echo htmlspecialchars($record['contact_details']); ?>">
               </div>
             </div>
 
@@ -470,6 +470,7 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
                   <option value="Escalated" <?php echo getSelected('Escalated', $record['support_status']); ?>>Escalated</option>
                   <option value="Escalated to Presales" <?php echo getSelected('Escalated to Presales', $record['support_status']); ?>>Escalated to Presales</option>
                   <option value="Closed-Device Replaced" <?php echo getSelected('Closed-Device Replaced', $record['support_status']); ?>>Closed-Device Replaced</option>
+                  <option value="Closed-No Response" <?php echo getSelected('Closed-No Response', $record['support_status']); ?>>Closed-No Response</option>
                 </select>
               </div>
             </div>
@@ -500,7 +501,7 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
                 <div class="file-upload-content">
                   <i class="fa-solid fa-cloud-arrow-up"></i>
                   <div class="file-upload-text">Drag & drop files here or <span>browse</span></div>
-                  <div class="file-upload-hint">Supports PDF, Images, CSV, Documents (Max: 4 files at a time, 10MB per file)</div>
+                  <div class="file-upload-hint">Supports PDF, Images, CSV, Documents (Max: 4 files at a time, 10MB total)</div>
                 </div>
               </div>
               <div class="file-list-preview" id="fileListPreview"></div>
@@ -530,6 +531,32 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
         let formSubmitted = false;
         const recordId = $('input[name="record_id"]').val();
 
+        function sendSupportTimeBeacon() {
+          if (!formSubmitted && recordId) {
+            const nowStr = new Date().toTimeString().split(' ')[0];
+            $('#support_end_time').val(nowStr);
+
+            const formElem = document.getElementById('newRecordForm');
+            const formData = formElem ? new FormData(formElem) : new FormData();
+
+            if (!formData.has('record_id')) {
+              formData.append('record_id', recordId);
+            }
+            formData.set('support_end_time', nowStr);
+
+            const currentTotalTime = $('#total_time').val();
+            if (currentTotalTime) {
+              formData.set('total_time', currentTotalTime);
+            }
+
+            // Remove file inputs to keep beacon payload lightweight
+            formData.delete('uploaded_files[]');
+            formData.delete('uploaded_files');
+
+            navigator.sendBeacon('api/log-support-time.php', formData);
+          }
+        }
+
         $(window).on('beforeunload', function(e) {
           if (!formSubmitted) {
             e.preventDefault();
@@ -538,13 +565,24 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
           }
         });
 
-        $(window).on('unload', function() {
-          if (!formSubmitted && recordId) {
-            const formData = new FormData();
-            formData.append('record_id', recordId);
-            navigator.sendBeacon('api/set-pending-status.php', formData);
+        $(window).on('unload pagehide', function() {
+          sendSupportTimeBeacon();
+        });
+
+        $(document).on('visibilitychange', function() {
+          if (document.visibilityState === 'hidden') {
+            sendSupportTimeBeacon();
           }
         });
+
+        // Periodic heartbeat every 60 seconds to persist support_end_time continuously (recovers from unexpected crash or PC shutdown)
+        const heartbeatInterval = setInterval(function() {
+          if (!formSubmitted) {
+            sendSupportTimeBeacon();
+          } else {
+            clearInterval(heartbeatInterval);
+          }
+        }, 60000);
 
         const today = new Date().toISOString().split('T')[0];
         // 2. Interactive features: auto-grow textareas as the user types
@@ -601,20 +639,29 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
         $('#uploaded_files').on('change', function() {
           const newFiles = Array.from(this.files);
           let limitExceeded = false;
+          let sizeExceeded = false;
+          let currentTotalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
+          const maxTotalSize = 10 * 1024 * 1024;
 
           newFiles.forEach(newFile => {
             const exists = selectedFiles.some(f => f.name === newFile.name && f.size === newFile.size);
             if (!exists) {
-              if (selectedFiles.length < 4) {
-                selectedFiles.push(newFile);
-              } else {
+              if (selectedFiles.length >= 4) {
                 limitExceeded = true;
+              } else if (currentTotalSize + newFile.size > maxTotalSize) {
+                sizeExceeded = true;
+              } else {
+                selectedFiles.push(newFile);
+                currentTotalSize += newFile.size;
               }
             }
           });
 
           if (limitExceeded) {
             showNotification('Maximum 4 files can be uploaded at a time.', 'error');
+          }
+          if (sizeExceeded) {
+            showNotification('Total size of attachments cannot exceed 10MB.', 'error');
           }
 
           renderFilePreview();
@@ -844,9 +891,19 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
           e.preventDefault();
 
           const fileInput = $('#uploaded_files')[0];
-          if (fileInput && fileInput.files && fileInput.files.length > 4) {
-            showNotification('Maximum 4 files can be uploaded at a time.', 'error');
-            return false;
+          if (fileInput && fileInput.files) {
+            if (fileInput.files.length > 4) {
+              showNotification('Maximum 4 files can be uploaded at a time.', 'error');
+              return false;
+            }
+            let totalSize = 0;
+            for (let i = 0; i < fileInput.files.length; i++) {
+              totalSize += fileInput.files[i].size;
+            }
+            if (totalSize > 10 * 1024 * 1024) {
+              showNotification('Total size of attachments cannot exceed 10MB.', 'error');
+              return false;
+            }
           }
 
           const compName = $('#company_name').val().trim();

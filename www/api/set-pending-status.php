@@ -164,9 +164,23 @@ if ($save_as_new) {
     $newData['date'] = $current_date;
     $newData['support_status'] = 'Pending';
     $current_time = date('H:i:s');
-    $newData['support_start_time'] = $current_time;
+    $newData['support_start_time'] = !empty($_POST['support_start_time']) ? trim($_POST['support_start_time']) : $current_time;
     $newData['support_end_time'] = $current_time;
-    $newData['total_time'] = '00:00:00';
+    $newData['total_time'] = !empty($_POST['total_time']) ? trim($_POST['total_time']) : '00:00:00';
+
+    $updatableFields = [
+        'company_name', 'dealer_name', 'location', 'region', 'email', 'phone',
+        'contact_details', 'product_category', 'issue_category', 'issue_type',
+        'issue_details', 'support_category', 'software_details', 'hardware_details',
+        'product_model', 'solution', 'reason', 'ticket_id'
+    ];
+
+    foreach ($updatableFields as $field) {
+        if (array_key_exists($field, $_POST)) {
+            $val = trim($_POST[$field]);
+            $newData[$field] = $val !== '' ? $val : null;
+        }
+    }
 
     if ($tableName === 'ivr_details') {
         $maxIdStmt = $db->query("SELECT MAX(id) as max_id FROM ivr_details");
@@ -181,42 +195,86 @@ if ($save_as_new) {
     $insertStmt = $db->prepare("INSERT INTO `$tableName` ($columns_str) VALUES ($placeholders_str)");
     $insertStmt->execute($newData);
 
-    $timeHistStmt = $db->prepare("INSERT INTO `support_time_history` (`record_id`, `support_start_time`, `support_end_time`) VALUES (:record_id, :support_start_time, :support_end_time)");
+    $timeHistStmt = $db->prepare("INSERT INTO `support_time_history` (`record_id`, `support_start_time`, `support_end_time`, `date`) VALUES (:record_id, :support_start_time, :support_end_time, :date)");
     $timeHistStmt->execute([
         'record_id' => $new_record_id,
         'support_start_time' => $newData['support_start_time'],
-        'support_end_time' => $newData['support_end_time']
+        'support_end_time' => $newData['support_end_time'],
+        'date' => !empty($newData['date']) ? $newData['date'] : $current_date
     ]);
 } else {
     // In-place update query
+    $updatableFields = [
+        'company_name', 'dealer_name', 'location', 'region', 'email', 'phone',
+        'contact_details', 'product_category', 'issue_category', 'issue_type',
+        'issue_details', 'support_category', 'software_details', 'hardware_details',
+        'product_model', 'solution', 'reason', 'ticket_id'
+    ];
+
     $current_time = date('H:i:s');
-    $start_time = !empty($existing['support_start_time']) ? $existing['support_start_time'] : $current_time;
+    $start_time = !empty($_POST['support_start_time']) ? trim($_POST['support_start_time']) : (!empty($existing['support_start_time']) ? $existing['support_start_time'] : $current_time);
     $end_time = $current_time;
 
-    $start_secs = strtotime("1970-01-01 $start_time");
-    $end_secs = strtotime("1970-01-01 $end_time");
-    $diff_secs = max(0, $end_secs - $start_secs);
-    $hours = floor($diff_secs / 3600);
-    $minutes = floor(($diff_secs % 3600) / 60);
-    $seconds = $diff_secs % 60;
-    $total_time_str = sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
+    if (!empty($_POST['total_time'])) {
+        $total_time_str = trim($_POST['total_time']);
+    } else {
+        $start_secs = strtotime("1970-01-01 $start_time");
+        $end_secs = strtotime("1970-01-01 $end_time");
+        $diff_secs = max(0, $end_secs - $start_secs);
+        $hours = floor($diff_secs / 3600);
+        $minutes = floor(($diff_secs % 3600) / 60);
+        $seconds = $diff_secs % 60;
+        $total_time_str = sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
+    }
 
-    $updateStmt = $db->prepare("UPDATE `$tableName` SET `support_status` = 'Pending', `agent` = :agent, `date` = :date, `support_end_time` = :end_time, `total_time` = :total_time WHERE `id` = :id");
-    $updateStmt->execute([
+    $fieldUpdates = [];
+    $queryParams = [
         'agent' => $current_agent,
         'date' => $current_date,
+        'start_time' => $start_time,
         'end_time' => $end_time,
         'total_time' => $total_time_str,
         'id' => $existing['id']
-    ]);
+    ];
 
-    // Insert into support_time_history (preserve full history)
-    $insertTimeHist = $db->prepare("INSERT INTO `support_time_history` (`record_id`, `support_start_time`, `support_end_time`) VALUES (:record_id, :support_start_time, :support_end_time)");
-    $insertTimeHist->execute([
+    foreach ($updatableFields as $field) {
+        if (array_key_exists($field, $_POST)) {
+            $val = trim($_POST[$field]);
+            $fieldUpdates[] = "`$field` = :$field";
+            $queryParams[$field] = $val !== '' ? $val : null;
+        }
+    }
+
+    $fieldSql = !empty($fieldUpdates) ? implode(', ', $fieldUpdates) . ', ' : '';
+
+    $updateStmt = $db->prepare("UPDATE `$tableName` SET {$fieldSql}`support_status` = 'Pending', `agent` = :agent, `date` = :date, `support_start_time` = :start_time, `support_end_time` = :end_time, `total_time` = :total_time WHERE `id` = :id");
+    $updateStmt->execute($queryParams);
+
+    // Upsert into support_time_history for active session
+    $hist_date = !empty($existing['date']) ? $existing['date'] : $current_date;
+    $checkHist = $db->prepare("SELECT `id` FROM `support_time_history` WHERE `record_id` = :record_id AND `support_start_time` = :start_time AND `date` = :date ORDER BY `id` DESC LIMIT 1");
+    $checkHist->execute([
         'record_id' => $existing['record_id'],
-        'support_start_time' => $start_time,
-        'support_end_time' => $end_time
+        'start_time' => $start_time,
+        'date' => $hist_date
     ]);
+    $existingHist = $checkHist->fetch();
+
+    if ($existingHist) {
+        $updateHist = $db->prepare("UPDATE `support_time_history` SET `support_end_time` = :end_time WHERE `id` = :id");
+        $updateHist->execute([
+            'end_time' => $end_time,
+            'id' => $existingHist['id']
+        ]);
+    } else {
+        $insertTimeHist = $db->prepare("INSERT INTO `support_time_history` (`record_id`, `support_start_time`, `support_end_time`, `date`) VALUES (:record_id, :support_start_time, :support_end_time, :date)");
+        $insertTimeHist->execute([
+            'record_id' => $existing['record_id'],
+            'support_start_time' => $start_time,
+            'support_end_time' => $end_time,
+            'date' => $hist_date
+        ]);
+    }
 }
 
 // Synchronize status in all records with the same case_id

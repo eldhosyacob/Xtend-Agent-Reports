@@ -1397,3 +1397,7 @@
   background-color: #151c2c;
   border-top: 1px solid #303339;
 }
+
+[data-theme="dark"] .confirm-form-group label {
+  color: #94a3b8;
+}

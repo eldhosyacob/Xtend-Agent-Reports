@@ -129,15 +129,24 @@ if (!empty($user_id)) {
         <li class="sidebar-menu-item <?php echo ($current_page == 'new-record') ? 'active' : ''; ?>">
           <a href="#" onclick="showNewRecordConfirmModal(); return false;" class="sidebar-link">
             <i class="fa-solid fa-square-plus"></i>
-            <span style="font-weight:700;">Add New Record</span>
+            <span style="font-weight:700;">Add New Support</span>
           </a>
         </li>
+
         <li class="sidebar-menu-item <?php echo ($current_page == 'add-miscellaneous') ? 'active' : ''; ?>">
           <a href="add-miscellaneous.php" class="sidebar-link">
-            <i class="fa-solid fa-file-arrow-up"></i>
+            <i class="fa-solid fa-file-zipper"></i>
             <span style="font-weight:700;">Add Miscellaneous</span>
           </a>
         </li>
+        <?php if (strcasecmp($user_department, 'Manager') === 0): ?>
+        <li class="sidebar-menu-item <?php echo ($current_page == 'upload-record') ? 'active' : ''; ?>">
+          <a href="upload-record.php" class="sidebar-link">
+            <i class="fa-solid fa-file-arrow-up"></i>
+            <span style="font-weight:700;">Upload Support Details</span>
+          </a>
+        </li>
+        <?php endif; ?>
         <li class="sidebar-menu-item <?php echo ($current_page == 'my-records') ? 'active' : ''; ?>">
           <a href="my-records.php" class="sidebar-link">
             <i class="fa-solid fa-file-lines"></i>
@@ -393,8 +402,37 @@ if (!empty($user_id)) {
     // Reopen proceed button handler
     $('#btnReopenConfirmProceed').on('click', function() {
       if (reopenRecordId) {
-        window.open('edit-record.php?record_id=' + encodeURIComponent(reopenRecordId), '_blank');
-        hideReopenConfirmModal();
+        const $btn = $(this);
+        const originalHtml = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Opening...');
+
+        $.ajax({
+          url: 'api/create-reopened-record.php',
+          type: 'POST',
+          data: {
+            record_id: reopenRecordId,
+            department: reopenDepartment || ''
+          },
+          dataType: 'json',
+          success: function(response) {
+            if (response.success && response.record_id) {
+              let targetUrl = 'edit-record.php?record_id=' + encodeURIComponent(response.record_id);
+              if (reopenDepartment) {
+                targetUrl += '&department=' + encodeURIComponent(reopenDepartment);
+              }
+              window.open(targetUrl, '_blank');
+              hideReopenConfirmModal();
+            } else {
+              alert('Error: ' + (response.message || 'Failed to create reopened record.'));
+            }
+          },
+          error: function() {
+            alert('An error occurred while reopening the record.');
+          },
+          complete: function() {
+            $btn.prop('disabled', false).html(originalHtml);
+          }
+        });
       }
     });
 
@@ -402,10 +440,11 @@ if (!empty($user_id)) {
     $(document).on('click', '.btn-action-reopen', function(e) {
       e.preventDefault();
       const recordId = $(this).attr('data-record-id');
+      const department = $(this).attr('data-department') || '';
       const companyName = ($(this).attr('data-company-name') || '').trim();
       const dealerName = ($(this).attr('data-dealer-name') || '').trim();
       const displayName = companyName !== '' ? companyName : (dealerName !== '' ? dealerName : '');
-      showReopenConfirmModal(recordId, displayName);
+      showReopenConfirmModal(recordId, displayName, department);
     });
 
     // Search functionality
@@ -483,9 +522,11 @@ if (!empty($user_id)) {
 
   // Reopen confirmation functions
   let reopenRecordId = null;
+  let reopenDepartment = null;
 
-  function showReopenConfirmModal(recordId, companyName) {
+  function showReopenConfirmModal(recordId, companyName, department) {
     reopenRecordId = recordId;
+    reopenDepartment = department || '';
     $('#reopen_company_name').text(companyName || 'Unknown');
     $('#reopenConfirmModal').fadeIn(200);
   }
@@ -493,6 +534,7 @@ if (!empty($user_id)) {
   function hideReopenConfirmModal() {
     $('#reopenConfirmModal').fadeOut(200);
     reopenRecordId = null;
+    reopenDepartment = null;
   }
 
   function checkCompanyExists() {

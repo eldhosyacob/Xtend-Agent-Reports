@@ -265,7 +265,7 @@ if (!empty($user_id)) {
           if (s === 'under observation' || s === 'escalated' || s === 'escalated to presales') {
             return 'var(--purple-color)';
           }
-          if (s === 'closed' || s === 'closed-device replaced') {
+          if (s.startsWith('closed')) {
             return 'var(--success-color)';
           }
           if (s === 'pending') {

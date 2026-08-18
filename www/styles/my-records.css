@@ -243,9 +243,9 @@
 /* Stats Widget Section */
 .stats-grid-container {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 20px;
-    max-width: 1100px;
+    max-width: 1350px;
     margin: 0 auto 32px auto;
     position: relative;
     z-index: 10;
@@ -309,6 +309,16 @@
     color: #f59e0b;
 }
 
+.stat-icon-box.misc-time {
+    background: rgba(14, 165, 233, 0.1);
+    color: #0ea5e9;
+}
+
+[data-theme="dark"] .stat-icon-box.misc-time {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+}
+
 .stat-info-box {
     display: flex;
     flex-direction: column;
@@ -334,7 +344,7 @@
     border: 1px solid #dcdfe3;
     border-radius: 20px;
     padding: 24px;
-    max-width: 1100px;
+    max-width: 1200px;
     margin: 0 auto;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     position: relative;

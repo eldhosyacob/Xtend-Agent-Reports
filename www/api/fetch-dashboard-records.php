@@ -104,6 +104,27 @@ $recordsStmt = $db->prepare($recordsQuery);
 $recordsStmt->execute($params);
 $records = $recordsStmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Find the max ID for each case_id in this table to set is_latest
+$case_ids = array_filter(array_unique(array_map(function($r) {
+    return !empty($r['case_id']) ? $r['case_id'] : ($r['record_id'] ?? null);
+}, $records)));
+
+$max_ids = [];
+if (!empty($case_ids)) {
+    $in_clause = implode(',', array_fill(0, count($case_ids), '?'));
+    $stmt_max = $db->prepare("SELECT COALESCE(NULLIF(case_id, ''), record_id) as cid, MAX(id) as max_id FROM `$tableName` WHERE COALESCE(NULLIF(case_id, ''), record_id) IN ($in_clause) GROUP BY cid");
+    $stmt_max->execute(array_values($case_ids));
+    while ($row = $stmt_max->fetch(PDO::FETCH_ASSOC)) {
+        $max_ids[$row['cid']] = $row['max_id'];
+    }
+}
+
+foreach ($records as &$rec) {
+    $cid = !empty($rec['case_id']) ? $rec['case_id'] : ($rec['record_id'] ?? null);
+    $rec['is_latest'] = isset($max_ids[$cid]) ? ($rec['id'] == $max_ids[$cid]) : true;
+}
+unset($rec);
+
 // Fetch overall status breakdown for this date range (unfiltered by status select)
 $statusBreakdownConditions = [$dateSql];
 $statusParams = [];

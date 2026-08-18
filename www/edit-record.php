@@ -73,14 +73,97 @@ if (!$record) {
     die("Error: Record not found.");
 }
 
-$is_latest = true;
 $case_id = !empty($record['case_id']) ? $record['case_id'] : (!empty($record['record_id']) ? $record['record_id'] : $record['id']);
-$latestStmt = $db->prepare("SELECT id FROM `$tableName` WHERE case_id = :case_id ORDER BY id DESC LIMIT 1");
+
+// Fetch latest record entry for this case_id
+$latestStmt = $db->prepare("SELECT * FROM `$tableName` WHERE case_id = :case_id ORDER BY id DESC LIMIT 1");
 $latestStmt->execute(['case_id' => $case_id]);
 $latestRecord = $latestStmt->fetch();
-if ($latestRecord && (int)$latestRecord['id'] !== (int)$record['id']) {
-    $is_latest = false;
+
+if (!$latestRecord) {
+    $latestRecord = $record;
 }
+
+$current_agent = isset($_SESSION['real_name']) ? strtoupper($_SESSION['real_name']) : strtoupper($_SESSION['username']);
+$current_date = date('Y-m-d');
+
+$is_same_agent = (strcasecmp(trim($latestRecord['agent']), $current_agent) === 0);
+$is_same_day = ($latestRecord['date'] === $current_date);
+$is_pending = (strcasecmp(trim($latestRecord['support_status']), 'Pending') === 0);
+
+// If the latest record entry is NOT owned by the current agent today or NOT pending, create a new reopened pending record entry
+if (!($is_same_agent && $is_same_day && $is_pending)) {
+    // Security check before creation
+    $record_department = ($tableName === 'support_details') ? 'Voice Logger' : 'IVR';
+    if (strcasecmp($agent_department, 'Manager') !== 0 && strcasecmp($agent_department, $record_department) !== 0) {
+        die("Error: You are not authorized to edit this record.");
+    }
+
+    $suffixStmt = $db->prepare("SELECT record_id FROM `$tableName` WHERE case_id = :case_id");
+    $suffixStmt->execute(['case_id' => $case_id]);
+    $existing_record_ids = $suffixStmt->fetchAll(PDO::FETCH_COLUMN);
+
+    $suffixes = [];
+    foreach ($existing_record_ids as $rid) {
+        if (strpos($rid, $case_id . '_') === 0) {
+            $suffix = substr($rid, strlen($case_id) + 1);
+            if ($suffix !== '') {
+                $suffixes[] = $suffix;
+            }
+        }
+    }
+
+    $numeric_suffixes = array_filter($suffixes, 'is_numeric');
+    if (empty($numeric_suffixes)) {
+        $next_suffix = 1;
+    } else {
+        $next_suffix = max(array_map('intval', $numeric_suffixes)) + 1;
+    }
+
+    $new_record_id = $case_id . '_' . $next_suffix;
+
+    $newData = [];
+    foreach ($latestRecord as $key => $val) {
+        if (!is_numeric($key)) {
+            $newData[$key] = $val;
+        }
+    }
+
+    unset($newData['id']);
+    $newData['record_id'] = $new_record_id;
+    $newData['case_id'] = $case_id;
+    $newData['agent'] = $current_agent;
+    $newData['date'] = $current_date;
+    $newData['support_status'] = 'Pending';
+    $newData['support_start_time'] = date('H:i:s');
+    $newData['support_end_time'] = null;
+    $newData['total_time'] = '00:00:00';
+
+    if ($tableName === 'ivr_details') {
+        $maxIdStmt = $db->query("SELECT MAX(id) as max_id FROM ivr_details");
+        $maxIdRow = $maxIdStmt->fetch();
+        $newData['id'] = ($maxIdRow && $maxIdRow['max_id'] !== null) ? (int)$maxIdRow['max_id'] + 1 : 1;
+    }
+
+    $cols = array_keys($newData);
+    $columns_str = implode(',', array_map(fn($c) => "`$c`", $cols));
+    $placeholders_str = implode(',', array_map(fn($c) => ":$c", $cols));
+
+    $insertStmt = $db->prepare("INSERT INTO `$tableName` ($columns_str) VALUES ($placeholders_str)");
+    $insertStmt->execute($newData);
+
+    $statusUpdateStmt = $db->prepare("UPDATE `$tableName` SET `support_status` = 'Pending' WHERE `case_id` = :case_id");
+    $statusUpdateStmt->execute(['case_id' => $case_id]);
+
+    $redirectUrl = 'edit-record.php?record_id=' . urlencode($new_record_id);
+    if (!empty($requested_dept)) {
+        $redirectUrl .= '&department=' . urlencode($requested_dept);
+    }
+    header("Location: " . $redirectUrl);
+    exit;
+}
+
+$is_latest = ((int)$latestRecord['id'] === (int)$record['id']);
 
 // Security: Ensure the agent's department matches the record's department
 $record_department = ($tableName === 'support_details') ? 'Voice Logger' : 'IVR';
@@ -89,13 +172,15 @@ if (strcasecmp($agent_department, 'Manager') !== 0 && strcasecmp($agent_departme
 }
 
 // Calculate stopwatch offsetSeconds from the record's saved total_time
-$is_same_agent = (strcasecmp(trim($record['agent']), $_SESSION['real_name'] ?? $_SESSION['username']) === 0);
-$is_same_day = ($record['date'] === date('Y-m-d'));
+$is_same_agent = (strcasecmp(trim($record['agent']), $current_agent) === 0);
+$is_same_day = ($record['date'] === $current_date);
 $resume_timer = ($is_same_agent && $is_same_day && $is_latest);
 
 if ($resume_timer) {
     $timeParts = explode(':', $record['total_time']);
     $offsetSeconds = (int)($timeParts[0] ?? 0) * 3600 + (int)($timeParts[1] ?? 0) * 60 + (int)($timeParts[2] ?? 0);
+    // Refresh support_start_time for the active form session so session starts from current time
+    $record['support_start_time'] = date('H:i:s');
 } else {
     $offsetSeconds = 0;
 }
@@ -264,7 +349,7 @@ if (is_dir($uploadDir) && !empty($case_id)) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title><?php echo $is_latest ? 'Edit Record' : 'View Record'; ?> <?php echo htmlspecialchars($record_id); ?> | Xtend Agent Reports</title>
+    <title>Edit Record | Xtend Agent Reports</title>
     <link rel="shortcut icon" href="images/favicon.png" />
     <link rel="stylesheet" href="styles/header-sidebar.css">
     <link rel="stylesheet" href="styles/new_record.css">
@@ -384,7 +469,7 @@ if (is_dir($uploadDir) && !empty($case_id)) {
               <label for="contact_details">Contact Details</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-address-book input-icon"></i>
-                <input type="text" id="contact_details" name="contact_details" class="form-control" placeholder="Contact person details" value="<?php echo htmlspecialchars($record['contact_details']); ?>" required>
+                <input type="text" id="contact_details" name="contact_details" class="form-control" placeholder="Contact person details" value="<?php echo htmlspecialchars($record['contact_details']); ?>">
               </div>
             </div>
 
@@ -567,6 +652,7 @@ if (is_dir($uploadDir) && !empty($case_id)) {
                   <option value="Escalated" <?php echo getSelected('Escalated', $record['support_status']); ?>>Escalated</option>
                   <option value="Escalated to Presales" <?php echo getSelected('Escalated to Presales', $record['support_status']); ?>>Escalated to Presales</option>
                   <option value="Closed-Device Replaced" <?php echo getSelected('Closed-Device Replaced', $record['support_status']); ?>>Closed-Device Replaced</option>
+                  <option value="Closed-No Response" <?php echo getSelected('Closed-No Response', $record['support_status']); ?>>Closed-No Response</option>
                 </select>
               </div>
             </div>
@@ -628,7 +714,7 @@ if (is_dir($uploadDir) && !empty($case_id)) {
                 <div class="file-upload-content">
                   <i class="fa-solid fa-cloud-arrow-up"></i>
                   <div class="file-upload-text">Drag & drop files here or <span>browse</span></div>
-                  <div class="file-upload-hint">Supports PDF, Images, CSV, Documents, ZIP (Max: 4 files at a time, 10MB per file)</div>
+                  <div class="file-upload-hint">Supports PDF, Images, CSV, Documents, ZIP (Max: 4 files at a time, 10MB total)</div>
                 </div>
               </div>
               <div class="file-list-preview" id="fileListPreview"></div>
@@ -663,6 +749,35 @@ if (is_dir($uploadDir) && !empty($case_id)) {
         const recordId = $('input[name="record_id"]').val();
 
         <?php if ($is_latest): ?>
+        function sendSupportTimeBeacon() {
+          if (!formSubmitted && recordId) {
+            const nowStr = new Date().toTimeString().split(' ')[0];
+            $('#support_end_time').val(nowStr);
+
+            const formElem = document.getElementById('editRecordForm');
+            const formData = formElem ? new FormData(formElem) : new FormData();
+
+            if (!formData.has('record_id')) {
+              formData.append('record_id', recordId);
+            }
+            formData.set('support_end_time', nowStr);
+
+            const currentTotalTime = $('#total_time').val();
+            if (currentTotalTime) {
+              formData.set('total_time', currentTotalTime);
+            }
+            <?php if (!empty($requested_dept)): ?>
+            formData.append('department', <?php echo json_encode($requested_dept); ?>);
+            <?php endif; ?>
+
+            // Remove file inputs to keep beacon payload lightweight
+            formData.delete('uploaded_files[]');
+            formData.delete('uploaded_files');
+
+            navigator.sendBeacon('api/log-support-time.php', formData);
+          }
+        }
+
         $(window).on('beforeunload', function(e) {
           if (!formSubmitted) {
             e.preventDefault();
@@ -671,20 +786,24 @@ if (is_dir($uploadDir) && !empty($case_id)) {
           }
         });
 
-        $(window).on('unload', function() {
-          if (!formSubmitted && recordId) {
-            const startTime = $('#support_start_time').val();
-            const endTime = new Date().toTimeString().split(' ')[0];
-            const formData = new FormData();
-            formData.append('record_id', recordId);
-            if (startTime) formData.append('support_start_time', startTime);
-            formData.append('support_end_time', endTime);
-            <?php if (!empty($requested_dept)): ?>
-            formData.append('department', <?php echo json_encode($requested_dept); ?>);
-            <?php endif; ?>
-            navigator.sendBeacon('api/log-support-time.php', formData);
+        $(window).on('unload pagehide', function() {
+          sendSupportTimeBeacon();
+        });
+
+        $(document).on('visibilitychange', function() {
+          if (document.visibilityState === 'hidden') {
+            sendSupportTimeBeacon();
           }
         });
+
+        // Periodic heartbeat every 60 seconds to persist support_end_time continuously (recovers from unexpected crash or PC shutdown)
+        const heartbeatInterval = setInterval(function() {
+          if (!formSubmitted) {
+            sendSupportTimeBeacon();
+          } else {
+            clearInterval(heartbeatInterval);
+          }
+        }, 60000);
         <?php endif; ?>
 
         const clientList = <?php echo json_encode($clients, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
@@ -743,20 +862,29 @@ if (is_dir($uploadDir) && !empty($case_id)) {
         $('#uploaded_files').on('change', function() {
           const newFiles = Array.from(this.files);
           let limitExceeded = false;
+          let sizeExceeded = false;
+          let currentTotalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
+          const maxTotalSize = 10 * 1024 * 1024;
 
           newFiles.forEach(newFile => {
             const exists = selectedFiles.some(f => f.name === newFile.name && f.size === newFile.size);
             if (!exists) {
-              if (selectedFiles.length < 4) {
-                selectedFiles.push(newFile);
-              } else {
+              if (selectedFiles.length >= 4) {
                 limitExceeded = true;
+              } else if (currentTotalSize + newFile.size > maxTotalSize) {
+                sizeExceeded = true;
+              } else {
+                selectedFiles.push(newFile);
+                currentTotalSize += newFile.size;
               }
             }
           });
 
           if (limitExceeded) {
             showNotification('Maximum 4 files can be uploaded at a time.', 'error');
+          }
+          if (sizeExceeded) {
+            showNotification('Total size of attachments cannot exceed 10MB.', 'error');
           }
 
           renderFilePreview();
@@ -992,9 +1120,19 @@ if (is_dir($uploadDir) && !empty($case_id)) {
           e.preventDefault();
 
           const fileInput = $('#uploaded_files')[0];
-          if (fileInput && fileInput.files && fileInput.files.length > 4) {
-            showNotification('Maximum 4 files can be uploaded at a time.', 'error');
-            return false;
+          if (fileInput && fileInput.files) {
+            if (fileInput.files.length > 4) {
+              showNotification('Maximum 4 files can be uploaded at a time.', 'error');
+              return false;
+            }
+            let totalSize = 0;
+            for (let i = 0; i < fileInput.files.length; i++) {
+              totalSize += fileInput.files[i].size;
+            }
+            if (totalSize > 10 * 1024 * 1024) {
+              showNotification('Total size of attachments cannot exceed 10MB.', 'error');
+              return false;
+            }
           }
 
           const compName = $('#company_name').val().trim();

@@ -26,7 +26,10 @@ require_once 'config/auth_check.php';
             <i class="fa-solid fa-file-invoice"></i>
             Record Details: <span id="title-record-id">—</span>
           </div>
-          <div>
+          <div class="header-right-actions">
+            <a href="#" id="btn-reopen-header" class="btn-action-reopen btn-reopen-header" title="Reopen Record">
+              <i class="fa-solid fa-folder-open"></i> Reopen
+            </a>
             <span class="badge-dept" id="dept-badge">—</span>
           </div>
         </div>
@@ -487,11 +490,12 @@ require_once 'config/auth_check.php';
                   durationStr = parts.join(' ');
                 }
                 
+                const sessionDateStr = item.date ? `<span class="history-item-date"> (${item.date})</span>` : '';
                 const html = `
                   <div class="history-item">
                     <div class="history-item-times">
                       <i class="fa-regular fa-clock"></i>
-                      <span>Session ${idx + 1}: <strong>${item.support_start_time}</strong> &mdash; <strong>${item.support_end_time}</strong></span>
+                      <span>Session ${idx + 1}: <strong>${item.support_start_time}</strong> &mdash; <strong>${item.support_end_time}</strong>${sessionDateStr}</span>
                     </div>
                     ${durationStr ? `<div class="history-item-duration">${durationStr}</div>` : ''}
                   </div>
@@ -543,6 +547,25 @@ require_once 'config/auth_check.php';
             badge.text(data.department);
             if (isIvr) {
               badge.addClass('ivr');
+            }
+
+            // Set Reopen button if record is active (not closed)
+            const statusLower = String(data.support_status || '').toLowerCase();
+            if (!statusLower.startsWith('closed') && data.is_latest !== false) {
+              const actualId = data.record_id || data.id || recordId;
+              const deptVal = data.department || department || '';
+              const compName = data.company_name || '';
+              const dealerName = data.dealer_name || '';
+
+              $('#btn-reopen-header')
+                .attr('href', `edit-record.php?record_id=${encodeURIComponent(actualId)}&department=${encodeURIComponent(deptVal)}`)
+                .attr('data-record-id', actualId)
+                .attr('data-department', deptVal)
+                .attr('data-company-name', compName)
+                .attr('data-dealer-name', dealerName)
+                .css('display', 'inline-flex');
+            } else {
+              $('#btn-reopen-header').hide();
             }
           } else {
             alert('Error: ' + (res.error || 'Failed to fetch record details.'));

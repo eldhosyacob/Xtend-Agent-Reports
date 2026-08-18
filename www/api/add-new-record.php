@@ -228,11 +228,12 @@ if (!$success) {
 }
 
 if ($success && !empty($data['support_start_time']) && !empty($data['support_end_time'])) {
-    $historyStmt = $db->prepare("INSERT INTO `support_time_history` (`record_id`, `support_start_time`, `support_end_time`) VALUES (:record_id, :support_start_time, :support_end_time)");
+    $historyStmt = $db->prepare("INSERT INTO `support_time_history` (`record_id`, `support_start_time`, `support_end_time`, `date`) VALUES (:record_id, :support_start_time, :support_end_time, :date)");
     $historyStmt->execute([
         'record_id' => $record_id,
         'support_start_time' => $data['support_start_time'],
-        'support_end_time' => $data['support_end_time']
+        'support_end_time' => $data['support_end_time'],
+        'date' => !empty($data['date']) ? $data['date'] : date('Y-m-d')
     ]);
 }
 
@@ -268,6 +269,15 @@ if (!empty($_FILES['uploaded_files'])) {
         echo json_encode([
             'success' => false,
             'message' => 'Maximum 4 files can be uploaded at a time.'
+        ]);
+        exit;
+    }
+
+    $totalSize = is_array($files['size']) ? array_sum($files['size']) : 0;
+    if ($totalSize > 10 * 1024 * 1024) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Total size of attachments cannot exceed 10MB.'
         ]);
         exit;
     }

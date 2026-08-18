@@ -82,8 +82,8 @@ foreach ($tables_to_query as $table) {
     }
     $matchSql = "(" . implode(" OR ", $whereClause) . ")";
 
-    // Query records other than 'Closed' and 'Closed-Device Replaced' matching the company name / dealer name
-    $query = "SELECT * FROM `$table` WHERE $matchSql AND LOWER(`support_status`) NOT IN ('closed', 'closed-device replaced')";
+    // Query records other than closed statuses ('Closed', 'Closed-Device Replaced', 'Closed-No Response') matching the company name / dealer name
+    $query = "SELECT * FROM `$table` WHERE $matchSql AND LOWER(`support_status`) NOT IN ('closed', 'closed-device replaced', 'closed-no response')";
     $stmt = $db->prepare($query);
     $stmt->execute($queryParams);
     $records = $stmt->fetchAll(PDO::FETCH_ASSOC);

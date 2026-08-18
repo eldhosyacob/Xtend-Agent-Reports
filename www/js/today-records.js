@@ -54,7 +54,7 @@ $(document).ready(function () {
         let dotColor = '#64748b';
         let bg = 'rgba(100, 116, 139, 0.1)';
 
-        if (s === 'Closed' || s === 'Closed-Device Replaced') {
+        if (s.toLowerCase().startsWith('closed')) {
             dotColor = '#10b981';
             bg = 'rgba(16, 185, 129, 0.12)';
         } else if (s === 'Pending') {
@@ -92,7 +92,7 @@ $(document).ready(function () {
                     renderPagination(response.page, response.pages, response.total);
                     updateSubtitle(response.department, response.range, response.total);
                 } else {
-                    $('#recordsTableBody').html(`<tr><td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 30px;">${escapeHtml(response.message)}</td></tr>`);
+                    $('#recordsTableBody').html(`<tr><td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 30px;">${escapeHtml(response.message)}</td></tr>`);
                 }
             },
             error: function (xhr, status, error) {
@@ -101,7 +101,7 @@ $(document).ready(function () {
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     msg = xhr.responseJSON.message;
                 }
-                $('#recordsTableBody').html(`<tr><td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 30px;">${escapeHtml(msg)}</td></tr>`);
+                $('#recordsTableBody').html(`<tr><td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 30px;">${escapeHtml(msg)}</td></tr>`);
             },
             complete: function () {
                 $('#loadingOverlay').removeClass('active');
@@ -116,7 +116,7 @@ $(document).ready(function () {
         if (!records || records.length === 0) {
             $tbody.append(`
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
                         <i class="fa-solid fa-folder-open" style="font-size: 32px; margin-bottom: 10px; display: block;"></i>
                         No records found matching your current filter criteria.
                     </td>
@@ -127,22 +127,16 @@ $(document).ready(function () {
 
         records.forEach(function (row) {
             const dateStr = row.date ? row.date : '-';
-            const viewLink = 'view-record.php?id=' + encodeURIComponent(row.id) + '&type=' + encodeURIComponent(currentDept);
 
             const trHtml = `
                 <tr>
+                    <td>${escapeHtml(dateStr)}</td>
                     <td>${escapeHtml(row.agent || '-')}</td>
                     <td>${escapeHtml(row.company_name || '-')}</td>
                     <td>${escapeHtml(row.dealer_name || '-')}</td>
                     <td>${escapeHtml(row.location || '-')}</td>
                     <td>${escapeHtml(row.issue_category || '-')}</td>
-                    <td>${escapeHtml(dateStr)}</td>
                     <td>${getStatusBadge(row.support_status)}</td>
-                    <td>
-                        <a href="${viewLink}" class="btn-action-view">
-                            <i class="fa-solid fa-eye"></i> View
-                        </a>
-                    </td>
                 </tr>
             `;
             $tbody.append(trHtml);

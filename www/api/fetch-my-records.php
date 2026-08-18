@@ -128,12 +128,34 @@ $tM = floor(($totalSeconds % 3600) / 60);
 $tS = $totalSeconds % 60;
 $totalSupportTime = sprintf('%02d:%02d:%02d', $tH, $tM, $tS);
 
+// Fetch total miscellaneous time from miscellaneous_details table
+$miscStmt = $db->prepare("SELECT `total_time` FROM `miscellaneous_details` WHERE $dateCondition AND UPPER(`agent`) = :agent");
+$miscStmt->execute(['agent' => $agentUsername]);
+$miscTimes = $miscStmt->fetchAll(PDO::FETCH_COLUMN);
+
+$totalMiscSeconds = 0;
+foreach ($miscTimes as $timeStr) {
+    if (!empty($timeStr)) {
+        $parts = explode(':', $timeStr);
+        if (count($parts) === 3) {
+            $totalMiscSeconds += ((int)$parts[0] * 3600) + ((int)$parts[1] * 60) + (int)$parts[2];
+        } elseif (count($parts) === 2) {
+            $totalMiscSeconds += ((int)$parts[0] * 60) + (int)$parts[1];
+        }
+    }
+}
+$mH = floor($totalMiscSeconds / 3600);
+$mM = floor(($totalMiscSeconds % 3600) / 60);
+$mS = $totalMiscSeconds % 60;
+$totalMiscTime = sprintf('%02d:%02d:%02d', $mH, $mM, $mS);
+
 echo json_encode([
     'success' => true,
     'count' => count($records),
     'department' => $user_department,
     'range' => $range,
     'total_support_time' => $totalSupportTime,
+    'total_miscellaneous_time' => $totalMiscTime,
     'data' => $records
 ]);
 ?>

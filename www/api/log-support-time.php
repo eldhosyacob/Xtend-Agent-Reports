@@ -121,13 +121,32 @@ $end_time = !empty($_POST['support_end_time']) ? trim($_POST['support_end_time']
 $actual_record_id = $existing['record_id'] ?: $record_id;
 $case_id = !empty($existing['case_id']) ? $existing['case_id'] : $actual_record_id;
 
-// Always INSERT a new entry into support_time_history to preserve complete session history
-$timeHistStmt = $db->prepare("INSERT INTO `support_time_history` (`record_id`, `support_start_time`, `support_end_time`) VALUES (:record_id, :support_start_time, :support_end_time)");
-$timeHistStmt->execute([
+$record_date = !empty($existing['date']) ? $existing['date'] : date('Y-m-d');
+
+// Check if an entry for this active session (record_id, support_start_time, date) already exists in support_time_history
+$checkHistStmt = $db->prepare("SELECT `id` FROM `support_time_history` WHERE `record_id` = :record_id AND `support_start_time` = :start_time AND `date` = :date ORDER BY `id` DESC LIMIT 1");
+$checkHistStmt->execute([
     'record_id' => $actual_record_id,
-    'support_start_time' => $start_time,
-    'support_end_time' => $end_time
+    'start_time' => $start_time,
+    'date' => $record_date
 ]);
+$existingHist = $checkHistStmt->fetch();
+
+if ($existingHist) {
+    $updateHistStmt = $db->prepare("UPDATE `support_time_history` SET `support_end_time` = :end_time WHERE `id` = :id");
+    $updateHistStmt->execute([
+        'end_time' => $end_time,
+        'id' => $existingHist['id']
+    ]);
+} else {
+    $timeHistStmt = $db->prepare("INSERT INTO `support_time_history` (`record_id`, `support_start_time`, `support_end_time`, `date`) VALUES (:record_id, :support_start_time, :support_end_time, :date)");
+    $timeHistStmt->execute([
+        'record_id' => $actual_record_id,
+        'support_start_time' => $start_time,
+        'support_end_time' => $end_time,
+        'date' => $record_date
+    ]);
+}
 
 // Recalculate total_time by summing entries in support_time_history for this specific record_id
 $allHistoryStmt = $db->prepare("SELECT support_start_time, support_end_time FROM `support_time_history` WHERE `record_id` = :record_id");
@@ -150,13 +169,33 @@ $minutes = floor(($totalSecs % 3600) / 60);
 $seconds = $totalSecs % 60;
 $total_time_str = sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
 
-// Update support_end_time and total_time without changing support_status
-$updateStmt = $db->prepare("UPDATE `$tableName` SET `support_end_time` = :end_time, `total_time` = :total_time WHERE `id` = :id");
-$updateStmt->execute([
+$updatableFields = [
+    'company_name', 'dealer_name', 'location', 'region', 'email', 'phone',
+    'contact_details', 'product_category', 'issue_category', 'issue_type',
+    'issue_details', 'support_category', 'software_details', 'hardware_details',
+    'product_model', 'solution', 'reason', 'ticket_id'
+];
+
+$fieldUpdates = [];
+$queryParams = [
     'end_time' => $end_time,
     'total_time' => $total_time_str,
     'id' => $existing['id']
-]);
+];
+
+foreach ($updatableFields as $field) {
+    if (array_key_exists($field, $_POST)) {
+        $val = trim($_POST[$field]);
+        $fieldUpdates[] = "`$field` = :$field";
+        $queryParams[$field] = $val !== '' ? $val : null;
+    }
+}
+
+$fieldSql = !empty($fieldUpdates) ? implode(', ', $fieldUpdates) . ', ' : '';
+
+// Update support_end_time, total_time, and all submitted record fields without changing support_status
+$updateStmt = $db->prepare("UPDATE `$tableName` SET {$fieldSql}`support_end_time` = :end_time, `total_time` = :total_time WHERE `id` = :id");
+$updateStmt->execute($queryParams);
 
 echo json_encode([
     'success' => true,

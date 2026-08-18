@@ -314,7 +314,7 @@
 
 .tab-btn:hover {
     color: var(--text-primary);
-    background: #f1f5f9;
+    /* background: #f1f5f9; */
 }
 
 .tab-btn:hover i {
