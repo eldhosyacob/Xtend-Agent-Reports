@@ -60,10 +60,10 @@ if ($range === 'week') {
     $dateSql = "`date` >= DATE_FORMAT(CURDATE(), '%Y-01-01')";
 }
 
-// Build user conditions (active online users only)
+// Build user conditions (all logged-in users matching Agent Performance Details on dashboard)
 $whereConditions = [
     "(LOWER(REPLACE(department, '_', ' ')) = :dept OR LOWER(REPLACE(department, '_', ' ')) = 'manager')",
-    "(last_activity IS NOT NULL AND last_activity >= NOW() - INTERVAL 10 MINUTE)"
+    "(last_activity IS NOT NULL AND last_activity >= NOW() - INTERVAL 600 MINUTE)"
 ];
 $params = ['dept' => $normalizedDept];
 
@@ -110,7 +110,8 @@ $activeUsers = [];
 
 foreach ($usersList as $u) {
     $realNameKey = strtoupper(trim($u['real_name']));
-    $matched = $metricsMap[$realNameKey] ?? null;
+    $usernameKey = strtoupper(trim($u['username']));
+    $matched = $metricsMap[$realNameKey] ?? ($metricsMap[$usernameKey] ?? null);
 
     $profile_photo_url = 'images/default-avatar.png';
     if (!empty($u['id'])) {

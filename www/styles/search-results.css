@@ -280,7 +280,7 @@
 
 .search-control:focus {
     border-color: var(--input-focus-border);
-    background: #ffffff;
+    /* background: #ffffff; */
     box-shadow: 0 0 0 3px var(--input-focus-shadow);
 }
 

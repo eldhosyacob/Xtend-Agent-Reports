@@ -84,6 +84,10 @@ if (isset($_GET['support_status']) && trim($_GET['support_status']) !== '') {
     $conditions[] = "`support_status` = :support_status";
     $params['support_status'] = trim($_GET['support_status']);
 }
+if (isset($_GET['dealer_name']) && trim($_GET['dealer_name']) !== '') {
+    $conditions[] = "`dealer_name` LIKE :dealer_name";
+    $params['dealer_name'] = '%' . trim($_GET['dealer_name']) . '%';
+}
 
 $all_records = [];
 

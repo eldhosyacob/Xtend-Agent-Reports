@@ -794,6 +794,7 @@ if ($db) {
             const fromDate = $('#from_date').val() ? $('#from_date').val().trim() : '';
             const toDate = $('#to_date').val() ? $('#to_date').val().trim() : '';
             const companyName = $('#company_name').val() ? $('#company_name').val().trim() : '';
+            const dealerName = $('#dealer_name').val() ? $('#dealer_name').val().trim() : '';
             const location = $('#location').val() ? $('#location').val().trim() : '';
             const hardware = $('#hardware_details').val() ? $('#hardware_details').val().trim() : '';
             const ticket = $('#ticket_id').val() ? $('#ticket_id').val().trim() : '';
@@ -803,7 +804,7 @@ if ($db) {
             const issueCat = $('#issue_category').val() ? $('#issue_category').val().trim() : '';
             const supportStatus = $('#support_status').val();
 
-            if (!agent && !fromDate && !toDate && !companyName && !location && !hardware && !ticket && !caseId && !dept && !prodCat && !issueCat && !supportStatus) {
+            if (!agent && !fromDate && !toDate && !companyName && !dealerName && !location && !hardware && !ticket && !caseId && !dept && !prodCat && !issueCat && !supportStatus) {
               e.preventDefault();
               showNotification('Please enter at least one search criteria to search.', 'error');
               return;

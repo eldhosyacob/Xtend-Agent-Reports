@@ -55,7 +55,7 @@ if ($company_name === '' && $dealer_name === '') {
           </div>
           <div class="search-input-wrapper">
             <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-            <input type="text" id="search-pending-records" class="search-control" placeholder="Search Record ID, Location, Hardware..." aria-label="Search pending records">
+            <input type="text" id="search-pending-records" class="search-control" placeholder="Search Record ID, Agent, Location, Hardware..." aria-label="Search pending records">
           </div>
         </div>
 
@@ -176,9 +176,10 @@ if ($company_name === '' && $dealer_name === '') {
           } else {
             filteredRecords = pendingRecords.filter(function(r) {
               const recordId = String(getRecordIdentifier(r)).toLowerCase();
+              const agent = String(r.agent || '').toLowerCase();
               const location = String(r.location || '').toLowerCase();
               const hardwareDetails = String(r.hardware_details || '').toLowerCase();
-              return recordId.includes(query) || location.includes(query) || hardwareDetails.includes(query);
+              return recordId.includes(query) || agent.includes(query) || location.includes(query) || hardwareDetails.includes(query);
             });
           }
           currentPage = 1;

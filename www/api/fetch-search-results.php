@@ -116,6 +116,7 @@ if (isset($_GET['support_status']) && trim($_GET['support_status']) !== '') {
     $params['support_status'] = trim($_GET['support_status']);
 }
 
+
 $all_records = [];
 
 foreach ($tables_to_query as $table) {
