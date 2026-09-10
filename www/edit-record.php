@@ -75,24 +75,36 @@ if (!$record) {
 
 $case_id = !empty($record['case_id']) ? $record['case_id'] : (!empty($record['record_id']) ? $record['record_id'] : $record['id']);
 
-// Fetch latest record entry for this case_id
-$latestStmt = $db->prepare("SELECT * FROM `$tableName` WHERE case_id = :case_id ORDER BY id DESC LIMIT 1");
-$latestStmt->execute(['case_id' => $case_id]);
-$latestRecord = $latestStmt->fetch();
-
-if (!$latestRecord) {
-    $latestRecord = $record;
-}
-
 $current_agent = isset($_SESSION['real_name']) ? strtoupper($_SESSION['real_name']) : strtoupper($_SESSION['username']);
 $current_date = date('Y-m-d');
 
-$is_same_agent = (strcasecmp(trim($latestRecord['agent']), $current_agent) === 0);
-$is_same_day = ($latestRecord['date'] === $current_date);
-$is_pending = (strcasecmp(trim($latestRecord['support_status']), 'Pending') === 0);
+// Check if the current agent already has a record for this case_id on today's date
+$agentTodayStmt = $db->prepare("SELECT * FROM `$tableName` WHERE `case_id` = :case_id AND UPPER(`agent`) = :agent AND `date` = :date ORDER BY `id` DESC LIMIT 1");
+$agentTodayStmt->execute([
+    'case_id' => $case_id,
+    'agent' => $current_agent,
+    'date' => $current_date
+]);
+$userTodayRecord = $agentTodayStmt->fetch();
 
-// If the latest record entry is NOT owned by the current agent today or NOT pending, create a new reopened pending record entry
-if (!($is_same_agent && $is_same_day && $is_pending)) {
+if ($userTodayRecord) {
+    // Current user already has a record for this case_id today -> edit in same record
+    $record = $userTodayRecord;
+    $latestRecord = $userTodayRecord;
+
+    // Ensure status is updated to Pending across the case when reopening/editing
+    if (strcasecmp(trim($record['support_status']), 'Pending') !== 0) {
+        $statusUpdateStmt = $db->prepare("UPDATE `$tableName` SET `support_status` = 'Pending' WHERE `case_id` = :case_id");
+        $statusUpdateStmt->execute(['case_id' => $case_id]);
+        $record['support_status'] = 'Pending';
+        $latestRecord['support_status'] = 'Pending';
+    }
+} else {
+    // Current user does NOT have a record for this case_id today -> create a new record entry for this user today
+    $latestStmt = $db->prepare("SELECT * FROM `$tableName` WHERE `case_id` = :case_id ORDER BY `id` DESC LIMIT 1");
+    $latestStmt->execute(['case_id' => $case_id]);
+    $latestRecord = $latestStmt->fetch() ?: $record;
+
     // Security check before creation
     $record_department = ($tableName === 'support_details') ? 'Voice Logger' : 'IVR';
     if (strcasecmp($agent_department, 'Manager') !== 0 && strcasecmp($agent_department, $record_department) !== 0) {
@@ -645,14 +657,14 @@ if (is_dir($uploadDir) && !empty($case_id)) {
               <div class="form-control-wrapper select-wrapper">
                 <i class="fa-solid fa-circle-info input-icon"></i>
                 <select id="support_status" name="support_status" class="form-control" required>
-                  <option value="" disabled>Select Support Status</option>
-                  <option value="Closed" <?php echo getSelected('Closed', $record['support_status']); ?>>Closed</option>
-                  <option value="Pending" <?php echo getSelected('Pending', $record['support_status']); ?>>Pending</option>
-                  <option value="Under Observation" <?php echo getSelected('Under Observation', $record['support_status']); ?>>Under Observation</option>
-                  <option value="Escalated" <?php echo getSelected('Escalated', $record['support_status']); ?>>Escalated</option>
-                  <option value="Escalated to Presales" <?php echo getSelected('Escalated to Presales', $record['support_status']); ?>>Escalated to Presales</option>
-                  <option value="Closed-Device Replaced" <?php echo getSelected('Closed-Device Replaced', $record['support_status']); ?>>Closed-Device Replaced</option>
-                  <option value="Closed-No Response" <?php echo getSelected('Closed-No Response', $record['support_status']); ?>>Closed-No Response</option>
+                  <option value="" disabled selected>Select Support Status</option>
+                  <option value="Closed">Closed</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Under Observation">Under Observation</option>
+                  <option value="Escalated">Escalated</option>
+                  <option value="Escalated to Presales">Escalated to Presales</option>
+                  <option value="Closed-Device Replaced">Closed-Device Replaced</option>
+                  <option value="Closed-No Response">Closed-No Response</option>
                 </select>
               </div>
             </div>

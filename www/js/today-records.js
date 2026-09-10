@@ -1,9 +1,29 @@
 $(document).ready(function () {
+    const urlParams = new URLSearchParams(window.location.search);
     let currentPage = 1;
-    let currentDept = $('#department-filter').val() || 'voice_logger';
-    let currentRange = $('#range-filter').val() || 'today';
-    let currentStatus = $('#status-filter').val() || '';
+    let currentDept = $('#department-filter').val() || urlParams.get('department') || 'voice_logger';
+    let currentRange = $('#range-filter').val() || urlParams.get('range') || 'today';
+    let currentStatus = $('#status-filter').val() || urlParams.get('status') || '';
     let searchQuery = $('#search-input').val() || '';
+    let customFromDate = urlParams.get('from_date') || '';
+    let customToDate = urlParams.get('to_date') || '';
+
+    function initCustomDates() {
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (!$('#from-date-filter').val()) {
+            $('#from-date-filter').val(customFromDate || todayStr);
+        }
+        if (!$('#to-date-filter').val()) {
+            $('#to-date-filter').val(customToDate || todayStr);
+        }
+    }
+
+    if (currentRange === 'custom') {
+        initCustomDates();
+        $('#custom-date-inputs').addClass('active');
+        customFromDate = $('#from-date-filter').val();
+        customToDate = $('#to-date-filter').val();
+    }
 
     // Load records on init
     loadRecords(currentPage);
@@ -17,8 +37,42 @@ $(document).ready(function () {
 
     $('#range-filter').on('change', function () {
         currentRange = $(this).val();
+        if (currentRange === 'custom') {
+            initCustomDates();
+            $('#custom-date-inputs').addClass('active');
+            customFromDate = $('#from-date-filter').val();
+            customToDate = $('#to-date-filter').val();
+        } else {
+            $('#custom-date-inputs').removeClass('active');
+        }
         currentPage = 1;
         loadRecords(currentPage);
+    });
+
+    $('#btn-custom-date-search').on('click', function () {
+        customFromDate = $('#from-date-filter').val();
+        customToDate = $('#to-date-filter').val();
+        if (!customFromDate || !customToDate) {
+            alert('Please select both From and To dates.');
+            return;
+        }
+        if (customFromDate > customToDate) {
+            alert('From date cannot be after To date.');
+            return;
+        }
+        currentPage = 1;
+        loadRecords(currentPage);
+    });
+
+    $('#from-date-filter, #to-date-filter').on('change', function () {
+        if (currentRange === 'custom') {
+            customFromDate = $('#from-date-filter').val();
+            customToDate = $('#to-date-filter').val();
+            if (customFromDate && customToDate && customFromDate <= customToDate) {
+                currentPage = 1;
+                loadRecords(currentPage);
+            }
+        }
     });
 
     $('#status-filter').on('change', function () {
@@ -74,17 +128,24 @@ $(document).ready(function () {
     function loadRecords(page) {
         $('#loadingOverlay').addClass('active');
 
+        const reqData = {
+            department: currentDept,
+            range: currentRange,
+            status: currentStatus,
+            search: searchQuery,
+            page: page,
+            limit: 15
+        };
+
+        if (currentRange === 'custom') {
+            reqData.from_date = customFromDate;
+            reqData.to_date = customToDate;
+        }
+
         $.ajax({
             url: 'api/fetch-dashboard-records.php',
             type: 'GET',
-            data: {
-                department: currentDept,
-                range: currentRange,
-                status: currentStatus,
-                search: searchQuery,
-                page: page,
-                limit: 15
-            },
+            data: reqData,
             dataType: 'json',
             success: function (response) {
                 if (response.success) {
@@ -92,7 +153,7 @@ $(document).ready(function () {
                     renderPagination(response.page, response.pages, response.total);
                     updateSubtitle(response.department, response.range, response.total);
                 } else {
-                    $('#recordsTableBody').html(`<tr><td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 30px;">${escapeHtml(response.message)}</td></tr>`);
+                    $('#recordsTableBody').html(`<tr><td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 30px;">${escapeHtml(response.message)}</td></tr>`);
                 }
             },
             error: function (xhr, status, error) {
@@ -101,7 +162,7 @@ $(document).ready(function () {
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     msg = xhr.responseJSON.message;
                 }
-                $('#recordsTableBody').html(`<tr><td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 30px;">${escapeHtml(msg)}</td></tr>`);
+                $('#recordsTableBody').html(`<tr><td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 30px;">${escapeHtml(msg)}</td></tr>`);
             },
             complete: function () {
                 $('#loadingOverlay').removeClass('active');
@@ -116,7 +177,7 @@ $(document).ready(function () {
         if (!records || records.length === 0) {
             $tbody.append(`
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">
                         <i class="fa-solid fa-folder-open" style="font-size: 32px; margin-bottom: 10px; display: block;"></i>
                         No records found matching your current filter criteria.
                     </td>
@@ -127,10 +188,12 @@ $(document).ready(function () {
 
         records.forEach(function (row) {
             const dateStr = row.date ? row.date : '-';
+            const caseIdStr = row.case_id ? row.case_id : (row.record_id ? row.record_id : '-');
 
             const trHtml = `
                 <tr>
                     <td>${escapeHtml(dateStr)}</td>
+                    <td><span style="font-family: monospace; font-weight: 600;">${escapeHtml(caseIdStr)}</span></td>
                     <td>${escapeHtml(row.agent || '-')}</td>
                     <td>${escapeHtml(row.company_name || '-')}</td>
                     <td>${escapeHtml(row.dealer_name || '-')}</td>
@@ -155,6 +218,13 @@ $(document).ready(function () {
         if (range === 'week') rangeLabel = "This Week's";
         else if (range === 'month') rangeLabel = "This Month's";
         else if (range === 'year') rangeLabel = "This Year's";
+        else if (range === 'custom') {
+            if (customFromDate && customToDate) {
+                rangeLabel = customFromDate === customToDate ? customFromDate : `${customFromDate} to ${customToDate}`;
+            } else {
+                rangeLabel = "Custom Period";
+            }
+        }
 
         $('#pageSubtitle').text(`Viewing ${total} record(s) of ${dept} (${rangeLabel})`);
     }

@@ -60,8 +60,10 @@ if (strcasecmp($user_department, 'Voice Logger') === 0) {
 // Fetch records for the current logged-in agent with optional date range filter
 $agentUsername = strtoupper($_SESSION['real_name'] ?? $_SESSION['username']);
 $range = isset($_GET['range']) ? trim($_GET['range']) : 'today';
+$fromDate = isset($_GET['from_date']) ? trim($_GET['from_date']) : '';
+$toDate = isset($_GET['to_date']) ? trim($_GET['to_date']) : '';
 
-if (!in_array($range, ['today', 'week', 'month'])) {
+if (!in_array($range, ['today', 'week', 'month', 'year', 'custom'])) {
     $range = 'today';
 }
 
@@ -70,6 +72,19 @@ if ($range === 'week') {
     $dateCondition = "`date` >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
 } elseif ($range === 'month') {
     $dateCondition = "`date` >= DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+} elseif ($range === 'year') {
+    $dateCondition = "`date` >= DATE_FORMAT(CURDATE(), '%Y-01-01')";
+} elseif ($range === 'custom') {
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $toDate)) {
+        if ($fromDate === $toDate) {
+            $dateCondition = "`date` = " . $db->quote($fromDate);
+        } else {
+            $dateCondition = "`date` BETWEEN " . $db->quote($fromDate) . " AND " . $db->quote($toDate);
+        }
+    } else {
+        $range = 'today';
+        $dateCondition = "`date` = CURDATE()";
+    }
 }
 
 $records = [];

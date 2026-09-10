@@ -463,14 +463,14 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
               <div class="form-control-wrapper select-wrapper">
                 <i class="fa-solid fa-circle-info input-icon"></i>
                 <select id="support_status" name="support_status" class="form-control" required>
-                  <option value="" disabled <?php echo empty($record['support_status']) ? 'selected' : ''; ?>>Select Support Status</option>
-                  <option value="Closed" <?php echo getSelected('Closed', $record['support_status']); ?>>Closed</option>
-                  <option value="Pending" <?php echo getSelected('Pending', $record['support_status']); ?>>Pending</option>
-                  <option value="Under Observation" <?php echo getSelected('Under Observation', $record['support_status']); ?>>Under Observation</option>
-                  <option value="Escalated" <?php echo getSelected('Escalated', $record['support_status']); ?>>Escalated</option>
-                  <option value="Escalated to Presales" <?php echo getSelected('Escalated to Presales', $record['support_status']); ?>>Escalated to Presales</option>
-                  <option value="Closed-Device Replaced" <?php echo getSelected('Closed-Device Replaced', $record['support_status']); ?>>Closed-Device Replaced</option>
-                  <option value="Closed-No Response" <?php echo getSelected('Closed-No Response', $record['support_status']); ?>>Closed-No Response</option>
+                  <option value="" disabled selected>Select Support Status</option>
+                  <option value="Closed">Closed</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Under Observation">Under Observation</option>
+                  <option value="Escalated">Escalated</option>
+                  <option value="Escalated to Presales">Escalated to Presales</option>
+                  <option value="Closed-Device Replaced">Closed-Device Replaced</option>
+                  <option value="Closed-No Response">Closed-No Response</option>
                 </select>
               </div>
             </div>

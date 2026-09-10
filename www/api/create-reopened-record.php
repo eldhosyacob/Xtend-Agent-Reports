@@ -145,16 +145,25 @@ if (strpos($latest_status, 'closed') === 0) {
 $current_agent = isset($_SESSION['real_name']) ? strtoupper($_SESSION['real_name']) : strtoupper($_SESSION['username']);
 $current_date = date('Y-m-d');
 
-$is_same_agent = (strcasecmp(trim($latestRecord['agent']), $current_agent) === 0);
-$is_same_day = ($latestRecord['date'] === $current_date);
+// Check if current agent already has a record for this case_id on today's date
+$agentTodayStmt = $db->prepare("SELECT * FROM `$tableName` WHERE `case_id` = :case_id AND UPPER(`agent`) = :agent AND `date` = :date ORDER BY `id` DESC LIMIT 1");
+$agentTodayStmt->execute([
+    'case_id' => $case_id,
+    'agent' => $current_agent,
+    'date' => $current_date
+]);
+$userTodayRecord = $agentTodayStmt->fetch();
 
-// If the latest record entry is ALREADY owned by current agent on today's date AND status is Pending, reuse it directly
-if ($is_same_agent && $is_same_day && strcasecmp(trim($latestRecord['support_status']), 'Pending') === 0) {
+// If current agent already has a record for this case_id today, reuse it directly
+if ($userTodayRecord) {
+    $statusUpdateStmt = $db->prepare("UPDATE `$tableName` SET `support_status` = 'Pending' WHERE `case_id` = :case_id");
+    $statusUpdateStmt->execute(['case_id' => $case_id]);
+
     echo json_encode([
         'success' => true,
-        'record_id' => $latestRecord['record_id'],
+        'record_id' => $userTodayRecord['record_id'] ?: $userTodayRecord['id'],
         'created_new' => false,
-        'message' => 'Resuming existing pending session for today'
+        'message' => 'Resuming existing session for today'
     ]);
     exit;
 }

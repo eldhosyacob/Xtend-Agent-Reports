@@ -188,10 +188,26 @@ if (!empty($data['email']) && !preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(
 // EXCEPT when the same agent edits their own record on the same day.
 $case_id = !empty($existing['case_id']) ? $existing['case_id'] : (!empty($existing['record_id']) ? $existing['record_id'] : $existing['id']);
 
-$is_same_agent = (strcasecmp(trim($existing['agent']), $_SESSION['real_name'] ?? $_SESSION['username']) === 0);
-$is_same_day = ($existing['date'] === date('Y-m-d'));
+$agent_name = isset($_SESSION['real_name']) ? strtoupper($_SESSION['real_name']) : strtoupper($_SESSION['username']);
+$current_date = date('Y-m-d');
 
-$save_as_new = !($is_same_agent && $is_same_day);
+// Check if current agent already has a record for this case_id on today's date
+$agentTodayStmt = $db->prepare("SELECT * FROM `$tableName` WHERE `case_id` = :case_id AND UPPER(`agent`) = :agent AND `date` = :date ORDER BY `id` DESC LIMIT 1");
+$agentTodayStmt->execute([
+    'case_id' => $case_id,
+    'agent' => $agent_name,
+    'date' => $current_date
+]);
+$userTodayRecord = $agentTodayStmt->fetch();
+
+if ($userTodayRecord) {
+    // Current user already has a record for this case_id today -> edit in same record
+    $save_as_new = false;
+    $existing = $userTodayRecord;
+} else {
+    // Current user does NOT have a record for this case_id today -> create new record for today
+    $save_as_new = true;
+}
 
 if ($save_as_new) {
     // Get all record IDs for this case to calculate the next suffix

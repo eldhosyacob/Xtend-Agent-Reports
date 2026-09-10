@@ -93,14 +93,31 @@ if (!empty($user_id)) {
             <div class="dashboard-subtitle">Track team progress and performance here.</div>
           </div>
         </div>
-        <div class="select-filter-wrapper">
-          <i class="fa-solid fa-calendar-days select-icon"></i>
-          <select id="date-range-filter" class="filter-select-control" aria-label="Filter by date range">
-            <option value="today" selected>Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="year">This Year</option>
-          </select>
+        <div class="dashboard-filter-container">
+          <div id="custom-date-inputs" class="custom-date-inputs-wrapper" style="display: none;">
+            <div class="date-input-group">
+              <span class="date-input-label">From:</span>
+              <input type="date" id="from-date-filter" class="filter-date-control" aria-label="From date">
+            </div>
+            <div class="date-input-group">
+              <span class="date-input-label">To:</span>
+              <input type="date" id="to-date-filter" class="filter-date-control" aria-label="To date">
+            </div>
+            <button type="button" id="btn-custom-date-search" class="custom-date-search-btn" title="Search Date Range">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+          </div>
+
+          <div class="select-filter-wrapper">
+            <i class="fa-solid fa-calendar-days select-icon"></i>
+            <select id="date-range-filter" class="filter-select-control" aria-label="Filter by date range">
+              <option value="today" selected>Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="year">This Year</option>
+              <option value="custom">Custom Range</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -216,13 +233,31 @@ if (!empty($user_id)) {
       $(document).ready(function() {
         let currentDept = '<?php echo $default_dept; ?>';
         let currentRange = 'today';
+        let customFromDate = '';
+        let customToDate = '';
+
+        // Default date inputs to today's date if empty
+        function initCustomDates() {
+          const todayStr = new Date().toISOString().split('T')[0];
+          if (!$('#from-date-filter').val()) {
+            $('#from-date-filter').val(todayStr);
+          }
+          if (!$('#to-date-filter').val()) {
+            $('#to-date-filter').val(todayStr);
+          }
+        }
+        initCustomDates();
 
         // Load statistics on initialization
         loadDashboardStats(currentDept, currentRange);
 
         // Auto-refresh stats silently every 30 seconds
         setInterval(function() {
-          loadDashboardStats(currentDept, currentRange, true);
+          if (currentRange === 'custom') {
+            loadDashboardStats(currentDept, currentRange, true, $('#from-date-filter').val(), $('#to-date-filter').val());
+          } else {
+            loadDashboardStats(currentDept, currentRange, true);
+          }
         }, 30000);
 
         // Tab selection click handler
@@ -233,18 +268,61 @@ if (!empty($user_id)) {
           $(this).addClass('active');
 
           currentDept = $(this).data('dept');
-          loadDashboardStats(currentDept, currentRange);
+          if (currentRange === 'custom') {
+            loadDashboardStats(currentDept, currentRange, false, $('#from-date-filter').val(), $('#to-date-filter').val());
+          } else {
+            loadDashboardStats(currentDept, currentRange);
+          }
         });
 
         // Date range select change handler
         $('#date-range-filter').on('change', function() {
           currentRange = $(this).val() || 'today';
-          loadDashboardStats(currentDept, currentRange);
+          if (currentRange === 'custom') {
+            initCustomDates();
+            $('#custom-date-inputs').addClass('active');
+            customFromDate = $('#from-date-filter').val();
+            customToDate = $('#to-date-filter').val();
+            loadDashboardStats(currentDept, currentRange, false, customFromDate, customToDate);
+          } else {
+            $('#custom-date-inputs').removeClass('active');
+            loadDashboardStats(currentDept, currentRange);
+          }
+        });
+
+        // Search button click handler for custom date range
+        $('#btn-custom-date-search').on('click', function() {
+          customFromDate = $('#from-date-filter').val();
+          customToDate = $('#to-date-filter').val();
+          if (!customFromDate || !customToDate) {
+            alert('Please select both From and To dates.');
+            return;
+          }
+          if (customFromDate > customToDate) {
+            alert('From date cannot be after To date.');
+            return;
+          }
+          loadDashboardStats(currentDept, 'custom', false, customFromDate, customToDate);
+        });
+
+        // Auto update when custom date range input changes
+        $('#from-date-filter, #to-date-filter').on('change', function() {
+          if (currentRange === 'custom') {
+            customFromDate = $('#from-date-filter').val();
+            customToDate = $('#to-date-filter').val();
+            if (customFromDate && customToDate && customFromDate <= customToDate) {
+              loadDashboardStats(currentDept, 'custom', false, customFromDate, customToDate);
+            }
+          }
         });
 
         // Click handlers for stats cards to navigate to detail pages
         $('.today-card').on('click', function() {
-          window.location.href = 'today-records.php?department=' + encodeURIComponent(currentDept) + '&range=' + encodeURIComponent(currentRange);
+          let url = 'today-records.php?department=' + encodeURIComponent(currentDept) + '&range=' + encodeURIComponent(currentRange);
+          if (currentRange === 'custom') {
+            url += '&from_date=' + encodeURIComponent($('#from-date-filter').val()) + '&to_date=' + encodeURIComponent($('#to-date-filter').val());
+          }
+          window.location.href = url;
         });
 
         $('.agents-card').on('click', function() {
@@ -252,11 +330,19 @@ if (!empty($user_id)) {
         });
 
         $('.active-card').on('click', function() {
-          window.location.href = 'active-users.php?department=' + encodeURIComponent(currentDept) + '&range=' + encodeURIComponent(currentRange);
+          let url = 'active-users.php?department=' + encodeURIComponent(currentDept) + '&range=' + encodeURIComponent(currentRange);
+          if (currentRange === 'custom') {
+            url += '&from_date=' + encodeURIComponent($('#from-date-filter').val()) + '&to_date=' + encodeURIComponent($('#to-date-filter').val());
+          }
+          window.location.href = url;
         });
 
         $('.support-hours-card').on('click', function() {
-          window.location.href = 'support-hours.php?department=' + encodeURIComponent(currentDept) + '&range=' + encodeURIComponent(currentRange);
+          let url = 'support-hours.php?department=' + encodeURIComponent(currentDept) + '&range=' + encodeURIComponent(currentRange);
+          if (currentRange === 'custom') {
+            url += '&from_date=' + encodeURIComponent($('#from-date-filter').val()) + '&to_date=' + encodeURIComponent($('#to-date-filter').val());
+          }
+          window.location.href = url;
         });
 
         // Helper function to map statuses to standard theme colors
@@ -278,18 +364,24 @@ if (!empty($user_id)) {
         }
 
         // Fetch dashboard stats from backend API
-        function loadDashboardStats(department, range, isSilent = false) {
+        function loadDashboardStats(department, range, isSilent = false, fromDate = '', toDate = '') {
           // Display the loader overlay only if not a silent background refresh
           if (!isSilent) {
             $('#dashboardLoading').addClass('active');
           }
 
           range = range || currentRange;
+          const requestParams = { department: department, range: range };
+
+          if (range === 'custom') {
+            requestParams.from_date = fromDate || $('#from-date-filter').val();
+            requestParams.to_date = toDate || $('#to-date-filter').val();
+          }
 
           $.ajax({
             url: 'api/fetch-dashboard-stats.php',
             type: 'GET',
-            data: { department: department, range: range },
+            data: requestParams,
             dataType: 'json',
             success: function(response) {
               if (response.success) {
@@ -307,6 +399,21 @@ if (!empty($user_id)) {
                 } else if (range === 'year') {
                   rangeLabel = "This Year's Records";
                   thLabel = "This Year's Records";
+                } else if (range === 'custom') {
+                  const fDate = requestParams.from_date || '';
+                  const tDate = requestParams.to_date || '';
+                  if (fDate && tDate) {
+                    if (fDate === tDate) {
+                      rangeLabel = "Records (" + fDate + ")";
+                      thLabel = "Records (" + fDate + ")";
+                    } else {
+                      rangeLabel = "Records (" + fDate + " - " + tDate + ")";
+                      thLabel = "Records (" + fDate + " - " + tDate + ")";
+                    }
+                  } else {
+                    rangeLabel = "Custom Range Records";
+                    thLabel = "Custom Range Records";
+                  }
                 }
 
                 $('#lblTodayRecords').text(rangeLabel);

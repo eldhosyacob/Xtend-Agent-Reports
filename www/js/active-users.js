@@ -1,8 +1,28 @@
 $(document).ready(function () {
+    const urlParams = new URLSearchParams(window.location.search);
     let currentPage = 1;
-    let currentDept = $('#department-filter').val() || 'voice_logger';
-    let currentRange = $('#range-filter').val() || 'today';
+    let currentDept = $('#department-filter').val() || urlParams.get('department') || 'voice_logger';
+    let currentRange = $('#range-filter').val() || urlParams.get('range') || 'today';
     let searchQuery = $('#search-input').val() || '';
+    let customFromDate = urlParams.get('from_date') || '';
+    let customToDate = urlParams.get('to_date') || '';
+
+    function initCustomDates() {
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (!$('#from-date-filter').val()) {
+            $('#from-date-filter').val(customFromDate || todayStr);
+        }
+        if (!$('#to-date-filter').val()) {
+            $('#to-date-filter').val(customToDate || todayStr);
+        }
+    }
+
+    if (currentRange === 'custom') {
+        initCustomDates();
+        $('#custom-date-inputs').addClass('active');
+        customFromDate = $('#from-date-filter').val();
+        customToDate = $('#to-date-filter').val();
+    }
 
     loadActiveUsers(currentPage);
 
@@ -14,8 +34,42 @@ $(document).ready(function () {
 
     $('#range-filter').on('change', function () {
         currentRange = $(this).val();
+        if (currentRange === 'custom') {
+            initCustomDates();
+            $('#custom-date-inputs').addClass('active');
+            customFromDate = $('#from-date-filter').val();
+            customToDate = $('#to-date-filter').val();
+        } else {
+            $('#custom-date-inputs').removeClass('active');
+        }
         currentPage = 1;
         loadActiveUsers(currentPage);
+    });
+
+    $('#btn-custom-date-search').on('click', function () {
+        customFromDate = $('#from-date-filter').val();
+        customToDate = $('#to-date-filter').val();
+        if (!customFromDate || !customToDate) {
+            alert('Please select both From and To dates.');
+            return;
+        }
+        if (customFromDate > customToDate) {
+            alert('From date cannot be after To date.');
+            return;
+        }
+        currentPage = 1;
+        loadActiveUsers(currentPage);
+    });
+
+    $('#from-date-filter, #to-date-filter').on('change', function () {
+        if (currentRange === 'custom') {
+            customFromDate = $('#from-date-filter').val();
+            customToDate = $('#to-date-filter').val();
+            if (customFromDate && customToDate && customFromDate <= customToDate) {
+                currentPage = 1;
+                loadActiveUsers(currentPage);
+            }
+        }
     });
 
     let searchTimer;
@@ -43,16 +97,23 @@ $(document).ready(function () {
     function loadActiveUsers(page) {
         $('#loadingOverlay').addClass('active');
 
+        const reqData = {
+            department: currentDept,
+            range: currentRange,
+            search: searchQuery,
+            page: page,
+            limit: 15
+        };
+
+        if (currentRange === 'custom') {
+            reqData.from_date = customFromDate;
+            reqData.to_date = customToDate;
+        }
+
         $.ajax({
             url: 'api/fetch-active-users-details.php',
             type: 'GET',
-            data: {
-                department: currentDept,
-                range: currentRange,
-                search: searchQuery,
-                page: page,
-                limit: 15
-            },
+            data: reqData,
             dataType: 'json',
             success: function (response) {
                 if (response.success) {
@@ -63,6 +124,13 @@ $(document).ready(function () {
                     if (response.range === 'week') rangeLabel = "This Week";
                     else if (response.range === 'month') rangeLabel = "This Month";
                     else if (response.range === 'year') rangeLabel = "This Year";
+                    else if (response.range === 'custom') {
+                        if (customFromDate && customToDate) {
+                            rangeLabel = customFromDate === customToDate ? customFromDate : `${customFromDate} to ${customToDate}`;
+                        } else {
+                            rangeLabel = "Custom Period";
+                        }
+                    }
 
                     $('#pageSubtitle').text(`Showing ${response.total} active user(s) of ${response.department} (${rangeLabel})`);
                 } else {

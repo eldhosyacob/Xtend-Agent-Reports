@@ -60,6 +60,10 @@ if (isset($_GET['location']) && trim($_GET['location']) !== '') {
     $conditions[] = "`location` LIKE :location";
     $params['location'] = '%' . trim($_GET['location']) . '%';
 }
+if (isset($_GET['phone']) && trim($_GET['phone']) !== '') {
+    $conditions[] = "`phone` LIKE :phone";
+    $params['phone'] = '%' . trim($_GET['phone']) . '%';
+}
 if (isset($_GET['hardware_details']) && trim($_GET['hardware_details']) !== '') {
     $conditions[] = "`hardware_details` LIKE :hardware_details";
     $params['hardware_details'] = '%' . trim($_GET['hardware_details']) . '%';

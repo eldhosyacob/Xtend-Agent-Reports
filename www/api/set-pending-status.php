@@ -119,10 +119,23 @@ $case_id = !empty($existing['case_id']) ? $existing['case_id'] : (!empty($existi
 $current_agent = isset($_SESSION['real_name']) ? strtoupper($_SESSION['real_name']) : strtoupper($_SESSION['username']);
 $current_date = date('Y-m-d');
 
-$is_same_agent = (strcasecmp(trim($existing['agent']), $current_agent) === 0);
-$is_same_day = ($existing['date'] === $current_date);
+// Check if current agent already has a record for this case_id on today's date
+$agentTodayStmt = $db->prepare("SELECT * FROM `$tableName` WHERE `case_id` = :case_id AND UPPER(`agent`) = :agent AND `date` = :date ORDER BY `id` DESC LIMIT 1");
+$agentTodayStmt->execute([
+    'case_id' => $case_id,
+    'agent' => $current_agent,
+    'date' => $current_date
+]);
+$userTodayRecord = $agentTodayStmt->fetch();
 
-$save_as_new = !($is_same_agent && $is_same_day);
+if ($userTodayRecord) {
+    // Current user already has a record for this case_id today -> edit in same record
+    $save_as_new = false;
+    $existing = $userTodayRecord;
+} else {
+    // Current user does NOT have a record for this case_id today -> create new record for today
+    $save_as_new = true;
+}
 
 if ($save_as_new) {
     // Get all record IDs for this case to calculate the next suffix

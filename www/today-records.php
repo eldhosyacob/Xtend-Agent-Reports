@@ -4,6 +4,8 @@ require_once __DIR__ . '/config/auth_check.php';
 $default_dept = isset($_GET['department']) ? trim($_GET['department']) : 'voice_logger';
 $default_range = isset($_GET['range']) ? trim($_GET['range']) : 'today';
 $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
+$default_from_date = isset($_GET['from_date']) ? trim($_GET['from_date']) : '';
+$default_to_date = isset($_GET['to_date']) ? trim($_GET['to_date']) : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -56,7 +58,22 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
           <option value="week" <?php echo $default_range === 'week' ? 'selected' : ''; ?>>This Week</option>
           <option value="month" <?php echo $default_range === 'month' ? 'selected' : ''; ?>>This Month</option>
           <option value="year" <?php echo $default_range === 'year' ? 'selected' : ''; ?>>This Year</option>
+          <option value="custom" <?php echo $default_range === 'custom' ? 'selected' : ''; ?>>Custom Range</option>
         </select>
+
+        <div id="custom-date-inputs" class="custom-date-inputs-wrapper<?php echo $default_range === 'custom' ? ' active' : ''; ?>">
+          <div class="date-input-group">
+            <span class="date-input-label">From:</span>
+            <input type="date" id="from-date-filter" class="filter-date-control" value="<?php echo htmlspecialchars($default_from_date); ?>" aria-label="From date">
+          </div>
+          <div class="date-input-group">
+            <span class="date-input-label">To:</span>
+            <input type="date" id="to-date-filter" class="filter-date-control" value="<?php echo htmlspecialchars($default_to_date); ?>" aria-label="To date">
+          </div>
+          <button type="button" id="btn-custom-date-search" class="custom-date-search-btn" title="Search Date Range">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
 
         <!-- Status Filter -->
         <select id="status-filter" class="select-filter-control">
@@ -83,6 +100,7 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
           <thead>
             <tr>
               <th>Date</th>
+              <th>Case ID</th>
               <th>Agent</th>
               <th>Company Name</th>
               <th>Dealer Name</th>

@@ -47,7 +47,10 @@ $normalizedDept = strtolower(str_replace('_', ' ', $dept));
 
 // Get range filter
 $range = isset($_GET['range']) ? trim($_GET['range']) : 'today';
-if (!in_array($range, ['today', 'week', 'month', 'year'])) {
+$fromDate = isset($_GET['from_date']) ? trim($_GET['from_date']) : '';
+$toDate = isset($_GET['to_date']) ? trim($_GET['to_date']) : '';
+
+if (!in_array($range, ['today', 'week', 'month', 'year', 'custom'])) {
     $range = 'today';
 }
 
@@ -58,6 +61,17 @@ if ($range === 'week') {
     $dateSql = "`date` >= DATE_FORMAT(CURDATE(), '%Y-%m-01')";
 } elseif ($range === 'year') {
     $dateSql = "`date` >= DATE_FORMAT(CURDATE(), '%Y-01-01')";
+} elseif ($range === 'custom') {
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $toDate)) {
+        if ($fromDate === $toDate) {
+            $dateSql = "`date` = " . $db->quote($fromDate);
+        } else {
+            $dateSql = "`date` BETWEEN " . $db->quote($fromDate) . " AND " . $db->quote($toDate);
+        }
+    } else {
+        $range = 'today';
+        $dateSql = "`date` = CURDATE()";
+    }
 }
 
 // Build user conditions (all logged-in users matching Agent Performance Details on dashboard)

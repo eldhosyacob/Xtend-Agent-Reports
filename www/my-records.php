@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/config/auth_check.php';
+
+$default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -43,7 +45,7 @@ require_once __DIR__ . '/config/auth_check.php';
           </div>
           <div class="stat-info-box">
             <span class="value" id="stat-total">—</span>
-            <span class="label" id="stat-total-label">Total Today</span>
+            <span class="label" id="stat-total-label">Total </span>
           </div>
         </div>
         <div class="stat-card-wrapper">
@@ -103,13 +105,44 @@ require_once __DIR__ . '/config/auth_check.php';
               <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
               <input type="text" id="search-records" class="search-control" placeholder="Search records..." aria-label="Search records">
             </div>
+
             <div class="select-filter-wrapper">
               <i class="fa-solid fa-calendar-days select-icon"></i>
               <select id="date-range-filter" class="filter-select-control" aria-label="Filter by date range">
                 <option value="today" selected>Today</option>
                 <option value="week">This Week</option>
                 <option value="month">This Month</option>
+                <option value="year">This Year</option>
+                <option value="custom">Custom Range</option>
               </select>
+            </div>
+
+            <div class="select-filter-wrapper status-filter-wrapper">
+              <i class="fa-solid fa-list-check select-icon"></i>
+              <select id="status-filter" class="filter-select-control" aria-label="Filter by status">
+                <option value="" <?php echo $default_status === '' ? 'selected' : ''; ?>>All Statuses</option>
+                <option value="Closed" <?php echo $default_status === 'Closed' ? 'selected' : ''; ?>>Closed</option>
+                <option value="Pending" <?php echo $default_status === 'Pending' ? 'selected' : ''; ?>>Pending</option>
+                <option value="Under Observation" <?php echo $default_status === 'Under Observation' ? 'selected' : ''; ?>>Under Observation</option>
+                <option value="Escalated" <?php echo $default_status === 'Escalated' ? 'selected' : ''; ?>>Escalated</option>
+                <option value="Escalated to Presales" <?php echo $default_status === 'Escalated to Presales' ? 'selected' : ''; ?>>Escalated to Presales</option>
+                <option value="Closed-Device Replaced" <?php echo $default_status === 'Closed-Device Replaced' ? 'selected' : ''; ?>>Closed-Device Replaced</option>
+                <option value="Closed-No Response" <?php echo $default_status === 'Closed-No Response' ? 'selected' : ''; ?>>Closed-No Response</option>
+              </select>
+            </div>
+
+            <div id="custom-date-inputs" class="custom-date-inputs-wrapper" style="display: none;">
+              <div class="date-input-group">
+                <span class="date-input-label">From:</span>
+                <input type="date" id="from-date-filter" class="filter-date-control" aria-label="From date">
+              </div>
+              <div class="date-input-group">
+                <span class="date-input-label">To:</span>
+                <input type="date" id="to-date-filter" class="filter-date-control" aria-label="To date">
+              </div>
+              <button type="button" id="btn-custom-date-search" class="custom-date-search-btn" title="Search Date Range">
+                <i class="fa-solid fa-magnifying-glass"></i>
+              </button>
             </div>
           </div>
           <!-- <div class="department-info-badge" id="department-badge">
@@ -226,20 +259,70 @@ require_once __DIR__ . '/config/auth_check.php';
           });
         });
 
+        let customFromDate = '';
+        let customToDate = '';
+
+        function initCustomDates() {
+          const todayStr = new Date().toISOString().split('T')[0];
+          if (!$('#from-date-filter').val()) {
+            $('#from-date-filter').val(todayStr);
+          }
+          if (!$('#to-date-filter').val()) {
+            $('#to-date-filter').val(todayStr);
+          }
+        }
+
         // Change date range filter
         $('#date-range-filter').on('change', function() {
+          const range = $(this).val() || 'today';
+          if (range === 'custom') {
+            initCustomDates();
+            $('#custom-date-inputs').addClass('active');
+            customFromDate = $('#from-date-filter').val();
+            customToDate = $('#to-date-filter').val();
+          } else {
+            $('#custom-date-inputs').removeClass('active');
+          }
           loadRecords();
         });
 
-        // Filter search input
-        $('#search-records').on('input', function() {
-          const val = $(this).val().toLowerCase().trim();
-          currentPage = 1;
-          if (val === '') {
-            displayedRecords = allRecords;
-            renderRecords(displayedRecords);
-          } else {
-            const filtered = allRecords.filter(function(r) {
+        $('#btn-custom-date-search').on('click', function() {
+          customFromDate = $('#from-date-filter').val();
+          customToDate = $('#to-date-filter').val();
+          if (!customFromDate || !customToDate) {
+            alert('Please select both From and To dates.');
+            return;
+          }
+          if (customFromDate > customToDate) {
+            alert('From date cannot be after To date.');
+            return;
+          }
+          loadRecords();
+        });
+
+        $('#from-date-filter, #to-date-filter').on('change', function() {
+          const range = $('#date-range-filter').val() || 'today';
+          if (range === 'custom') {
+            customFromDate = $('#from-date-filter').val();
+            customToDate = $('#to-date-filter').val();
+            if (customFromDate && customToDate && customFromDate <= customToDate) {
+              loadRecords();
+            }
+          }
+        });
+
+        function applyFilters() {
+          const searchVal = $('#search-records').val().toLowerCase().trim();
+          const statusVal = $('#status-filter').val();
+
+          displayedRecords = allRecords.filter(function(r) {
+            if (statusVal && statusVal !== '') {
+              const recStatus = (r.support_status || '').trim();
+              if (recStatus !== statusVal) {
+                return false;
+              }
+            }
+            if (searchVal !== '') {
               const recId = String(getRecordIdentifier(r)).toLowerCase();
               const comp = (r.company_name || '').toLowerCase();
               const dealer = (r.dealer_name || '').toLowerCase();
@@ -247,14 +330,25 @@ require_once __DIR__ . '/config/auth_check.php';
               const loc = (r.location || '').toLowerCase();
               const hw = (r.hardware_details || '').toLowerCase();
               const status = (r.support_status || '').toLowerCase();
-              return recId.indexOf(val) > -1 || comp.indexOf(val) > -1 || dealer.indexOf(val) > -1 || prod.indexOf(val) > -1 || loc.indexOf(val) > -1 || hw.indexOf(val) > -1 || status.indexOf(val) > -1;
-            });
-            displayedRecords = filtered;
-            renderRecords(displayedRecords);
-          }
+              const match = recId.indexOf(searchVal) > -1 || comp.indexOf(searchVal) > -1 || dealer.indexOf(searchVal) > -1 || prod.indexOf(searchVal) > -1 || loc.indexOf(searchVal) > -1 || hw.indexOf(searchVal) > -1 || status.indexOf(searchVal) > -1;
+              if (!match) return false;
+            }
+            return true;
+          });
+
+          currentPage = 1;
+          renderRecords(displayedRecords);
+        }
+
+        // Filter search input
+        $('#search-records').on('input', function() {
+          applyFilters();
         });
 
-
+        // Filter status dropdown
+        $('#status-filter').on('change', function() {
+          applyFilters();
+        });
 
         // Setup Prev/Next click events
         $('#btn-prev').on('click', function() {
@@ -285,11 +379,16 @@ require_once __DIR__ . '/config/auth_check.php';
           showSkeletons();
 
           const range = $('#date-range-filter').val() || 'today';
+          const reqData = { range: range };
+          if (range === 'custom') {
+            reqData.from_date = customFromDate || $('#from-date-filter').val();
+            reqData.to_date = customToDate || $('#to-date-filter').val();
+          }
 
           $.ajax({
             url: 'api/fetch-my-records.php',
             method: 'GET',
-            data: { range: range },
+            data: reqData,
             dataType: 'json',
             success: function(response) {
               if (response.success) {
@@ -302,10 +401,8 @@ require_once __DIR__ . '/config/auth_check.php';
                 // Calculate and animate stats
                 updateStats(allRecords, response.total_support_time, response.total_miscellaneous_time);
 
-                // Render rows
-                currentPage = 1;
-                displayedRecords = allRecords;
-                renderRecords(displayedRecords);
+                // Render rows with active filters
+                applyFilters();
               } else {
                 showError(response.message || 'Failed to fetch records.');
               }

@@ -87,9 +87,17 @@ if (isset($_GET['company_name']) && trim($_GET['company_name']) !== '') {
     $conditions[] = "`company_name` LIKE :company_name";
     $params['company_name'] = '%' . trim($_GET['company_name']) . '%';
 }
+if (isset($_GET['dealer_name']) && trim($_GET['dealer_name']) !== '') {
+    $conditions[] = "`dealer_name` LIKE :dealer_name";
+    $params['dealer_name'] = '%' . trim($_GET['dealer_name']) . '%';
+}
 if (isset($_GET['location']) && trim($_GET['location']) !== '') {
     $conditions[] = "`location` LIKE :location";
     $params['location'] = '%' . trim($_GET['location']) . '%';
+}
+if (isset($_GET['phone']) && trim($_GET['phone']) !== '') {
+    $conditions[] = "`phone` LIKE :phone";
+    $params['phone'] = '%' . trim($_GET['phone']) . '%';
 }
 if (isset($_GET['hardware_details']) && trim($_GET['hardware_details']) !== '') {
     $conditions[] = "`hardware_details` LIKE :hardware_details";

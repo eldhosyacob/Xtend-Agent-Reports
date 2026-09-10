@@ -1,11 +1,22 @@
 <?php
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-  session_start();
-}
+// Ensure session is initialized with application session name
+require_once __DIR__ . '/../config/session.php';
 
 // Get current page name from URL
 $current_page = basename($_SERVER['PHP_SELF'], '.php');
+$script_name = str_replace('\\', '/', $_SERVER['SCRIPT_NAME']);
+$in_project_folder = (strpos($script_name, '/project/') !== false || $current_page === 'create-project');
+$rel_path = $in_project_folder ? '../' : './';
+
+// Store or preserve active module state in session
+if ($in_project_folder) {
+    $_SESSION['active_module'] = 'project_management';
+} elseif (in_array($current_page, ['dashboard', 'home', 'new-record', 'add-miscellaneous', 'upload-record', 'my-records', 'today-records', 'view-record', 'edit-record', 'view-pending-records'], true)) {
+    $_SESSION['active_module'] = 'report_management';
+}
+
+$active_module = isset($_SESSION['active_module']) ? $_SESSION['active_module'] : 'report_management';
+$is_project_module = ($active_module === 'project_management');
 
 // Define page titles
 $page_titles = [
@@ -29,19 +40,19 @@ $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
 $user_department = isset($_SESSION['department']) ? $_SESSION['department'] : '';
 
 // Resolve user profile photo path
-$profile_photo_url = 'images/default-avatar.png'; // default fallback or initials
+$profile_photo_url = $rel_path . 'images/default-avatar.png'; // default fallback or initials
 $allowed_extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
 if (!empty($user_id)) {
     foreach ($allowed_extensions as $ext) {
         $photo_path = __DIR__ . '/../images/profile/' . $user_id . '.' . $ext;
         if (file_exists($photo_path)) {
-            $profile_photo_url = 'images/profile/' . $user_id . '.' . $ext . '?t=' . filemtime($photo_path);
+            $profile_photo_url = $rel_path . 'images/profile/' . $user_id . '.' . $ext . '?t=' . filemtime($photo_path);
             break;
         }
     }
 }
 ?>
-<script src="js/theme.js"></script>
+<script src="<?php echo $rel_path; ?>js/theme.js"></script>
 
 <!-- Header -->
 <header class="header-container">
@@ -52,7 +63,7 @@ if (!empty($user_id)) {
       <span class="hamburger-line"></span>
     </button>
     <div class="logo-container">
-      <img src="/images/logo.png" alt="logo">
+      <img src="<?php echo $rel_path; ?>images/logo.png" alt="logo">
     </div>
     <!-- <div class="xtend-logo masked-text">Xtend License Update</div> -->
   </div>
@@ -78,7 +89,7 @@ if (!empty($user_id)) {
       ?>
       <button class="user-menu-btn" id="userMenuBtn" aria-label="User menu" <?php echo $is_user_menu_disabled ? 'disabled' : ''; ?>>
         <div class="user-avatar" id="headerUserAvatar">
-          <?php if ($profile_photo_url !== 'images/default-avatar.png'): ?>
+          <?php if ($profile_photo_url !== ($rel_path . 'images/default-avatar.png')): ?>
             <img src="<?php echo $profile_photo_url; ?>" alt="User Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;">
           <?php else: ?>
             <?php 
@@ -98,7 +109,7 @@ if (!empty($user_id)) {
         <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
       </button>
       <div class="user-dropdown" id="userDropdown">
-        <a href="user-profile.php" class="dropdown-item">
+        <a href="<?php echo $rel_path; ?>user-profile.php" class="dropdown-item">
           <i class="fa-solid fa-user"></i> My Profile
         </a>
         <div class="dropdown-divider"></div>
@@ -114,14 +125,54 @@ if (!empty($user_id)) {
 <aside class="sidebar-container" id="sidebar">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <nav class="sidebar-nav">
+    <div class="sidebar-module-container">
+      <div class="sidebar-module-wrapper">
+        <i class="fa-solid fa-layer-group sidebar-module-icon"></i>
+        <select id="sidebarModuleSelect" class="sidebar-module-select" aria-label="Select System Module">
+          <option value="report_management" <?php echo ($active_module === 'report_management') ? 'selected' : ''; ?>>Report Management</option>
+          <option value="project_management" <?php echo ($active_module === 'project_management') ? 'selected' : ''; ?>>Project Management</option>
+        </select>
+        <i class="fa-solid fa-chevron-down sidebar-module-arrow"></i>
+      </div>
+    </div>
     <div class="sidebar-section">
       <ul class="sidebar-menu">
+        <?php if ($active_module === 'project_management'): ?>
+        <li class="sidebar-menu-item <?php echo ($current_page == 'create-project') ? 'active' : ''; ?>">
+          <a href="<?php echo $rel_path; ?>project/create-project.php" class="sidebar-link">
+            <i class="fa-solid fa-folder-plus"></i>
+            <span style="font-weight:700;">Create Project</span>
+          </a>
+        </li>
+        <!-- <li class="sidebar-menu-item <?php echo ($current_page == 'search') ? 'active' : ''; ?>">
+          <a href="<?php echo $rel_path; ?>search.php" class="sidebar-link">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <span style="font-weight:700;">Search</span>
+          </a>
+        </li> -->
+        <li class="sidebar-menu-item <?php echo ($current_page == 'user-profile') ? 'active' : ''; ?>">
+          <a href="<?php echo $rel_path; ?>user-profile.php" class="sidebar-link">
+            <i class="fa-solid fa-user-shield"></i>
+            <span style="font-weight:700;">Profile</span>
+          </a>
+        </li>
+        <?php if ($user_role === 'admin'): ?>
+        <li class="sidebar-menu-item <?php echo ($current_page == 'user-accounts') ? 'active' : ''; ?>">
+          <a href="<?php echo $rel_path; ?>user-accounts.php" class="sidebar-link">
+            <i class="fa-solid fa-users-line"></i>
+            <span style="font-weight:700;">Accounts</span>
+          </a>
+        </li>
+        <?php endif; ?>
+        <li class="sidebar-menu-item <?php echo ($current_page == 'logout') ? 'active' : ''; ?>">
+          <a href="#" onclick="showLogoutModal(); return false;" class="sidebar-link">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span style="font-weight:700;">Logout</span>
+          </a>
+        </li>
+        <?php else: ?>
         <li class="sidebar-menu-item <?php echo ($current_page == 'home' || $current_page == 'dashboard') ? 'active' : ''; ?>">
-          <a href="dashboard.php" class="sidebar-link">
-            <!-- <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
-              <path
-                d="M8 3.293l6 6V13.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 13.5V9.293l6-6zm5-.793V1.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293l-2-2z" />
-            </svg> -->
+          <a href="<?php echo $rel_path; ?>dashboard.php" class="sidebar-link">
             <i class="fa-solid fa-house"></i>
             <span style="font-weight:700;">Dashboard</span>
           </a>
@@ -134,33 +185,33 @@ if (!empty($user_id)) {
         </li>
 
         <li class="sidebar-menu-item <?php echo ($current_page == 'add-miscellaneous') ? 'active' : ''; ?>">
-          <a href="add-miscellaneous.php" class="sidebar-link">
+          <a href="<?php echo $rel_path; ?>add-miscellaneous.php" class="sidebar-link">
             <i class="fa-solid fa-file-zipper"></i>
             <span style="font-weight:700;">Add Miscellaneous</span>
           </a>
         </li>
         <?php if (strcasecmp($user_department, 'Manager') === 0): ?>
         <li class="sidebar-menu-item <?php echo ($current_page == 'upload-record') ? 'active' : ''; ?>">
-          <a href="upload-record.php" class="sidebar-link">
+          <a href="<?php echo $rel_path; ?>upload-record.php" class="sidebar-link">
             <i class="fa-solid fa-file-arrow-up"></i>
             <span style="font-weight:700;">Upload Support Details</span>
           </a>
         </li>
         <?php endif; ?>
         <li class="sidebar-menu-item <?php echo ($current_page == 'my-records') ? 'active' : ''; ?>">
-          <a href="my-records.php" class="sidebar-link">
+          <a href="<?php echo $rel_path; ?>my-records.php" class="sidebar-link">
             <i class="fa-solid fa-file-lines"></i>
             <span style="font-weight:700;">My Records</span>
           </a>
         </li>
         <li class="sidebar-menu-item <?php echo ($current_page == 'search') ? 'active' : ''; ?>">
-          <a href="search.php" class="sidebar-link">
+          <a href="<?php echo $rel_path; ?>search.php" class="sidebar-link">
             <i class="fa-solid fa-magnifying-glass"></i>
             <span style="font-weight:700;">Search</span>
           </a>
         </li>
         <li class="sidebar-menu-item <?php echo ($current_page == 'user-profile') ? 'active' : ''; ?>">
-          <a href="user-profile.php" class="sidebar-link">
+          <a href="<?php echo $rel_path; ?>user-profile.php" class="sidebar-link">
             <i class="fa-solid fa-user-shield"></i>
             <span style="font-weight:700;">Profile</span>
           </a>
@@ -168,7 +219,7 @@ if (!empty($user_id)) {
 
         <?php if ($user_role === 'admin'): ?>
         <li class="sidebar-menu-item <?php echo ($current_page == 'user-accounts') ? 'active' : ''; ?>">
-          <a href="user-accounts.php" class="sidebar-link">
+          <a href="<?php echo $rel_path; ?>user-accounts.php" class="sidebar-link">
             <i class="fa-solid fa-users-line"></i>
             <span style="font-weight:700;">Accounts</span>
           </a>
@@ -176,21 +227,16 @@ if (!empty($user_id)) {
         <?php endif; ?>
         <li class="sidebar-menu-item <?php echo ($current_page == 'logout') ? 'active' : ''; ?>">
           <a href="#" onclick="showLogoutModal(); return false;" class="sidebar-link">
-            <!-- <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
-              <path fill-rule="evenodd"
-                d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z" />
-              <path fill-rule="evenodd"
-                d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z" />
-            </svg> -->
             <i class="fa-solid fa-right-from-bracket"></i>
             <span style="font-weight:700;">Logout</span>
           </a>
         </li>
+        <?php endif; ?>
       </ul>
     </div>
   </nav>
   <div class="sidebar-footer-logo">
-    <img src="images/xtend-logo.png" alt="Xtend Logo">
+    <img src="<?php echo $rel_path; ?>images/xtend-logo.png" alt="Xtend Logo">
   </div>
 </aside>
 
@@ -324,7 +370,7 @@ if (!empty($user_id)) {
   </div>
 </div>
 
-<script src="plugins/jquery-3.7.1.min.js"></script>
+<script src="<?php echo $rel_path; ?>plugins/jquery-3.7.1.min.js"></script>
 <script>
   $(document).ready(function () {
     // Live date and time update
@@ -407,7 +453,7 @@ if (!empty($user_id)) {
         $btn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Opening...');
 
         $.ajax({
-          url: 'api/create-reopened-record.php',
+          url: '<?php echo $rel_path; ?>api/create-reopened-record.php',
           type: 'POST',
           data: {
             record_id: reopenRecordId,
@@ -416,7 +462,7 @@ if (!empty($user_id)) {
           dataType: 'json',
           success: function(response) {
             if (response.success && response.record_id) {
-              let targetUrl = 'edit-record.php?record_id=' + encodeURIComponent(response.record_id);
+              let targetUrl = '<?php echo $rel_path; ?>edit-record.php?record_id=' + encodeURIComponent(response.record_id);
               if (reopenDepartment) {
                 targetUrl += '&department=' + encodeURIComponent(reopenDepartment);
               }
@@ -467,6 +513,27 @@ if (!empty($user_id)) {
       console.log('Show notifications');
       // Add notification panel logic here
     });
+
+    // Sidebar module selector navigation
+    $('#sidebarModuleSelect').on('change', function () {
+      const selectedModule = $(this).val();
+      const relPath = '<?php echo $rel_path; ?>';
+
+      localStorage.setItem('active_module', selectedModule);
+
+      $.ajax({
+        url: relPath + 'api/set-active-module.php',
+        type: 'POST',
+        data: { module: selectedModule },
+        complete: function() {
+          if (selectedModule === 'project_management') {
+            window.location.href = relPath + 'project/create-project.php';
+          } else {
+            window.location.href = relPath + 'dashboard.php';
+          }
+        }
+      });
+    });
   });
 
   // Logout modal functions
@@ -479,7 +546,7 @@ if (!empty($user_id)) {
   }
 
   function confirmLogout() {
-    window.location.href = 'logout.php?confirm=yes';
+    window.location.href = '<?php echo $rel_path; ?>logout.php?confirm=yes';
   }
 
   // Confirmation modal functions
@@ -503,7 +570,7 @@ if (!empty($user_id)) {
     // Load clients if not already loaded
     if (modalClientList === null) {
       $.ajax({
-        url: 'api/get-clients.php',
+        url: '<?php echo $rel_path; ?>api/get-clients.php',
         type: 'GET',
         dataType: 'json',
         success: function(response) {
@@ -682,13 +749,13 @@ if (!empty($user_id)) {
     }
 
     $.ajax({
-      url: 'api/fetch-pending-records.php',
+      url: '<?php echo $rel_path; ?>api/fetch-pending-records.php',
       type: 'GET',
       data: queryData,
       dataType: 'json',
       success: function(response) {
         if (response.success && response.count > 0) {
-          let redirectUrl = 'view-pending-records.php?company_name=' + encodeURIComponent(companyName) + '&dealer_name=' + encodeURIComponent(dealerName) + '&add_to_company_list=' + addToCompanyList;
+          let redirectUrl = '<?php echo $rel_path; ?>view-pending-records.php?company_name=' + encodeURIComponent(companyName) + '&dealer_name=' + encodeURIComponent(dealerName) + '&add_to_company_list=' + addToCompanyList;
           if (department) {
             redirectUrl += '&department=' + encodeURIComponent(department);
           }
@@ -714,7 +781,7 @@ if (!empty($user_id)) {
       postData.department = department;
     }
     $.ajax({
-      url: 'api/create-pending-record.php',
+      url: '<?php echo $rel_path; ?>api/create-pending-record.php',
       type: 'POST',
       data: postData,
       dataType: 'json',
@@ -723,7 +790,7 @@ if (!empty($user_id)) {
           if (addToCompanyList) {
             modalClientList = null;
           }
-          window.open('new-record.php?id=' + encodeURIComponent(response.record_id), '_blank');
+          window.open('<?php echo $rel_path; ?>new-record.php?id=' + encodeURIComponent(response.record_id), '_blank');
           hideNewRecordConfirmModal();
         } else {
           alert('Error: ' + response.message);

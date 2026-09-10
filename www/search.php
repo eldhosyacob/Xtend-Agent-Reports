@@ -184,7 +184,7 @@ if ($db) {
                 <div id="supportDetailsGrid" class="grid-form">
                     <!-- 1. DEPARTMENT SELECT (If Manager) -->
                     <?php if ($is_manager): ?>
-                      <div class="form-group col-4">
+                      <div class="form-group col-3">
                         <label for="department_select">Department</label>
                         <div class="form-control-wrapper select-wrapper">
                             <i class="fa-solid fa-sitemap input-icon"></i>
@@ -199,7 +199,7 @@ if ($db) {
                     <?php endif; ?>
 
                     <!-- 2. AGENT NAME -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="agent">Agent Name</label>
                         <div class="form-control-wrapper select-wrapper">
                             <i class="fa-regular fa-user input-icon"></i>
@@ -215,7 +215,7 @@ if ($db) {
                     </div>
         
                     <!-- 3. FROM DATE -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="from_date">From Date</label>
                         <div class="form-control-wrapper">
                             <i class="fa-regular fa-calendar input-icon"></i>
@@ -224,7 +224,7 @@ if ($db) {
                     </div>
 
                     <!-- 4. TO DATE -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="to_date">To Date</label>
                         <div class="form-control-wrapper">
                             <i class="fa-regular fa-calendar input-icon"></i>
@@ -233,7 +233,7 @@ if ($db) {
                     </div>
 
                     <!-- 5. COMPANY NAME -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="company_name">Company Name</label>
                         <div class="form-control-wrapper autocomplete-wrapper">
                             <i class="fa-regular fa-building input-icon"></i>
@@ -243,7 +243,7 @@ if ($db) {
                     </div>
 
                     <!-- 6. DEALER NAME -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="dealer_name">Dealer Name</label>
                         <div class="form-control-wrapper autocomplete-wrapper">
                             <i class="fa-solid fa-user-tie input-icon"></i>
@@ -253,7 +253,7 @@ if ($db) {
                     </div>
 
                     <!-- 7. LOCATION -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="location">Location</label>
                         <div class="form-control-wrapper">
                             <i class="fa-solid fa-location-dot input-icon"></i>
@@ -261,8 +261,17 @@ if ($db) {
                         </div>
                     </div>
 
-                    <!-- 8. HARDWARE DETAILS -->
-                    <div class="form-group col-4">
+                    <!-- 8. PHONE -->
+                    <div class="form-group col-3">
+                        <label for="phone">Phone</label>
+                        <div class="form-control-wrapper">
+                            <i class="fa-solid fa-phone input-icon"></i>
+                            <input type="text" id="phone" name="phone" class="form-control" placeholder="Enter Phone Number">
+                        </div>
+                    </div>
+
+                    <!-- 9. HARDWARE DETAILS -->
+                    <div class="form-group col-3">
                         <label for="hardware_details">Hardware Details</label>
                         <div class="form-control-wrapper">
                             <i class="fa-solid fa-microchip input-icon"></i>
@@ -271,7 +280,7 @@ if ($db) {
                     </div>
 
                     <!-- 9. PRODUCT CATEGORY -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="product_category">Product Category</label>
                         <div class="form-control-wrapper select-wrapper">
                             <i class="fa-solid fa-cubes input-icon"></i>
@@ -303,7 +312,7 @@ if ($db) {
                     </div>
 
                     <!-- 10. ISSUE CATEGORY -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="issue_category">Issue Category</label>
                         <?php if (isset($user_department) && strtolower($user_department) === 'ivr'): ?>
                             <div class="form-control-wrapper select-wrapper">
@@ -325,7 +334,7 @@ if ($db) {
                     </div>
 
                     <!-- 11. STATUS -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="support_status">Status</label>
                         <div class="form-control-wrapper select-wrapper">
                             <i class="fa-solid fa-circle-info input-icon"></i>
@@ -343,7 +352,7 @@ if ($db) {
                     </div>
 
                     <!-- 12. TICKET ID -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="ticket_id">Ticket ID</label>
                         <div class="form-control-wrapper">
                             <i class="fa-solid fa-ticket input-icon"></i>
@@ -352,7 +361,7 @@ if ($db) {
                     </div>
 
                     <!-- 13. CASE ID -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="case_id">Case ID</label>
                         <div class="form-control-wrapper">
                             <i class="fa-solid fa-folder-open input-icon"></i>
@@ -364,7 +373,7 @@ if ($db) {
                 <!-- Miscellaneous Search Criteria Grid -->
                 <div id="miscellaneousGrid" class="grid-form" style="display: none;">
                     <?php if ($is_manager): ?>
-                      <div class="form-group col-4">
+                      <div class="form-group col-3">
                         <label for="misc_department_select">Department</label>
                         <div class="form-control-wrapper select-wrapper">
                             <i class="fa-solid fa-sitemap input-icon"></i>
@@ -379,7 +388,7 @@ if ($db) {
                     <?php endif; ?>
 
                     <!-- Agent Name -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="misc_agent">Agent Name</label>
                         <div class="form-control-wrapper select-wrapper">
                             <i class="fa-regular fa-user input-icon"></i>
@@ -395,7 +404,7 @@ if ($db) {
                     </div>
 
                     <!-- From Date -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="misc_from_date">From Date</label>
                         <div class="form-control-wrapper">
                             <i class="fa-regular fa-calendar input-icon"></i>
@@ -404,7 +413,7 @@ if ($db) {
                     </div>
 
                     <!-- To Date -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="misc_to_date">To Date</label>
                         <div class="form-control-wrapper">
                             <i class="fa-regular fa-calendar input-icon"></i>
@@ -413,7 +422,7 @@ if ($db) {
                     </div>
 
                     <!-- Miscellaneous Category -->
-                    <div class="form-group col-4">
+                    <div class="form-group col-3">
                         <label for="misc_category">Miscellaneous Category</label>
                         <div class="form-control-wrapper select-wrapper">
                             <i class="fa-solid fa-layer-group input-icon"></i>
@@ -796,6 +805,7 @@ if ($db) {
             const companyName = $('#company_name').val() ? $('#company_name').val().trim() : '';
             const dealerName = $('#dealer_name').val() ? $('#dealer_name').val().trim() : '';
             const location = $('#location').val() ? $('#location').val().trim() : '';
+            const phone = $('#phone').val() ? $('#phone').val().trim() : '';
             const hardware = $('#hardware_details').val() ? $('#hardware_details').val().trim() : '';
             const ticket = $('#ticket_id').val() ? $('#ticket_id').val().trim() : '';
             const caseId = $('#case_id').val() ? $('#case_id').val().trim() : '';
@@ -804,7 +814,7 @@ if ($db) {
             const issueCat = $('#issue_category').val() ? $('#issue_category').val().trim() : '';
             const supportStatus = $('#support_status').val();
 
-            if (!agent && !fromDate && !toDate && !companyName && !dealerName && !location && !hardware && !ticket && !caseId && !dept && !prodCat && !issueCat && !supportStatus) {
+            if (!agent && !fromDate && !toDate && !companyName && !dealerName && !location && !phone && !hardware && !ticket && !caseId && !dept && !prodCat && !issueCat && !supportStatus) {
               e.preventDefault();
               showNotification('Please enter at least one search criteria to search.', 'error');
               return;

@@ -61,4 +61,77 @@ body {
   .page-containers {
     padding-left: 0;
   }
+}
+
+/* Custom Date Range Filter Styling for Detail Pages */
+.custom-date-inputs-wrapper {
+  display: none;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #dadce0);
+  border-radius: 10px;
+  padding: 4px 8px;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.custom-date-inputs-wrapper.active {
+  display: flex !important;
+}
+
+.date-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-input-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.filter-date-control {
+  border: 1px solid var(--input-border, #cbd5e1);
+  border-radius: 7px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--input-bg, #ffffff);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.filter-date-control:focus {
+  border-color: var(--accent-teal, #18ad9f);
+  box-shadow: 0 0 0 2px rgba(24, 173, 159, 0.15);
+}
+
+.custom-date-search-btn {
+  background: var(--accent-teal, #18ad9f);
+  color: #ffffff;
+  border: none;
+  border-radius: 7px;
+  padding: 7px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.custom-date-search-btn:hover {
+  background: var(--accent-teal-hover, #138a7f);
+  transform: translateY(-1px);
+}
+
+.custom-date-search-btn:active {
+  transform: translateY(0);
 }

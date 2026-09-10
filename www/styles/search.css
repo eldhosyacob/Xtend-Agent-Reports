@@ -132,7 +132,7 @@
 .form-card-wrapper {
     position: relative;
     z-index: 2;
-    max-width: 900px;
+    max-width: 1150px;
     margin: 0 auto;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
@@ -270,6 +270,10 @@
 
 .col-4 {
     grid-column: span 4;
+}
+
+.col-3 {
+    grid-column: span 3;
 }
 
 /* Form Grouping */
@@ -528,13 +532,20 @@ select.form-control {
     }
 }
 
+@media (max-width: 1024px) {
+    .col-3 {
+        grid-column: span 6;
+    }
+}
+
 @media (max-width: 768px) {
     .search-page-container {
         padding: 24px 16px;
     }
 
     .col-6,
-    .col-4 {
+    .col-4,
+    .col-3 {
         grid-column: span 12;
     }
 

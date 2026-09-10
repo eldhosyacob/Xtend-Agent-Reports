@@ -184,6 +184,7 @@ require_once __DIR__ . '/config/auth_check.php';
               const comp = (r.company_name || '').toLowerCase();
               const dealer = (r.dealer_name || '').toLowerCase();
               const loc = (r.location || '').toLowerCase();
+              const phone = (r.phone || '').toLowerCase();
               const prod = (r.product_category || '').toLowerCase();
               const hw = (r.hardware_details || '').toLowerCase();
               const status = (r.support_status || '').toLowerCase();
@@ -193,6 +194,7 @@ require_once __DIR__ . '/config/auth_check.php';
                      comp.indexOf(val) > -1 || 
                      dealer.indexOf(val) > -1 ||
                      loc.indexOf(val) > -1 ||
+                     phone.indexOf(val) > -1 ||
                      prod.indexOf(val) > -1 || 
                      hw.indexOf(val) > -1 ||
                      status.indexOf(val) > -1 ||
