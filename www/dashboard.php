@@ -22,6 +22,24 @@ if (empty($user_department) && isset($db) && !empty($user_id)) {
     }
 }
 
+// Retrieve project_only from database if not set in session (fallback)
+if (!isset($_SESSION['project_only']) && isset($db) && !empty($user_id)) {
+    try {
+        $poStmt = $db->prepare("SELECT project_only FROM users WHERE id = :id");
+        $poStmt->execute(['id' => $user_id]);
+        $poVal = $poStmt->fetchColumn();
+        $_SESSION['project_only'] = ($poVal !== false) ? (int)$poVal : 0;
+    } catch (PDOException $e) {
+        error_log("Database error fetching user project_only: " . $e->getMessage());
+    }
+}
+
+// Redirect project-only users away from report management dashboard
+if (!empty($_SESSION['project_only']) && (int)$_SESSION['project_only'] === 1) {
+    header('Location: project/project-dashboard.php');
+    exit;
+}
+
 // Determine default selected tab ('voice_logger' or 'ivr') based on user's department
 $default_dept = 'voice_logger';
 if (strcasecmp($user_department, 'ivr') === 0) {

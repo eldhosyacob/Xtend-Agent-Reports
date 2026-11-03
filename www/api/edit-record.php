@@ -176,10 +176,10 @@ foreach ($requiredFields as $field) {
 }
 
 // Validate email format
-if (!empty($data['email']) && !preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|co\.in|in|org|net|sg)$/i', $data['email'])) {
+if (!empty($data['email']) && !preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|co\.in|in|org|net|sg|ae)$/i', $data['email'])) {
     echo json_encode([
         'success' => false,
-        'message' => 'Email must end with .com, .co.in, .in, .org, .net, or .sg'
+        'message' => 'Email must end with .com, .co.in, .in, .org, .net, .sg, or .ae'
     ]);
     exit;
 }

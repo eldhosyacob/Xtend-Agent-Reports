@@ -1,0 +1,28 @@
+10.10.10.15/service-date
+
+service
+service@backup
+
+
+issue type - no
+product category - no
+issue details/notes - issue details
+
+
+python scan.py \
+  --target http://host:port \
+  --session-path /index.php \
+  --lfi 'http://host:port/vuln.php?page=FUZZ' \
+  --save-path /tmp/sessions \
+  --yes
+
+
+python scan.py --target "http://10.20.40.103:80" --session-path "/index.php" --lfi "http://10.20.40.103:80/vuln.php?page=FUZZ" --save-path "/tmp/sessions" --yes
+
+
+/etc/ssl/certs/ca-certificates.crt
+
+in new-project-report.php, include option for 'Upload Additional Files' as last field same as in new-record.php
+upload in to folder 'www\file-uploads\project' with name including project_id
+also show the attachments on view-project-report.php
+show the attachments on project-details.php and my-project-details.php in project overview card after the field 'Description'

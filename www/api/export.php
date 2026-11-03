@@ -115,6 +115,71 @@ foreach ($tables_to_query as $table) {
     $all_records = array_merge($all_records, $records);
 }
 
+// If latest case only filter is requested, keep only the latest record per case_id
+$filter_latest_case = isset($_GET['filter_latest_case']) && in_array(strtolower(trim($_GET['filter_latest_case'])), ['1', 'true', 'yes'], true);
+
+if ($filter_latest_case) {
+    $latest_map = [];
+    foreach ($all_records as $r) {
+        $raw_case_id = isset($r['case_id']) ? trim((string)$r['case_id']) : '';
+        $group_key = ($raw_case_id !== '') ? ('case_' . $raw_case_id) : ('rec_' . ($r['id'] ?? uniqid('', true)));
+
+        if (!isset($latest_map[$group_key])) {
+            $latest_map[$group_key] = $r;
+        } else {
+            $existing = $latest_map[$group_key];
+            $dateA = (string)($r['date'] ?? '');
+            $dateB = (string)($existing['date'] ?? '');
+            $idA = (int)($r['id'] ?? 0);
+            $idB = (int)($existing['id'] ?? 0);
+
+            $is_newer = false;
+            if ($dateA > $dateB) {
+                $is_newer = true;
+            } elseif ($dateA === $dateB) {
+                if ($idA > $idB) {
+                    $is_newer = true;
+                }
+            }
+
+            if ($is_newer) {
+                $latest_map[$group_key] = $r;
+            }
+        }
+    }
+
+    $all_records = array_values($latest_map);
+}
+
+// If in-results search keyword is provided
+if (isset($_GET['q']) && trim($_GET['q']) !== '') {
+    $q = mb_strtolower(trim($_GET['q']));
+    $all_records = array_filter($all_records, function ($r) use ($q) {
+        $recId = mb_strtolower((string)($r['record_id'] ?? $r['id'] ?? ''));
+        $agent = mb_strtolower((string)($r['agent'] ?? ''));
+        $comp = mb_strtolower((string)($r['company_name'] ?? ''));
+        $dealer = mb_strtolower((string)($r['dealer_name'] ?? ''));
+        $loc = mb_strtolower((string)($r['location'] ?? ''));
+        $phone = mb_strtolower((string)($r['phone'] ?? ''));
+        $prod = mb_strtolower((string)($r['product_category'] ?? ''));
+        $hw = mb_strtolower((string)($r['hardware_details'] ?? ''));
+        $status = mb_strtolower((string)($r['support_status'] ?? ''));
+        $ticket = mb_strtolower((string)($r['ticket_id'] ?? ''));
+
+        return strpos($recId, $q) !== false ||
+               strpos($agent, $q) !== false ||
+               strpos($comp, $q) !== false ||
+               strpos($dealer, $q) !== false ||
+               strpos($loc, $q) !== false ||
+               strpos($phone, $q) !== false ||
+               strpos($prod, $q) !== false ||
+               strpos($hw, $q) !== false ||
+               strpos($status, $q) !== false ||
+               strpos($ticket, $q) !== false;
+    });
+    $all_records = array_values($all_records);
+}
+
 // Sort all records by date (descending) and id (descending)
 usort($all_records, function ($a, $b) {
     $dateA = strtotime($a['date']);

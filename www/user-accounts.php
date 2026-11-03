@@ -19,7 +19,7 @@ $current_user_id = $_SESSION['id'];
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>User Accounts | Xtend Agent Reports</title>
   <link rel="shortcut icon" href="images/favicon.png" />
-  <link rel="stylesheet" href="styles/user-accounts.css">
+  <link rel="stylesheet" href="styles/user-accounts.css?v=<?php echo filemtime(__DIR__ . '/styles/user-accounts.css'); ?>">
   <link rel="stylesheet" href="styles/header-sidebar.css">
   <link rel="stylesheet" href="styles/common.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -152,6 +152,12 @@ $current_user_id = $_SESSION['id'];
             </select>
           </div>
         </div>
+
+        <!-- Project Only Checkbox -->
+        <div class="form-checkbox-group">
+          <input type="checkbox" id="modalProjectOnly" name="project_only" value="1">
+          <label class="form-checkbox-label" for="modalProjectOnly">Allow only Project Management</label>
+        </div>
         
         <!-- Action Buttons -->
         <div class="modal-actions">
@@ -243,6 +249,12 @@ $current_user_id = $_SESSION['id'];
             </select>
           </div>
         </div>
+
+        <!-- Project Only Checkbox -->
+        <div class="form-checkbox-group">
+          <input type="checkbox" id="editProjectOnly" name="project_only" value="1">
+          <label class="form-checkbox-label" for="editProjectOnly">Allow only Project Management</label>
+        </div>
         
         <!-- Action Buttons -->
         <div class="modal-actions">
@@ -265,7 +277,7 @@ $current_user_id = $_SESSION['id'];
 
   <!-- jQuery & page controller -->
   <script src="plugins/jquery-3.7.1.min.js"></script>
-  <script src="js/user-accounts.js"></script>
+  <script src="js/user-accounts.js?v=<?php echo filemtime(__DIR__ . '/js/user-accounts.js'); ?>"></script>
 
 </body>
 </html>

@@ -5,17 +5,47 @@ require_once __DIR__ . '/../config/session.php';
 // Get current page name from URL
 $current_page = basename($_SERVER['PHP_SELF'], '.php');
 $script_name = str_replace('\\', '/', $_SERVER['SCRIPT_NAME']);
-$in_project_folder = (strpos($script_name, '/project/') !== false || $current_page === 'create-project');
+$in_project_folder = (strpos($script_name, '/project/') !== false || in_array($current_page, ['project-dashboard', 'create-project', 'project-lists', 'project-details', 'my-projects', 'my-project-details', 'my-project-reports', 'my-reports', 'view-project-report', 'new-project-report', 'view-related-reports', 'time-frame-reports', 'search-project-reports', 'search-report-results'], true));
 $rel_path = $in_project_folder ? '../' : './';
 
+// Get user information from session
+$user_full_name = isset($_SESSION['full_name']) ? $_SESSION['full_name'] : 'Admin';
+$user_id = isset($_SESSION['id']) ? $_SESSION['id'] : '';
+$username = isset($_SESSION['username']) ? $_SESSION['username'] : '';
+$user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
+$user_department = isset($_SESSION['department']) ? $_SESSION['department'] : '';
+
+// Retrieve project_only setting (session with database fallback)
+if (!isset($_SESSION['project_only']) && !empty($user_id)) {
+    require_once __DIR__ . '/../config/database.php';
+    $db_conn = getDatabaseConnection();
+    if ($db_conn) {
+        try {
+            $poStmt = $db_conn->prepare("SELECT project_only FROM users WHERE id = :id LIMIT 1");
+            $poStmt->execute(['id' => $user_id]);
+            $poVal = $poStmt->fetchColumn();
+            $_SESSION['project_only'] = ($poVal !== false) ? (int)$poVal : 0;
+        } catch (PDOException $e) {
+            error_log("Error fetching user project_only: " . $e->getMessage());
+        }
+    }
+}
+$user_project_only = isset($_SESSION['project_only']) ? (int)$_SESSION['project_only'] : 0;
+
 // Store or preserve active module state in session
-if ($in_project_folder) {
+if ($user_project_only === 1) {
     $_SESSION['active_module'] = 'project_management';
+    $active_module = 'project_management';
+} elseif ($in_project_folder) {
+    $_SESSION['active_module'] = 'project_management';
+    $active_module = 'project_management';
 } elseif (in_array($current_page, ['dashboard', 'home', 'new-record', 'add-miscellaneous', 'upload-record', 'my-records', 'today-records', 'view-record', 'edit-record', 'view-pending-records'], true)) {
     $_SESSION['active_module'] = 'report_management';
+    $active_module = 'report_management';
+} else {
+    $active_module = isset($_SESSION['active_module']) ? $_SESSION['active_module'] : 'report_management';
 }
 
-$active_module = isset($_SESSION['active_module']) ? $_SESSION['active_module'] : 'report_management';
 $is_project_module = ($active_module === 'project_management');
 
 // Define page titles
@@ -26,18 +56,27 @@ $page_titles = [
   'new_record' => 'Add New Record',
   'upload_record' => 'Upload Record',
   'search' => 'Search',
-  'administration' => 'Administration'
+  'administration' => 'Administration',
+  'create-project' => 'Create Project',
+  'project-lists' => 'Project Lists',
+  'project-details' => 'Project Details',
+  'my-projects' => 'My Projects',
+  'my-project-details' => 'My Project Details',
+  'my-project-reports' => 'My Reports',
+  'my-reports' => 'My Reports',
+  'view-project-report' => 'View Project Report',
+  'new-project-report' => 'New Project Report',
+  'view-related-reports' => 'Related Reports',
+  'project-dashboard' => 'Dashboard',
+  'time-frame-reports' => 'Timeframe Reports',
+  'search-project-reports' => 'Search Project Reports',
+  'search-report-results' => 'Search Results'
 ];
 
 // Get the page title, default to the current page name with first letter capitalized
 $page_title = isset($page_titles[$current_page]) ? $page_titles[$current_page] : ucfirst($current_page);
 
-// Get user information from session
-$user_full_name = isset($_SESSION['full_name']) ? $_SESSION['full_name'] : 'Admin';
-$user_id = isset($_SESSION['id']) ? $_SESSION['id'] : '';
-$username = isset($_SESSION['username']) ? $_SESSION['username'] : '';
-$user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
-$user_department = isset($_SESSION['department']) ? $_SESSION['department'] : '';
+
 
 // Resolve user profile photo path
 $profile_photo_url = $rel_path . 'images/default-avatar.png'; // default fallback or initials
@@ -129,8 +168,10 @@ if (!empty($user_id)) {
       <div class="sidebar-module-wrapper">
         <i class="fa-solid fa-layer-group sidebar-module-icon"></i>
         <select id="sidebarModuleSelect" class="sidebar-module-select" aria-label="Select System Module">
-          <option value="report_management" <?php echo ($active_module === 'report_management') ? 'selected' : ''; ?>>Report Management</option>
-          <option value="project_management" <?php echo ($active_module === 'project_management') ? 'selected' : ''; ?>>Project Management</option>
+          <?php if ($user_project_only !== 1): ?>
+          <option value="report_management" <?php echo ($active_module === 'report_management') ? 'selected' : ''; ?>>Support Management</option>
+          <?php endif; ?>
+          <option value="project_management" <?php echo ($active_module === 'project_management' || $user_project_only === 1) ? 'selected' : ''; ?>>Project Management</option>
         </select>
         <i class="fa-solid fa-chevron-down sidebar-module-arrow"></i>
       </div>
@@ -138,18 +179,44 @@ if (!empty($user_id)) {
     <div class="sidebar-section">
       <ul class="sidebar-menu">
         <?php if ($active_module === 'project_management'): ?>
+        <li class="sidebar-menu-item <?php echo ($current_page == 'project-dashboard') ? 'active' : ''; ?>">
+          <a href="<?php echo $rel_path; ?>project/project-dashboard.php" class="sidebar-link">
+            <i class="fa-solid fa-house"></i>
+            <span style="font-weight:700;">Dashboard</span>
+          </a>
+        </li>
+        <?php if ($user_role === 'admin'): ?>
         <li class="sidebar-menu-item <?php echo ($current_page == 'create-project') ? 'active' : ''; ?>">
           <a href="<?php echo $rel_path; ?>project/create-project.php" class="sidebar-link">
             <i class="fa-solid fa-folder-plus"></i>
             <span style="font-weight:700;">Create Project</span>
           </a>
         </li>
-        <!-- <li class="sidebar-menu-item <?php echo ($current_page == 'search') ? 'active' : ''; ?>">
-          <a href="<?php echo $rel_path; ?>search.php" class="sidebar-link">
+        <?php endif; ?>
+        <li class="sidebar-menu-item <?php echo ($current_page == 'my-projects' || $current_page == 'my-project-details') ? 'active' : ''; ?>">
+          <a href="<?php echo $rel_path; ?>project/my-projects.php" class="sidebar-link">
+            <i class="fa-solid fa-briefcase"></i>
+            <span style="font-weight:700;">My Projects</span>
+          </a>
+        </li>        
+        <li class="sidebar-menu-item <?php echo ($current_page == 'my-project-reports' || $current_page == 'my-reports') ? 'active' : ''; ?>">
+          <a href="<?php echo $rel_path; ?>project/my-project-reports.php" class="sidebar-link">
+            <i class="fa-solid fa-file-lines"></i>
+            <span style="font-weight:700;">My Reports</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item <?php echo ($current_page == 'project-lists' || $current_page == 'project-details') ? 'active' : ''; ?>">
+          <a href="<?php echo $rel_path; ?>project/project-lists.php" class="sidebar-link">
+            <i class="fa-solid fa-list-check"></i>
+            <span style="font-weight:700;">Project Lists</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item <?php echo ($current_page == 'search' || $current_page == 'search-project-reports' || $current_page == 'search-report-results') ? 'active' : ''; ?>">
+          <a href="<?php echo $rel_path; ?>project/search-project-reports.php" class="sidebar-link">
             <i class="fa-solid fa-magnifying-glass"></i>
             <span style="font-weight:700;">Search</span>
           </a>
-        </li> -->
+        </li>
         <li class="sidebar-menu-item <?php echo ($current_page == 'user-profile') ? 'active' : ''; ?>">
           <a href="<?php echo $rel_path; ?>user-profile.php" class="sidebar-link">
             <i class="fa-solid fa-user-shield"></i>
@@ -527,7 +594,7 @@ if (!empty($user_id)) {
         data: { module: selectedModule },
         complete: function() {
           if (selectedModule === 'project_management') {
-            window.location.href = relPath + 'project/create-project.php';
+            window.location.href = relPath + 'project/project-dashboard.php';
           } else {
             window.location.href = relPath + 'dashboard.php';
           }

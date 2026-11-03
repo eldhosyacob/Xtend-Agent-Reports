@@ -83,6 +83,26 @@
     color: #a7b9d2;
 }
 
+/* [data-theme="dark"] .form-checkbox-group {
+    background-color: #1e293b;
+    border-color: #334155;
+} */
+
+[data-theme="dark"] .form-checkbox-group:hover {
+    border-color: #475569;
+    background-color: #243247;
+}
+
+[data-theme="dark"] .form-checkbox-label {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .badge-project-only {
+    background-color: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
 .accounts-page-container {
     background-color: var(--bg-dark);
     font-family: 'Plus Jakarta Sans', sans-serif;
@@ -282,6 +302,13 @@
     background-color: #f1f5f9;
     color: #475569;
     border: 1px solid #e2e8f0;
+}
+
+.badge-project-only {
+    background-color: rgba(99, 102, 241, 0.1);
+    color: #4f46e5;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    margin-left: 6px;
 }
 
 /* Buttons */
@@ -494,6 +521,45 @@
 
 .btn-toggle-pwd:hover {
     color: #64748b;
+}
+
+/* Checkbox Form Group */
+.form-checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 10px 14px;
+    /* background-color: #f8fafc;
+    border: 1px solid #e2e8f0; */
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.form-checkbox-group:hover {
+    border-color: #cbd5e1;
+    background-color: #f1f5f9;
+}
+
+.form-checkbox-group input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    cursor: pointer;
+    accent-color: #2563eb;
+    border-radius: 4px;
+    margin: 0;
+}
+
+.form-checkbox-label {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #334155;
+    cursor: pointer;
+    user-select: none;
+    margin: 0;
+    line-height: 1.4;
+    flex: 1;
 }
 
 .modal-actions {

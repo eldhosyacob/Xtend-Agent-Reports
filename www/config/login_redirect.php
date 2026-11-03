@@ -9,7 +9,7 @@ if (isset($_SESSION['id']) && isset($_SESSION['username'])) {
 
 
   // Redirect to login page
-  header('Location: index.php');
+  header('Location: /index.php');
     // header('Location: dashboard.php');
     exit;
 }

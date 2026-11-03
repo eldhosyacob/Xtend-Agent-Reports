@@ -108,7 +108,23 @@ require_once __DIR__ . '/config/auth_check.php';
         let currentPage = 1;
         const pageSize = 10;
 
+        const pageStorageKey = 'misc_search_results_page_' + (window.location.search || '');
+
+        function goToPage(page) {
+          currentPage = page;
+          sessionStorage.setItem(pageStorageKey, String(currentPage));
+          renderRecords(displayedRecords);
+          scrollToTableTop();
+        }
+
         loadSearchResults();
+
+        // Listen for browser back/forward cache navigation
+        window.addEventListener('pageshow', function(e) {
+          if (e.persisted) {
+            loadSearchResults();
+          }
+        });
 
         // Refresh click trigger
         $('#btn-refresh').on('click', function() {
@@ -160,8 +176,11 @@ require_once __DIR__ . '/config/auth_check.php';
             success: function(response) {
               if (response.success) {
                 allRecords = response.data || [];
-                currentPage = 1;
                 displayedRecords = allRecords;
+
+                const totalPages = Math.max(1, Math.ceil(displayedRecords.length / pageSize));
+                const savedPage = parseInt(sessionStorage.getItem(pageStorageKey), 10) || 1;
+                currentPage = Math.min(Math.max(1, savedPage), totalPages);
                 
                 // Update Badge text
                 $('#results-badge').html('<i class="fa-solid fa-list-check" style="color: #ecae3b;"></i> <span style="color: #18ad9f; margin:0 4px;">'+allRecords.length+'</span><span style="color: #18678e;"> matching miscellaneous records</span>');
@@ -262,6 +281,7 @@ require_once __DIR__ . '/config/auth_check.php';
           });
 
           $('.btn-action-view').off('click').on('click', function() {
+            sessionStorage.setItem(pageStorageKey, String(currentPage));
             const id = $(this).attr('data-id');
             window.location.href = 'view-miscellaneous.php?id=' + encodeURIComponent(id);
           });
@@ -300,9 +320,7 @@ require_once __DIR__ . '/config/auth_check.php';
                 const fillPage = lastPage + 1;
                 const btn = $('<button class="page-num-btn">' + fillPage + '</button>');
                 btn.on('click', function() {
-                  currentPage = fillPage;
-                  renderRecords(displayedRecords);
-                  scrollToTableTop();
+                  goToPage(fillPage);
                 });
                 $pagesContainer.append(btn);
               } else if (page - lastPage > 2) {
@@ -316,9 +334,7 @@ require_once __DIR__ . '/config/auth_check.php';
             }
             btn.on('click', function() {
               if (currentPage !== page) {
-                currentPage = page;
-                renderRecords(displayedRecords);
-                scrollToTableTop();
+                goToPage(page);
               }
             });
             $pagesContainer.append(btn);
@@ -328,18 +344,14 @@ require_once __DIR__ . '/config/auth_check.php';
 
         $('#btn-prev').on('click', function() {
           if (currentPage > 1) {
-            currentPage--;
-            renderRecords(displayedRecords);
-            scrollToTableTop();
+            goToPage(currentPage - 1);
           }
         });
 
         $('#btn-next').on('click', function() {
           const totalPages = Math.ceil(displayedRecords.length / pageSize);
           if (currentPage < totalPages) {
-            currentPage++;
-            renderRecords(displayedRecords);
-            scrollToTableTop();
+            goToPage(currentPage + 1);
           }
         });
 

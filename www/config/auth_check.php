@@ -6,7 +6,7 @@ require_once __DIR__ . '/session.php';
 
 if (!isset($_SESSION['id']) || !isset($_SESSION['username'])) {
     session_destroy();
-    header('Location: index.php');
+    header('Location: /index.php');
     exit;
 }
 
@@ -23,7 +23,7 @@ if ($db) {
         if ($result && $result['session_id'] !== session_id()) {
             // Session mismatch - another login occurred
             session_destroy();
-            header('Location: index.php?error=session_expired');
+            header('Location: /index.php?error=session_expired');
             exit;
         }
 

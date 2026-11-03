@@ -294,6 +294,73 @@
     border: 1px solid var(--border-color);
 }
 
+.table-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-filter-case-toggle {
+    margin-left: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    background: #f8fafc;
+    border: 1px solid #dadce0;
+    border-radius: 10px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+.btn-filter-case-toggle:hover {
+    border-color: #cbd5e1;
+    color: var(--text-primary);
+    background: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.btn-filter-case-toggle:active {
+    transform: translateY(0);
+}
+
+.btn-filter-case-toggle.active {
+    background: linear-gradient(135deg, var(--accent-teal, #18ad9f) 0%, #118277 100%);
+    color: #ffffff;
+    border-color: var(--accent-teal, #18ad9f);
+    box-shadow: 0 3px 8px rgba(24, 173, 159, 0.35);
+}
+
+.btn-filter-case-toggle.active:hover {
+    background: linear-gradient(135deg, #1cbdb1 0%, #138f83 100%);
+    box-shadow: 0 4px 12px rgba(24, 173, 159, 0.45);
+}
+
+[data-theme="dark"] .btn-filter-case-toggle {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .btn-filter-case-toggle:hover {
+    border-color: #475569;
+    color: #f1f5f9;
+    background: #27354a;
+}
+
+[data-theme="dark"] .btn-filter-case-toggle.active {
+    background: linear-gradient(135deg, #18ad9f 0%, #118277 100%);
+    color: #ffffff;
+    border-color: #18ad9f;
+    box-shadow: 0 3px 8px rgba(24, 173, 159, 0.5);
+}
+
 /* Floating-Row Table View Wrapper */
 .table-responsive-wrapper {
     overflow-x: auto;
@@ -586,7 +653,10 @@
         max-width: 100%;
     }
 
-
+    .table-filter-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
 }
 
 /* Pagination Styling */

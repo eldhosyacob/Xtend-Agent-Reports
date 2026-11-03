@@ -22,9 +22,18 @@ $(document).ready(function() {
         }
     });
 
+    // Toggle checkbox when clicking anywhere on the checkbox group container
+    $(document).on('click', '.form-checkbox-group', function(e) {
+        if (!$(e.target).is('input[type="checkbox"]') && !$(e.target).is('label')) {
+            const $cb = $(this).find('input[type="checkbox"]');
+            $cb.prop('checked', !$cb.prop('checked')).trigger('change');
+        }
+    });
+
     // Open Add User Modal
     $('#btnAddUser').on('click', function() {
         $('#addUserForm')[0].reset();
+        $('#modalProjectOnly').prop('checked', false);
         
         // Reset password fields to hidden state
         $('#modalPassword, #modalConfirmPassword').attr('type', 'password');
@@ -53,6 +62,7 @@ $(document).ready(function() {
         const name = $(this).data('name');
         const dept = $(this).data('dept');
         const role = $(this).data('role');
+        const projectOnly = $(this).data('project-only');
 
         // Reset edit form fields
         $('#editUserForm')[0].reset();
@@ -65,6 +75,8 @@ $(document).ready(function() {
         $('#editRealName').val(name);
         $('#editDepartment').val(dept || 'Voice Logger');
         $('#editUserType').val(role || 'user');
+        const isProjOnly = (projectOnly == 1 || projectOnly === '1' || projectOnly === true);
+        $('#editProjectOnly').prop('checked', isProjOnly);
 
         $('#editUserModal').addClass('active');
         $('#editPassword').focus();
@@ -234,12 +246,15 @@ $(document).ready(function() {
                             data-name="${escapeHtml(user.real_name)}" 
                             data-dept="${escapeHtml(user.department)}" 
                             data-role="${escapeHtml(user.role)}"
+                            data-project-only="${parseInt(user.project_only) === 1 ? 1 : 0}"
                             title="Edit User">
                         <i class="fa-solid fa-pen-to-square"></i>
                     </button>
                     ${deleteBtn}
                 </div>
             `;
+
+            const projectOnlyBadge = parseInt(user.project_only) === 1 ? `<span class="badge badge-project-only" title="Allow only Project Management">Project Only</span>` : '';
 
             const rowHtml = `
                 <tr>
@@ -255,7 +270,7 @@ $(document).ready(function() {
                     </td>
                     <td><span class="user-display-username">${escapeHtml(user.username)}</span></td>
                     <td><span class="badge badge-dept">${escapeHtml(user.department || '-')}</span></td>
-                    <td><span class="badge ${roleClass}">${escapeHtml(user.role)}</span></td>
+                    <td><span class="badge ${roleClass}">${escapeHtml(user.role)}</span>${projectOnlyBadge}</td>
                     <td>${actionsHtml}</td>
                 </tr>
             `;
@@ -330,6 +345,7 @@ $(document).ready(function() {
         const confirmPassword = $('#modalConfirmPassword').val();
         const department = $('#modalDepartment').val();
         const userType = $('#modalUserType').val();
+        const projectOnly = $('#modalProjectOnly').is(':checked') ? 1 : 0;
 
         // Extra client-side checks
         if (username.length < 3) {
@@ -342,6 +358,15 @@ $(document).ready(function() {
             $('#modalRealName').focus();
             return;
         }
+
+        // Check if user with same Real Name already exists
+        const nameExists = allUsers.some(u => u.real_name && u.real_name.trim().toLowerCase() === realName.toLowerCase());
+        if (nameExists) {
+            alert('A user with the Real Name "' + realName + '" already exists.');
+            $('#modalRealName').focus();
+            return;
+        }
+
         if (password.length < 5) {
             alert('Password must be at least 5 characters.');
             $('#modalPassword').focus();
@@ -366,7 +391,8 @@ $(document).ready(function() {
                 real_name: realName,
                 password: password,
                 department: department,
-                user_type: userType
+                user_type: userType,
+                project_only: projectOnly
             },
             dataType: 'json',
             success: function(response) {
@@ -376,7 +402,12 @@ $(document).ready(function() {
                     showAlert('success', 'User ' + realName + ' added successfully!');
                     loadUsers();
                 } else {
-                    alert('Error adding user: ' + response.message);
+                    alert(response.message || 'Error adding user');
+                    if (response.message && response.message.toLowerCase().includes('real name')) {
+                        $('#modalRealName').focus();
+                    } else if (response.message && response.message.toLowerCase().includes('username')) {
+                        $('#modalUsername').focus();
+                    }
                 }
             },
             error: function() {
@@ -397,6 +428,7 @@ $(document).ready(function() {
         const confirmPassword = $('#editConfirmPassword').val();
         const department = $('#editDepartment').val();
         const userType = $('#editUserType').val();
+        const projectOnly = $('#editProjectOnly').is(':checked') ? 1 : 0;
 
         // Extra client-side checks
         if (password) {
@@ -424,7 +456,8 @@ $(document).ready(function() {
                 id: id,
                 password: password,
                 department: department,
-                user_type: userType
+                user_type: userType,
+                project_only: projectOnly
             },
             dataType: 'json',
             success: function(response) {

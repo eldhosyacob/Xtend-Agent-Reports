@@ -20,7 +20,7 @@ if (!$db) {
 }
 
 
-$stmt = $db->prepare("SELECT id, username, password, real_name, department, user_type FROM users WHERE username = :username LIMIT 1");
+$stmt = $db->prepare("SELECT id, username, password, real_name, department, user_type, project_only FROM users WHERE username = :username LIMIT 1");
 $stmt->execute(['username' => $username]);
 $user = $stmt->fetch();
 
@@ -50,18 +50,27 @@ if (password_verify($password, $user['password'])) {
     $_SESSION['full_name'] = $user['real_name'];
     $_SESSION['department'] = $user['department'];
     $_SESSION['role'] = $user['user_type'];
+    $_SESSION['project_only'] = (int)($user['project_only'] ?? 0);
+    if ($_SESSION['project_only'] === 1) {
+        $_SESSION['active_module'] = 'project_management';
+    }
     $_SESSION['logged_in'] = true;
+
+    $redirect_url = ($_SESSION['project_only'] === 1) ? 'project/project-dashboard.php' : 'dashboard.php';
 
     echo json_encode([
         'success' => true,
         'message' => 'Login successful',
+        'redirect_url' => $redirect_url,
         'data' => [
             'id' => $user['id'],
             'username' => $user['username'],
             'real_name' => $user['real_name'],
             'full_name' => $user['real_name'],
             'department' => $user['department'],
-            'role' => $user['user_type']
+            'role' => $user['user_type'],
+            'project_only' => (int)($user['project_only'] ?? 0),
+            'redirect_url' => $redirect_url
         ]
     ]);
 } else {

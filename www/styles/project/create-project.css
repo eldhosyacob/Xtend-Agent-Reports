@@ -1,7 +1,7 @@
 /* Create Project Styles */
 
 .create-project-page-container {
-  padding: 30px 40px;
+  padding: 30px 40px 40px 280px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -10,13 +10,12 @@
 
 .project-card {
   width: 100%;
-  max-width: 1000px;
+  max-width: 1300px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   box-shadow: var(--shadow-lg);
   overflow: hidden;
-  margin-top: 20px;
   transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
@@ -59,7 +58,7 @@
 }
 
 .project-card-body {
-  padding: 32px;
+  padding: 20px;
 }
 
 /* Form Layout */
@@ -75,6 +74,18 @@
 
 .project-form-row-3 {
   grid-template-columns: repeat(3, 1fr);
+}
+
+.project-form-row-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.project-form-col-span-2 {
+  grid-column: span 2;
+}
+
+.project-form-col-span-3 {
+  grid-column: span 3;
 }
 
 .project-form-group {
@@ -161,6 +172,109 @@ select.project-form-control {
   cursor: pointer;
 }
 
+/* Disabled input state */
+.project-form-control:disabled {
+  background-color: var(--border-light);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  border-color: var(--border-color);
+  opacity: 0.85;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .project-form-control:disabled {
+  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  border-color: var(--border-color);
+}
+
+/* Autocomplete Suggestions */
+.autocomplete-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.autocomplete-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  display: none;
+  box-sizing: border-box;
+}
+
+.autocomplete-suggestion {
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: background-color 0.15s ease, color 0.15s ease;
+  border-bottom: 1px solid var(--border-light);
+  text-align: left;
+}
+
+.autocomplete-suggestion:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-suggestion:hover,
+.autocomplete-suggestion.active {
+  background-color: rgba(24, 173, 159, 0.1);
+  color: var(--accent-teal);
+  font-weight: 500;
+}
+
+.client-dealer-star {
+  display: none;
+}
+
+.client-dealer-star.active {
+  display: inline;
+}
+
+/* Add to Client Name Checkbox */
+.add-client-checkbox-wrapper {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.add-client-checkbox-wrapper.active {
+  display: flex;
+}
+
+.add-client-checkbox-wrapper input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent-teal, #18ad9f);
+  border-radius: 4px;
+  margin: 0;
+}
+
+.project-form-group .add-client-checkbox-wrapper label {
+  margin-bottom: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
+}
+
+.project-form-group .add-client-checkbox-wrapper label:hover {
+  color: var(--text-primary);
+}
+
 /* Form Actions */
 .project-form-actions {
   display: flex;
@@ -214,7 +328,184 @@ select.project-form-control {
   color: var(--text-primary);
 }
 
+.project-client-dealer-input {
+  text-transform: uppercase;
+}
+
+/* Section Title */
+.project-form-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 32px 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.project-form-section-title i {
+  color: var(--accent-teal);
+  font-size: 18px;
+}
+
+/* Assigned To Custom Multiselect */
+.assigned-to-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.assigned-to-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  padding-right: 36px;
+  min-height: 44px;
+}
+
+.assigned-to-display.disabled {
+  background-color: var(--border-light);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+[data-theme="dark"] .assigned-to-display.disabled {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.assigned-to-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.assigned-to-text.placeholder {
+  color: var(--text-muted);
+}
+
+.assigned-to-arrow {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 13px;
+  pointer-events: none;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.assigned-to-wrapper.open .assigned-to-arrow {
+  transform: translateY(-50%) rotate(180deg);
+  color: var(--accent-teal);
+}
+
+.assigned-to-wrapper.open .assigned-to-display {
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(24, 173, 159, 0.2);
+}
+
+.assigned-to-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  max-height: 230px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  display: none;
+  box-sizing: border-box;
+}
+
+.assigned-to-dropdown.show {
+  display: block;
+}
+
+.assigned-to-options-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.assigned-to-option {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-light);
+  transition: background-color 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+
+.assigned-to-option:last-child {
+  border-bottom: none;
+}
+
+.assigned-to-option:hover {
+  background-color: rgba(24, 173, 159, 0.08);
+}
+
+.assigned-to-all-option {
+  font-weight: 600;
+  color: var(--accent-teal);
+  background-color: rgba(24, 173, 159, 0.05);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.assigned-to-all-option:hover {
+  background-color: rgba(24, 173, 159, 0.15);
+}
+
+.assigned-to-all-option.active {
+  background-color: rgba(24, 173, 159, 0.2);
+  color: var(--accent-teal);
+}
+
+.assigned-to-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent-teal, #18ad9f);
+  border-radius: 4px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.assigned-to-user-name {
+  flex: 1;
+  font-weight: 500;
+}
+
 /* Responsive adjustments */
+@media (max-width: 1200px) and (min-width: 993px) {
+  .project-form-row-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 992px) and (min-width: 769px) {
+
+  .project-form-row-3,
+  .project-form-row-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .project-form-col-span-2,
+  .project-form-col-span-3 {
+    grid-column: span 1;
+  }
+}
+
 @media (max-width: 768px) {
   .create-project-page-container {
     padding: 20px 16px;
@@ -229,8 +520,14 @@ select.project-form-control {
   }
 
   .project-form-row-2,
-  .project-form-row-3 {
+  .project-form-row-3,
+  .project-form-row-4 {
     grid-template-columns: 1fr;
+  }
+
+  .project-form-col-span-2,
+  .project-form-col-span-3 {
+    grid-column: span 1;
   }
 
   .project-form-actions {
@@ -240,4 +537,68 @@ select.project-form-control {
   .btn {
     width: 100%;
   }
+}
+
+.fa-calendar-days {
+  color: #c94949;
+}
+
+.fa-diagram-project {
+  color: #187792;
+}
+
+.fa-layer-group {
+  color: #d4bf52;
+}
+
+.fa-flag {
+  color: blueviolet;
+}
+
+.fa-sitemap {
+  color: aqua;
+}
+
+.fa-users {
+  color: #3c71be;
+}
+
+.fa-users-gear {
+  color: green;
+}
+
+.fa-bars-progress {
+  color: #18678e;
+}
+
+.fa-handshake {
+  color: #a16207;
+}
+
+.fa-building {
+  color: #a77ab1;
+}
+
+.fa-barcode {
+  color: white;
+}
+
+.fa-desktop {
+  color: #7998d9;
+}
+
+.fa-microchip {
+  color: #2fbcf3;
+}
+
+.fa-code-branch {
+  color: palevioletred;
+}
+
+.fa-key {
+  color: #be871f;
+}
+
+.fa-align-left {
+  color: #419693;
 }

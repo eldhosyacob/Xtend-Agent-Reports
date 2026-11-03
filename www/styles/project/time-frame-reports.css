@@ -1,0 +1,79 @@
+/* Project Timeframe Reports CSS */
+@import url('../today-records.css');
+
+/* Alignment fix: ensure page container is properly cleared below the fixed 60px header and beside the 260px sidebar */
+.details-page-container.page-containers {
+    margin-top: 60px !important;
+    padding-top: 24px !important;
+    padding-bottom: 30px !important;
+    padding-left: 280px !important;
+    padding-right: 24px !important;
+    box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+    .details-page-container.page-containers {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+}
+
+/* Status badge styles specific to project reports */
+.status-badge.status-completed {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+}
+
+.status-badge.status-in-progress {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+}
+
+.status-badge.status-pending {
+    background: rgba(225, 29, 72, 0.15);
+    color: #e11d48;
+}
+
+.status-badge.status-on-hold {
+    background: rgba(139, 92, 246, 0.12);
+    color: #8b5cf6;
+}
+
+/* Action view report button */
+.btn-action-view-report {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-action-view-report:hover {
+    background-color: #3b82f6;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+.timeframe-table-subtask-title {
+    font-size: 11px;
+    color: var(--text-secondary);
+    display: block;
+    margin-top: 2px;
+}
+
+.time-cell-bold {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-weight: 700;
+    color: #d97706;
+}
+
+[data-theme="dark"] .time-cell-bold {
+    color: #f59e0b;
+}

@@ -1,0 +1,18 @@
+/* Search Project Reports Custom Styles */
+.results-badge-icon {
+    color: #ecae3b;
+}
+
+.results-badge-count {
+    color: #18ad9f;
+    margin: 0 4px;
+    font-weight: 700;
+}
+
+.results-badge-text {
+    color: #18678e;
+}
+
+[data-theme="dark"] .results-badge-text {
+    color: #94a3b8;
+}

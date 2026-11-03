@@ -131,7 +131,7 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
               </select>
             </div>
 
-            <div id="custom-date-inputs" class="custom-date-inputs-wrapper" style="display: none;">
+            <div id="custom-date-inputs" class="custom-date-inputs-wrapper">
               <div class="date-input-group">
                 <span class="date-input-label">From:</span>
                 <input type="date" id="from-date-filter" class="filter-date-control" aria-label="From date">
@@ -144,6 +144,15 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
                 <i class="fa-solid fa-magnifying-glass"></i>
               </button>
             </div>
+
+            <div class="records-count-badge" id="records-count-badge" title="Total records">
+              <span class="count-label">Total:</span>
+              <strong class="count-value" id="records-count-val">0</strong>
+            </div>
+
+            <button type="button" id="btn-filter-latest-case" class="btn-filter-case-toggle" title="Show latest record only" aria-label="Filter: Show latest record only" aria-pressed="false">
+              <i class="fa-solid fa-filter"></i>
+            </button>
           </div>
           <!-- <div class="department-info-badge" id="department-badge">
             Loading Department...
@@ -160,7 +169,7 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
                 <th scope="col">Date</th>
                 <th scope="col">Company Name</th>
                 <th scope="col">Dealer Name</th>
-                <th scope="col">Product Category</th>
+                <th scope="col">Issue Category</th>
                 <th scope="col">Location</th>
                 <th scope="col">Hardware Details</th>
                 <th scope="col">Status</th>
@@ -234,14 +243,47 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
         let displayedRecords = [];
         let currentPage = 1;
         const pageSize = 10;
+        let customFromDate = '';
+        let customToDate = '';
 
         function getRecordIdentifier(r) {
           if (!r) return '';
           return (r.record_id && String(r.record_id) !== 'null' && String(r.record_id) !== 'NULL' && String(r.record_id).trim() !== '') ? r.record_id : r.id;
         }
 
-        // Load records initially
+        function initCustomDates() {
+          const todayStr = new Date().toISOString().split('T')[0];
+          if (!$('#from-date-filter').val()) {
+            $('#from-date-filter').val(todayStr);
+          }
+          if (!$('#to-date-filter').val()) {
+            $('#to-date-filter').val(todayStr);
+          }
+        }
+
+        function syncDateRangeState() {
+          const range = $('#date-range-filter').val() || 'today';
+          if (range === 'custom') {
+            initCustomDates();
+            $('#custom-date-inputs').addClass('active');
+            customFromDate = $('#from-date-filter').val();
+            customToDate = $('#to-date-filter').val();
+          } else {
+            $('#custom-date-inputs').removeClass('active');
+          }
+        }
+
+        // Initialize date filter state (handles restored custom range on back navigation)
+        syncDateRangeState();
         loadRecords();
+
+        // Listen for browser back/forward cache navigation
+        window.addEventListener('pageshow', function(e) {
+          if (e.persisted) {
+            syncDateRangeState();
+            loadRecords();
+          }
+        });
 
         // Listen for record updates from other tabs
         window.addEventListener('storage', function(e) {
@@ -259,30 +301,10 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
           });
         });
 
-        let customFromDate = '';
-        let customToDate = '';
-
-        function initCustomDates() {
-          const todayStr = new Date().toISOString().split('T')[0];
-          if (!$('#from-date-filter').val()) {
-            $('#from-date-filter').val(todayStr);
-          }
-          if (!$('#to-date-filter').val()) {
-            $('#to-date-filter').val(todayStr);
-          }
-        }
-
         // Change date range filter
         $('#date-range-filter').on('change', function() {
-          const range = $(this).val() || 'today';
-          if (range === 'custom') {
-            initCustomDates();
-            $('#custom-date-inputs').addClass('active');
-            customFromDate = $('#from-date-filter').val();
-            customToDate = $('#to-date-filter').val();
-          } else {
-            $('#custom-date-inputs').removeClass('active');
-          }
+          sessionStorage.setItem('my_records_page', '1');
+          syncDateRangeState();
           loadRecords();
         });
 
@@ -297,6 +319,7 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
             alert('From date cannot be after To date.');
             return;
           }
+          sessionStorage.setItem('my_records_page', '1');
           loadRecords();
         });
 
@@ -306,16 +329,69 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
             customFromDate = $('#from-date-filter').val();
             customToDate = $('#to-date-filter').val();
             if (customFromDate && customToDate && customFromDate <= customToDate) {
+              sessionStorage.setItem('my_records_page', '1');
               loadRecords();
             }
           }
         });
 
-        function applyFilters() {
+        let filterLatestCaseOnly = false;
+
+        function filterLatestPerCase(records) {
+          const latestMap = new Map();
+
+          records.forEach(function(r) {
+            const rawCaseId = (r.case_id !== undefined && r.case_id !== null) ? String(r.case_id).trim() : '';
+            // Group by case_id if present; otherwise treat record as distinct by its id
+            const groupKey = (rawCaseId !== '') ? ('case_' + rawCaseId) : ('rec_' + (r.id || Math.random()));
+
+            if (!latestMap.has(groupKey)) {
+              latestMap.set(groupKey, r);
+            } else {
+              const existing = latestMap.get(groupKey);
+              const dateA = String(r.date || '');
+              const dateB = String(existing.date || '');
+              const idA = parseInt(r.id, 10) || 0;
+              const idB = parseInt(existing.id, 10) || 0;
+
+              let isNewer = false;
+              if (dateA > dateB) {
+                isNewer = true;
+              } else if (dateA === dateB) {
+                if (idA > idB) {
+                  isNewer = true;
+                }
+              }
+
+              if (isNewer) {
+                latestMap.set(groupKey, r);
+              }
+            }
+          });
+
+          const result = Array.from(latestMap.values());
+          result.sort(function(a, b) {
+            const dateA = String(a.date || '');
+            const dateB = String(b.date || '');
+            if (dateA === dateB) {
+              return (parseInt(b.id, 10) || 0) - (parseInt(a.id, 10) || 0);
+            }
+            return dateB.localeCompare(dateA);
+          });
+
+          return result;
+        }
+
+        function applyFilters(resetPage = false) {
           const searchVal = $('#search-records').val().toLowerCase().trim();
           const statusVal = $('#status-filter').val();
 
-          displayedRecords = allRecords.filter(function(r) {
+          let sourceRecords = allRecords;
+          if (filterLatestCaseOnly) {
+            sourceRecords = filterLatestPerCase(allRecords);
+          }
+
+          displayedRecords = sourceRecords.filter(function(r) {
             if (statusVal && statusVal !== '') {
               const recStatus = (r.support_status || '').trim();
               if (recStatus !== statusVal) {
@@ -326,45 +402,71 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
               const recId = String(getRecordIdentifier(r)).toLowerCase();
               const comp = (r.company_name || '').toLowerCase();
               const dealer = (r.dealer_name || '').toLowerCase();
-              const prod = (r.product_category || '').toLowerCase();
+              const issue = (r.issue_category || '').toLowerCase();
               const loc = (r.location || '').toLowerCase();
               const hw = (r.hardware_details || '').toLowerCase();
               const status = (r.support_status || '').toLowerCase();
-              const match = recId.indexOf(searchVal) > -1 || comp.indexOf(searchVal) > -1 || dealer.indexOf(searchVal) > -1 || prod.indexOf(searchVal) > -1 || loc.indexOf(searchVal) > -1 || hw.indexOf(searchVal) > -1 || status.indexOf(searchVal) > -1;
+              const match = recId.indexOf(searchVal) > -1 || comp.indexOf(searchVal) > -1 || dealer.indexOf(searchVal) > -1 || issue.indexOf(searchVal) > -1 || loc.indexOf(searchVal) > -1 || hw.indexOf(searchVal) > -1 || status.indexOf(searchVal) > -1;
               if (!match) return false;
             }
             return true;
           });
 
-          currentPage = 1;
+          // Update records count badge on both before and after filter
+          $('#records-count-val').text(displayedRecords.length);
+
+          const totalPages = Math.max(1, Math.ceil(displayedRecords.length / pageSize));
+          if (resetPage) {
+            currentPage = 1;
+            sessionStorage.setItem('my_records_page', '1');
+          } else {
+            const savedPage = parseInt(sessionStorage.getItem('my_records_page'), 10) || 1;
+            currentPage = Math.min(Math.max(1, savedPage), totalPages);
+          }
           renderRecords(displayedRecords);
         }
 
         // Filter search input
         $('#search-records').on('input', function() {
-          applyFilters();
+          applyFilters(true);
         });
 
         // Filter status dropdown
         $('#status-filter').on('change', function() {
-          applyFilters();
+          applyFilters(true);
         });
+
+        // Filter latest record per case button
+        $('#btn-filter-latest-case').on('click', function() {
+          filterLatestCaseOnly = !filterLatestCaseOnly;
+          $(this).toggleClass('active', filterLatestCaseOnly);
+          $(this).attr('aria-pressed', filterLatestCaseOnly ? 'true' : 'false');
+          if (filterLatestCaseOnly) {
+            $(this).attr('title', 'Show all records');
+          } else {
+            $(this).attr('title', 'Show latest record only');
+          }
+          applyFilters(true);
+        });
+
+        function goToPage(page) {
+          currentPage = page;
+          sessionStorage.setItem('my_records_page', String(currentPage));
+          renderRecords(displayedRecords);
+          scrollToTableTop();
+        }
 
         // Setup Prev/Next click events
         $('#btn-prev').on('click', function() {
           if (currentPage > 1) {
-            currentPage--;
-            renderRecords(displayedRecords);
-            scrollToTableTop();
+            goToPage(currentPage - 1);
           }
         });
 
         $('#btn-next').on('click', function() {
           const totalPages = Math.ceil(displayedRecords.length / pageSize);
           if (currentPage < totalPages) {
-            currentPage++;
-            renderRecords(displayedRecords);
-            scrollToTableTop();
+            goToPage(currentPage + 1);
           }
         });
 
@@ -381,8 +483,11 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
           const range = $('#date-range-filter').val() || 'today';
           const reqData = { range: range };
           if (range === 'custom') {
-            reqData.from_date = customFromDate || $('#from-date-filter').val();
-            reqData.to_date = customToDate || $('#to-date-filter').val();
+            initCustomDates();
+            customFromDate = $('#from-date-filter').val();
+            customToDate = $('#to-date-filter').val();
+            reqData.from_date = customFromDate;
+            reqData.to_date = customToDate;
           }
 
           $.ajax({
@@ -416,6 +521,7 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
         }
 
         function showSkeletons() {
+          $('#records-count-val').text('—');
           let skeletonHtml = '';
           for (let i = 0; i < 3; i++) {
             skeletonHtml += `
@@ -437,6 +543,7 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
         }
 
         function showError(msg) {
+          $('#records-count-val').text('0');
           $('#records-tbody').html(`
             <tr>
               <td colspan="10" class="table-error-cell">
@@ -455,6 +562,10 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
             labelText = 'Total This Week';
           } else if (range === 'month') {
             labelText = 'Total This Month';
+          } else if (range === 'year') {
+            labelText = 'Total This Year';
+          } else if (range === 'custom') {
+            labelText = 'Total (Custom)';
           }
           $('#stat-total-label').text(labelText);
 
@@ -567,7 +678,7 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
                 <td>${escapeHtml(r.date || '—')}</td>
                 <td class="company-name-cell">${escapeHtml(r.company_name) || '—'}</td>
                 <td>${escapeHtml(r.dealer_name) || '—'}</td>
-                <td>${escapeHtml(r.product_category || '—')}</td>
+                <td>${escapeHtml(r.issue_category || '—')}</td>
                 <td>${escapeHtml(r.location || '—')}</td>
                 <td>${escapeHtml(r.hardware_details || '—')}</td>
                 <td>
@@ -587,6 +698,7 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
 
           // Bind view buttons
           $('.btn-action-view').off('click').on('click', function() {
+            sessionStorage.setItem('my_records_page', String(currentPage));
             const recordId = $(this).attr('data-record-id');
             const dept = $(this).attr('data-department') || '';
             let url = 'view-record.php?record_id=' + encodeURIComponent(recordId);
@@ -631,9 +743,7 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
                 const fillPage = lastPage + 1;
                 const btn = $('<button class="page-num-btn">' + fillPage + '</button>');
                 btn.on('click', function() {
-                  currentPage = fillPage;
-                  renderRecords(displayedRecords);
-                  scrollToTableTop();
+                  goToPage(fillPage);
                 });
                 $pagesContainer.append(btn);
               } else if (page - lastPage > 2) {
@@ -647,9 +757,7 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
             }
             btn.on('click', function() {
               if (currentPage !== page) {
-                currentPage = page;
-                renderRecords(displayedRecords);
-                scrollToTableTop();
+                goToPage(page);
               }
             });
             $pagesContainer.append(btn);

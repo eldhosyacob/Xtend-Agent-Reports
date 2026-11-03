@@ -51,7 +51,7 @@ if (session_status() === PHP_SESSION_NONE) {
         // Destroy session
         session_destroy();
 
-        header("Location: index.php?error=session_timeout");
+        header("Location: /index.php?error=session_timeout");
         exit;
     }
 

@@ -1,0 +1,80 @@
+﻿"Record ID",Department,Date,"Agent Name","Company Name","Dealer Name",Location,Region,Email,Phone,"Contact Details","Product Category","Issue Category","Issue Type","Issue Notes/Details","Support Category","Software Details","Hardware Details","Product Model",Solution,"Support Start Time","Support End Time","Total Time","Support Status",Reason,"Ticket ID"
+XT-2211YQ_2,"Voice Logger",2026-10-06,"JEFFRY VB","SK INFOTECH",,Gujarat,INDIA,dharmarajmp@gmail.com,8380015409,Dharmraj,ACTIVE_LOGGER,"WEBPAGE ISSUE_AX",Others,"Call not showing when member is searched from backup->export \ Back option inside call details not working properly.","CC Support",19244,"1069,12426965","Single PRI","Assisted in searching member based calls from Advanced search and export the call logs.
+
+As discussed, Kindly provide the remote connection on Monday as the backup->export issue has to be escalated to developer.
+
+Took emote and lionel updated patch to resolve the issue.  Confirmed member search and export working fine. As discussed with lionel,  Informed that that the issue with back button takes some time to be resolved. Will update you the status soon
+
+On 06.10.2026 coordinated with praveen sir and he provided a patch named 'calldetails.htm'. Updated the same on english folder. Logged in to the web interface and confirmed back option inside call details menu is working fine.
+
+Client again reported issue that while clicking the back button the call log is not tirning green shade automatically for the user to understood the wave has been played. Same was working proper when the patch was reverted.",11:49:10,13:25:38,01:36:28,Pending,,CLH-831-35463
+XT-2220MN_1,"Voice Logger",2026-10-06,"JEFFRY VB","INDUSIND SECURITIES",,HO,INDIA,ravindra.vishwakarma@indusindmoney.com,9699763300,ravindra,CMS_HO,"WEBPAGE SETTINGS_CMS",Others,"White screen showing during search","CC Support",22031,12426494,CMS,"We have taken the remote connection and checked the whitescreen issue while searching calls in some systems.
+
+Coordinated with our development team and found that one of the file in server named 'datetimepicker.js' is not loading in the client systems with issue.
+
+We suspect the file is being blocked in those systems possibly by the antivirus.
+
+Kindly provide the system of Mr. Jagdeep again tomorrow and also check with your AV team regarding the file blocking to proceed further",10:22:23,10:56:47,00:34:24,Pending,,HNU-642-83936
+XT-2220MN,"Voice Logger",2026-10-05,"JEFFRY VB","INDUSIND SECURITIES",,HO,INDIA,ravindra.vishwakarma@indusindmoney.com,9699763300,ravindra,CMS_HO,"WEBPAGE SETTINGS_CMS",Others,"White screen showing during search","CC Support",22031,12426494,CMS,"We have taken the remote connection and checked the whitescreen issue while searching calls in some systems.
+
+Coordinated with our development team and found that one of the file in server named 'datetimepicker.js' is not loading in the client systems with issue.
+
+We suspect the file is being blocked in those systems possibly by the antivirus.
+
+Kindly provide the system of Mr. Jagdeep again tomorrow and also check with your AV team regarding the file blocking to proceed further",16:49:23,18:38:28,01:49:05,Pending,,HNU-642-83936
+XT-2217QV,"Voice Logger",2026-10-05,"JEFFRY VB","INDUSIND SECURITIES",,HO,INDIA,ravindra.vishwakarma@indusindmoney.com,9699763300,ravindra,CMS_HO,"SYSTEM RELATED ISSUE_CMS",Others,"unable to access interface","CC Support",22031,12426494,CMS,"Restarted webserver and confirmed weblogin is working fine",14:48:30,15:58:28,01:09:58,Closed,,HNU-642-83936
+XT-2211YQ_1,"Voice Logger",2026-10-05,"JEFFRY VB","SK INFOTECH",,Gujarat,INDIA,dharmarajmp@gmail.com,8380015409,Dharmraj,ACTIVE_LOGGER,"WEBPAGE ISSUE_AX",Others,"Call not showing when member is searched from backup->export \ Back option inside call details not working properly.","CC Support",19244,"1069,12426965","Single PRI","Assisted in searching member based calls from Advanced search and export the call logs.
+
+As discussed, Kindly provide the remote connection on Monday as the backup->export issue has to be escalated to developer.
+
+Took emote and lionel updated patch to resolve the issue.  Confirmed member search and export working fine. As discussed with lionel,  Informed that that the issue with back button takes some time to be resolved. Will update you the status soon",15:31:09,16:49:21,03:01:07,Pending,,CLH-831-35463
+XT-2139NF_5,"Voice Logger",2026-10-05,"JEFFRY VB","SHAREKHAN LIMITED",,1395,INDIA,kalpesh.harpude@sharekhan.com,8149666176,kalpesh,LINUX_STANDALONE,"QUERY SOFTWARE_CS",Software,"incorrect call time in server","CC Support",1.4,7630,16P-CS,"Checked and found there was about 5 minutes difference in the standalone time. Took remote and corrected time again for hw clock. Also found there was no permission set for ntp.conf . Replaced file and provided full permission. Restarted device and confirmed time is correct. Asked to keep under observation.
+
+Checked in server and found the version was 1.3 and not updated to 1.4.Need to provide remote to thareeq  after market hours to check
+
+Provided remote to Thareeq  and found that the update json file was a different file. manually moved the json and zip file to the updatees folder and the device restarted. Confirmed that the device is updated to the latest version. Thareeq suspects issue occurring due to hardware issue. Asked to keep under observation till tomorrow.called on 30/09/2026 and  found that time is proper.currently under observation.
+Checked and found there was still time was 8\10 minutes ahead for date and hwclock. Corrected the same manually. Also coordinated with tariq regarding power failure\low battery issue in server. He checked the logs and found that linuxcontrol.py was getting restarted continuously as there was issue in json file named 20260130. Renamed the file and confirmed the power failure alert has been removed from server.
+Manually switched to secondary OS and asked to keep under observation and will replace the device if the issue arise again tomorrow
+
+(01/10/2026)We have taken the remote connection and checked the reported issue.
+Found that calls were not getting recorded in some of the trunks as there was voltage variation .Made changesin driver settings and restarted the device.
+During the initial testing, we found that incoming calls were not being recorded properly due to call dropping.
+Made further changes to the driver settings, made test calls, and confirmed that the calls are now being recorded properly.
+The Status LED was blinking due to a version update-related issue.
+We have made the necessary changes and confirmed that the issue is resolved and the status LED is now stable.
+The call time issue has been resolved after switching to the secondary OS yesterday.
+Currently the calls are being recorded properly and the call reports are also reflected properly.
+
+
+Update file json contained some html code. escalated to thareeq for checking
+
+Checked on 05.10.2026  and confirmed time is updated properly now",10:33:20,10:35:23,00:02:03,Closed,"JK sir checking issue.",FGW-641-68814
+XT-2212ZJ,"Voice Logger",2026-10-03,"JEFFRY VB","RAMADA HOTELS",,Kochi,INDIA,it@ramadacochin.com,9995824507,"Manu Vijayan",CALLBILLING,"LICENSE UPDATION_CB",Others,"license updation","CC Support",35524,83428,1P-PL,"Updated temporary license valid till 10th November 2026",15:07:09,15:12:48,00:05:39,Pending,,ZZA-452-73428
+XT-2211YQ,"Voice Logger",2026-10-03,"JEFFRY VB","SK INFOTECH",,Gujarat,INDIA,dharmarajmp@gmail.com,8380015409,Dharmraj,ACTIVE_LOGGER,"WEBPAGE ISSUE_AX",Others,"Call not showing when member is searched from backup->export \ Back option inside call details not working properly.","CC Support",19244,"1069,12426965","Single PRI","Assisted in searching member based calls from Advanced search and export the call logs.
+
+As discussed, Kindly provide the remote connection on Monday as the backup->export issue has to be escalated to developer.",11:06:07,12:53:33,01:47:26,Pending,,CLH-831-35463
+XT-2207NE,"Voice Logger",2026-10-01,"JEFFRY VB","SHAREKHAN LIMITED",,HO,INDIA,pravin.s@sharekhan.com,7025869312,pravin,CMS_HO,"WEBPAGE SETTINGS_CMS",Others,"Map brabches to group support_pravin","Mobile Support",39679,"XITA- Softlic",CMS,"took server remote and converted the file pravin provided to csv format with group name and branch code. Run the tool and confirmed the branches have been mapped for the group",18:28:29,18:42:09,00:13:40,Closed,,VLN-353-25892
+XT-2124NB_1,"Voice Logger",2026-10-01,"JEFFRY VB","SHAREKHAN LIMITED",,8509,INDIA,akash.dhawal@sharekhan.com,9315526748,"BELLWETHER ADVISORS AND MANAGEMENT",XTEND_SMARTLOG,"APK INSTALLATION_SMARTLOG",Others,"APK installation \ SIM not working","CC Support",40513,"Samsung Galaxy S9",APK,"Installed APK  but was not able to complete configuration as Network not registered error was showing while dialling. Asked client to check the SIM issue and revert back to proceed
+
+Called client today, he has requested for a new sim and should be ready by monday",17:15:32,17:16:34,00:01:02,Pending,,BWT-603-27457
+XT-2172RJ_1,"Voice Logger",2026-10-01,"JEFFRY VB","SHAREKHAN LIMITED",,553,INDIA,presales@xtendtech.com,04842378008,Aswathy,LINUX_STANDALONE,"LICENSE UPDATION_CS",Others,"Disable license in first port","CC Support",1.4,7054,4P-CS,"Coordinated with the branch person as the device has to be restarted for the settings to be updated at branch level.
+
+As the branch person was not coordinating, we have ashed Hemant from Sharekhan HO to coordinate with the branch person and restart the device.
+
+Coordinated with hemant today and he confirmed he restaretd device today after market hours",16:56:10,16:57:25,00:01:15,Closed,,GFJ-463-13553
+XT-2192GM,"Voice Logger",2026-10-01,"JEFFRY VB","SHAREKHAN LIMITED",,140,INDIA,hemant.dhulap@sharekhan.com,7560938358,"Krishna Prasad",LINUX_STANDALONE,"PHONEBOOK ISSUE_CS",Others,"Newly added client details not showing in popup","Mail Support",1.4,7026,16P-CS,"checked and found that that phonebook details of 5 customers were updated in server but was not showing during call popup at branch. Deleted misec.db\wal and shm files. Restarted logger. Checked and confirmed all the missing client details are updated in branch phonebook. Made test call to a client and confirmed the details are showing in popup",14:53:47,16:04:46,01:10:59,Closed,,MWN-663-86531
+XT-2028QZ_2,"Voice Logger",2026-10-01,"JEFFRY VB",PROGILITY,,CIAL,INDIA,amalakhil333@gmail.com,7025869312,Amal,CALLBILLING,"SMDR DATA ISSUE_CB",Others,"Incorrect call duration showing for some calls","Mobile Support",36497,12426826,Callbilling,"Found that for some incoming calls, the duration is showing as 18 hours and 20 minutes.
+
+Analysed the SMDR data and found that the same duration is coming in the duration filed.Please find the below SMDR data for reference
+
+""615029 17/09/2026 14:46:24 553037 018:20:00 553087 IT 553087 NORMAL""
+
+Asked to coordinate with the concerned team and check the SMDR data provided from pbx to resolve the issue
+
+Called on 01.10.2026 and asked to update the status",13:01:30,13:02:14,00:00:44,Pending,,EIG-754-56647
+XT-2188BS,"Voice Logger",2026-10-01,"JEFFRY VB","AARBEES ASSOCIATES","TELTURE SOLUTIONS",elamkulam,INDIA,aarbees8@gmail.com,9747810725,Manu,ANALOG_LOGGER,"LICENSE UPDATION_ANALOG",Others,"Update temp lic","CC Support",34345,"81300\83170","2PRX\1PRX","updated temporary license valid till 15th november 2025. Noticed there was disturbance on device 81300. Enable caps, made test calls and confirmed the calls are recording properly without any noise on 1st port. In second port noise could be heard during call even when line is disconnected from logger. Asked client to change the Splitter\cable and check to resolve the issue
+
+81300=2NCT-QBKG-QZ5U-PNQN-YCYL-TPDT-GA
+
+83170=XKZV-BUYH-8D95-WGSJ-HCW4-B9XV-3S",11:59:33,12:46:40,00:47:07,Closed,,IKQ-307-78965
+XT-2184OY,"Voice Logger",2026-10-01,"JEFFRY VB","TELTURE SOLUTIONS","NAZO CERAMICS",dubai,DUBAI,sales@xtendtech.ae,"85901 36526",Nisha,CALLBILLING,"LICENSE UPDATION_CB",Others,"provided license","Mail Support",35524,56183,12P-DX,"provided permanent license on mail",11:06:54,11:08:17,00:14:41,Closed,,LQN-653-61130

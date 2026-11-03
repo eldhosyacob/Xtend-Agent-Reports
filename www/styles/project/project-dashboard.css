@@ -1,0 +1,93 @@
+/* Project Dashboard Styles */
+/* Inherits and extends variables and layouts from styles/dashboard.css */
+
+/* Alignment fix: ensure page container is properly cleared below the fixed 60px header and beside the 260px sidebar */
+.dashboard-page-container.page-containers {
+    margin-top: 60px !important;
+    padding-top: 24px !important;
+    padding-bottom: 30px !important;
+    padding-left: 280px !important;
+    padding-right: 24px !important;
+    box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+    .dashboard-page-container.page-containers {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+}
+
+/* Department Tab icons and active states */
+.tabs-container .tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.tabs-container .tab-btn i {
+    font-size: 0.95rem;
+}
+
+/* Status colors specifically for Project Management */
+.status-dot.status-completed {
+    background-color: var(--success-color, #10b981) !important;
+}
+
+.status-dot.status-in-progress {
+    background-color: #3b82f6 !important;
+}
+
+.status-dot.status-pending {
+    background-color: var(--warning-color, #f59e0b) !important;
+}
+
+.status-dot.status-on-hold {
+    background-color: #8b5cf6 !important;
+}
+
+/* Cursor pointer on stat cards that navigate */
+.today-card,
+.total-time-card {
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.today-card:hover,
+.total-time-card:hover {
+    transform: translateY(-2px);
+}
+
+/* Total time highlight */
+.timeframe-time-cell {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-weight: 700;
+    color: #d97706;
+}
+
+[data-theme="dark"] .timeframe-time-cell {
+    color: #f59e0b;
+}
+
+/* Empty state styling */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.empty-state i {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.6;
+}
+
+.empty-state p {
+    font-size: 0.95rem;
+    margin: 0;
+}

@@ -268,7 +268,7 @@ if (isset($user_department) && strtolower($user_department) === 'ivr') {
               <label for="email">Email</label>
               <div class="form-control-wrapper">
                 <i class="fa-regular fa-envelope input-icon"></i>
-                <input type="email" id="email" name="email" class="form-control" placeholder="Contact person email" value="<?php echo htmlspecialchars($record['email']); ?>" pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.([cC][oO][mM]|[cC][oO]\.[iI][nN]|[iI][nN]|[oO][rR][gG]|[nN][eE][tT]|[sS][gG])" title="Please enter a valid email address (.com, .co.in, .in, .org, .net, or .sg)">
+                <input type="email" id="email" name="email" class="form-control" placeholder="Contact person email" value="<?php echo htmlspecialchars($record['email']); ?>" pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.([cC][oO][mM]|[cC][oO]\.[iI][nN]|[iI][nN]|[oO][rR][gG]|[nN][eE][tT]|[sS][gG]|[aA][eE])" title="Please enter a valid email address (.com, .co.in, .in, .org, .net, .sg, or .ae)">
               </div>
             </div>
 

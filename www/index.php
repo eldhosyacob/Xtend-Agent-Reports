@@ -129,7 +129,15 @@ require_once('config/login_redirect.php');
           success: function (response) {
             console.log("login ajax 1:", response);
             if (response.success) {
-              window.location.href = 'dashboard.php';
+              if (response.data && parseInt(response.data.project_only) === 1) {
+                localStorage.setItem('active_module', 'project_management');
+                window.location.href = 'project/project-dashboard.php';
+              } else if (response.redirect_url) {
+                window.location.href = response.redirect_url;
+              } else {
+                localStorage.setItem('active_module', 'report_management');
+                window.location.href = 'dashboard.php';
+              }
             } else {
               showError(response.message || 'Login failed. Please try again.');
               $('#loginBtn').prop('disabled', false).text('Sign In');

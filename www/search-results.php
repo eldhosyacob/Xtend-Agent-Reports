@@ -47,9 +47,14 @@ require_once __DIR__ . '/config/auth_check.php';
           <div class="results-info-badge" id="results-badge">
             Loading results...
           </div>
-          <button class="btn-icon-text btn-primary" id="btn-export" disabled aria-label="Export to CSV">
-            <i class="fa-solid fa-file-csv"></i> Export
-          </button>
+          <div class="table-filter-actions">
+            <button type="button" id="btn-filter-latest-case" class="btn-filter-case-toggle" title="Show latest record only" aria-label="Filter: Show latest record only" aria-pressed="false">
+              <i class="fa-solid fa-filter"></i>
+            </button>
+            <button class="btn-icon-text btn-primary" id="btn-export" disabled aria-label="Export to CSV">
+              <i class="fa-solid fa-file-csv"></i> Export
+            </button>
+          </div>
         </div>
 
         <!-- Floating-Row Table View -->
@@ -137,6 +142,7 @@ require_once __DIR__ . '/config/auth_check.php';
       $(document).ready(function() {
         let allRecords = [];
         let displayedRecords = [];
+        let filterLatestCaseOnly = false;
         let currentPage = 1;
         const pageSize = 10;
 
@@ -145,8 +151,24 @@ require_once __DIR__ . '/config/auth_check.php';
           return (r.record_id && String(r.record_id) !== 'null' && String(r.record_id) !== 'NULL' && String(r.record_id).trim() !== '') ? r.record_id : r.id;
         }
 
+        const pageStorageKey = 'search_results_page_' + (window.location.search || '');
+
+        function goToPage(page) {
+          currentPage = page;
+          sessionStorage.setItem(pageStorageKey, String(currentPage));
+          renderRecords(displayedRecords);
+          scrollToTableTop();
+        }
+
         // Load records on page ready using the current URL query parameters
         loadSearchResults();
+
+        // Listen for browser back/forward cache navigation
+        window.addEventListener('pageshow', function(e) {
+          if (e.persisted) {
+            loadSearchResults();
+          }
+        });
 
         // Listen for record updates from other tabs
         window.addEventListener('storage', function(e) {
@@ -166,19 +188,78 @@ require_once __DIR__ . '/config/auth_check.php';
 
         // Export CSV click trigger
         $('#btn-export').on('click', function() {
-          const queryParams = window.location.search;
-          window.location.href = 'api/export.php' + queryParams;
+          const urlParams = new URLSearchParams(window.location.search);
+          if (filterLatestCaseOnly) {
+            urlParams.set('filter_latest_case', '1');
+          } else {
+            urlParams.delete('filter_latest_case');
+          }
+          const searchVal = $('#search-records').length ? $('#search-records').val().trim() : '';
+          if (searchVal) {
+            urlParams.set('q', searchVal);
+          } else {
+            urlParams.delete('q');
+          }
+          const queryString = urlParams.toString();
+          window.location.href = 'api/export.php' + (queryString ? ('?' + queryString) : '');
         });
 
-        // Filter text input inside results
-        $('#search-records').on('input', function() {
-          const val = $(this).val().toLowerCase().trim();
-          currentPage = 1;
+        function filterLatestPerCase(records) {
+          const latestMap = new Map();
+
+          records.forEach(function(r) {
+            const rawCaseId = (r.case_id !== undefined && r.case_id !== null) ? String(r.case_id).trim() : '';
+            // Group by case_id if present; otherwise treat record as distinct by its id
+            const groupKey = (rawCaseId !== '') ? ('case_' + rawCaseId) : ('rec_' + (r.id || Math.random()));
+
+            if (!latestMap.has(groupKey)) {
+              latestMap.set(groupKey, r);
+            } else {
+              const existing = latestMap.get(groupKey);
+              const dateA = String(r.date || '');
+              const dateB = String(existing.date || '');
+              const idA = parseInt(r.id, 10) || 0;
+              const idB = parseInt(existing.id, 10) || 0;
+
+              let isNewer = false;
+              if (dateA > dateB) {
+                isNewer = true;
+              } else if (dateA === dateB) {
+                if (idA > idB) {
+                  isNewer = true;
+                }
+              }
+
+              if (isNewer) {
+                latestMap.set(groupKey, r);
+              }
+            }
+          });
+
+          const result = Array.from(latestMap.values());
+          result.sort(function(a, b) {
+            const dateA = String(a.date || '');
+            const dateB = String(b.date || '');
+            if (dateA === dateB) {
+              return (parseInt(b.id, 10) || 0) - (parseInt(a.id, 10) || 0);
+            }
+            return dateB.localeCompare(dateA);
+          });
+
+          return result;
+        }
+
+        function applyFilters(resetPage = false) {
+          let sourceRecords = allRecords;
+          if (filterLatestCaseOnly) {
+            sourceRecords = filterLatestPerCase(allRecords);
+          }
+
+          const val = ($('#search-records').length) ? $('#search-records').val().toLowerCase().trim() : '';
           if (val === '') {
-            displayedRecords = allRecords;
-            renderRecords(displayedRecords);
+            displayedRecords = sourceRecords;
           } else {
-            const filtered = allRecords.filter(function(r) {
+            displayedRecords = sourceRecords.filter(function(r) {
               const recId = String(getRecordIdentifier(r)).toLowerCase();
               const agent = (r.agent || '').toLowerCase();
               const comp = (r.company_name || '').toLowerCase();
@@ -192,20 +273,49 @@ require_once __DIR__ . '/config/auth_check.php';
               return recId.indexOf(val) > -1 || 
                      agent.indexOf(val) > -1 || 
                      comp.indexOf(val) > -1 || 
-                     dealer.indexOf(val) > -1 ||
-                     loc.indexOf(val) > -1 ||
-                     phone.indexOf(val) > -1 ||
+                     dealer.indexOf(val) > -1 || 
+                     loc.indexOf(val) > -1 || 
+                     phone.indexOf(val) > -1 || 
                      prod.indexOf(val) > -1 || 
-                     hw.indexOf(val) > -1 ||
-                     status.indexOf(val) > -1 ||
+                     hw.indexOf(val) > -1 || 
+                     status.indexOf(val) > -1 || 
                      ticket.indexOf(val) > -1;
             });
-            displayedRecords = filtered;
+          }
+
+          // Update Badge text
+          $('#results-badge').html('<i class="fa-solid fa-list-check" style="color: #ecae3b;"></i> <span style="color: #18ad9f; margin:0 4px;">'+displayedRecords.length+'</span><span style="color: #18678e;"> matching records</span>');
+
+          // Update export button state
+          $('#btn-export').prop('disabled', displayedRecords.length === 0);
+
+          if (resetPage) {
+            goToPage(1);
+          } else {
+            const totalPages = Math.max(1, Math.ceil(displayedRecords.length / pageSize));
+            const savedPage = parseInt(sessionStorage.getItem(pageStorageKey), 10) || 1;
+            currentPage = Math.min(Math.max(1, savedPage), totalPages);
             renderRecords(displayedRecords);
           }
+        }
+
+        // Filter text input inside results
+        $('#search-records').on('input', function() {
+          applyFilters(true);
         });
 
-
+        // Filter latest record per case button
+        $('#btn-filter-latest-case').on('click', function() {
+          filterLatestCaseOnly = !filterLatestCaseOnly;
+          $(this).toggleClass('active', filterLatestCaseOnly);
+          $(this).attr('aria-pressed', filterLatestCaseOnly ? 'true' : 'false');
+          if (filterLatestCaseOnly) {
+            $(this).attr('title', 'Show all records');
+          } else {
+            $(this).attr('title', 'Show latest record only');
+          }
+          applyFilters(true);
+        });
 
         function loadSearchResults(callback) {
           showSkeletons();
@@ -218,17 +328,7 @@ require_once __DIR__ . '/config/auth_check.php';
             success: function(response) {
               if (response.success) {
                 allRecords = response.data || [];
-                currentPage = 1;
-                displayedRecords = allRecords;
-                
-                // Update Badge text
-                $('#results-badge').html('<i class="fa-solid fa-list-check" style="color: #ecae3b;"></i> <span style="color: #18ad9f; margin:0 4px;">'+allRecords.length+'</span><span style="color: #18678e;"> matching records</span>');
-
-                // Update export button state
-                $('#btn-export').prop('disabled', allRecords.length === 0);
-
-                // Populate rows
-                renderRecords(displayedRecords);
+                applyFilters(false);
               } else {
                 showError(response.message || 'Failed to fetch search results.');
               }
@@ -358,6 +458,7 @@ require_once __DIR__ . '/config/auth_check.php';
 
           // Bind view details buttons
           $('.btn-action-view').off('click').on('click', function() {
+            sessionStorage.setItem(pageStorageKey, String(currentPage));
             const recordId = $(this).attr('data-record-id');
             const dept = $(this).attr('data-department') || '';
             let url = 'view-record.php?record_id=' + encodeURIComponent(recordId);
@@ -402,9 +503,7 @@ require_once __DIR__ . '/config/auth_check.php';
                 const fillPage = lastPage + 1;
                 const btn = $('<button class="page-num-btn">' + fillPage + '</button>');
                 btn.on('click', function() {
-                  currentPage = fillPage;
-                  renderRecords(displayedRecords);
-                  scrollToTableTop();
+                  goToPage(fillPage);
                 });
                 $pagesContainer.append(btn);
               } else if (page - lastPage > 2) {
@@ -418,9 +517,7 @@ require_once __DIR__ . '/config/auth_check.php';
             }
             btn.on('click', function() {
               if (currentPage !== page) {
-                currentPage = page;
-                renderRecords(displayedRecords);
-                scrollToTableTop();
+                goToPage(page);
               }
             });
             $pagesContainer.append(btn);
@@ -431,18 +528,14 @@ require_once __DIR__ . '/config/auth_check.php';
         // Setup Prev/Next click events
         $('#btn-prev').on('click', function() {
           if (currentPage > 1) {
-            currentPage--;
-            renderRecords(displayedRecords);
-            scrollToTableTop();
+            goToPage(currentPage - 1);
           }
         });
 
         $('#btn-next').on('click', function() {
           const totalPages = Math.ceil(displayedRecords.length / pageSize);
           if (currentPage < totalPages) {
-            currentPage++;
-            renderRecords(displayedRecords);
-            scrollToTableTop();
+            goToPage(currentPage + 1);
           }
         });
 

@@ -81,12 +81,13 @@
 
 [data-theme="dark"] .custom-report-table td {
     border: none;
+    color: #edf2f4;
 }
 
 [data-theme="dark"] .record-id-badge {
     border: none;
     background: none;
-    color: #6f868e;
+    color: #edf2f4;
 }
 
 
@@ -344,7 +345,7 @@
     border: 1px solid #dcdfe3;
     border-radius: 20px;
     padding: 24px;
-    max-width: 1200px;
+    max-width: 1300px;
     margin: 0 auto;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     position: relative;
@@ -362,7 +363,7 @@
 
 .filter-controls {
     display: flex;
-    gap: 12px;
+    gap: 6px;
     align-items: center;
     width: 100%;
     flex-wrap: wrap;
@@ -458,6 +459,113 @@
     border-color: var(--input-focus-border);
     background: #ffffff;
     box-shadow: 0 0 0 3px var(--input-focus-shadow);
+}
+
+.records-count-badge {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 38px;
+    background: #f8fafc;
+    border: 1px solid #dadce0;
+    border-radius: 10px;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    box-sizing: border-box;
+    white-space: nowrap;
+    flex-shrink: 0;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.records-count-badge .count-label {
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.records-count-badge .count-value {
+    color: #18ad9f;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+[data-theme="dark"] .records-count-badge {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .records-count-badge .count-label {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .records-count-badge .count-value {
+    color: #18ad9f;
+}
+
+.btn-filter-case-toggle {
+    margin-left: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    background: #f8fafc;
+    border: 1px solid #dadce0;
+    border-radius: 10px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+.btn-filter-case-toggle:hover {
+    border-color: #cbd5e1;
+    color: var(--text-primary);
+    background: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.btn-filter-case-toggle:active {
+    transform: translateY(0);
+}
+
+.btn-filter-case-toggle.active {
+    background: linear-gradient(135deg, var(--accent-teal, #18ad9f) 0%, #118277 100%);
+    color: #ffffff;
+    border-color: var(--accent-teal, #18ad9f);
+    box-shadow: 0 3px 8px rgba(24, 173, 159, 0.35);
+}
+
+.btn-filter-case-toggle.active:hover {
+    background: linear-gradient(135deg, #1cbdb1 0%, #138f83 100%);
+    box-shadow: 0 4px 12px rgba(24, 173, 159, 0.45);
+}
+
+[data-theme="dark"] .btn-filter-case-toggle {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .btn-filter-case-toggle:hover {
+    border-color: #475569;
+    color: #f1f5f9;
+    background: #27354a;
+}
+
+[data-theme="dark"] .btn-filter-case-toggle.active {
+    background: linear-gradient(135deg, #18ad9f 0%, #118277 100%);
+    color: #ffffff;
+    border-color: #18ad9f;
+    box-shadow: 0 3px 8px rgba(24, 173, 159, 0.5);
 }
 
 /* Premium Table design */
@@ -564,6 +672,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    text-decoration: none;
 }
 
 .btn-action-view:hover {
@@ -696,6 +805,15 @@
         max-width: 100%;
     }
 
+    .records-count-badge {
+        margin-left: 0;
+        align-self: flex-start;
+    }
+
+    .btn-filter-case-toggle {
+        margin-left: 0;
+        align-self: flex-start;
+    }
 
 }
 

@@ -35,7 +35,7 @@ if (!$db) {
 }
 
 if ($action === 'fetch_users') {
-    $stmt = $db->query("SELECT id, username, real_name, department, user_type FROM users ORDER BY id DESC");
+    $stmt = $db->query("SELECT id, username, real_name, department, user_type, project_only FROM users ORDER BY id DESC");
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $data = [];
@@ -59,6 +59,7 @@ if ($action === 'fetch_users') {
             'real_name' => $user['real_name'],
             'department' => $user['department'],
             'role' => $user['user_type'],
+            'project_only' => intval($user['project_only'] ?? 0),
             'profile_photo_url' => $profile_photo_url
         ];
     }
@@ -75,6 +76,13 @@ if ($action === 'fetch_users') {
     $password = isset($_POST['password']) ? $_POST['password'] : '';
     $department = isset($_POST['department']) ? trim($_POST['department']) : '';
     $user_type = isset($_POST['user_type']) ? trim($_POST['user_type']) : '';
+    $project_only = 0;
+    if (isset($_POST['project_only'])) {
+        $raw_po = $_POST['project_only'];
+        if ($raw_po === 1 || $raw_po === '1' || $raw_po === true || $raw_po === 'true' || $raw_po === 'on') {
+            $project_only = 1;
+        }
+    }
 
     // Validate inputs are present
     if (empty($username) || empty($real_name) || empty($password) || empty($department) || empty($user_type)) {
@@ -129,15 +137,27 @@ if ($action === 'fetch_users') {
         exit;
     }
 
+    // Verify user with same real name does not exist
+    $checkNameStmt = $db->prepare("SELECT id FROM users WHERE LOWER(TRIM(real_name)) = LOWER(TRIM(:real_name)) LIMIT 1");
+    $checkNameStmt->execute(['real_name' => $real_name]);
+    if ($checkNameStmt->fetch()) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'A user with the Real Name "' . $real_name . '" already exists'
+        ]);
+        exit;
+    }
+
     // Hash the password and save
     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-    $insertStmt = $db->prepare("INSERT INTO users (username, password, real_name, department, user_type, session_id) VALUES (:username, :password, :real_name, :department, :user_type, '')");
+    $insertStmt = $db->prepare("INSERT INTO users (username, password, real_name, department, user_type, project_only, session_id) VALUES (:username, :password, :real_name, :department, :user_type, :project_only, '')");
     $insertStmt->execute([
         'username' => $username,
         'password' => $hashed_password,
         'real_name' => $real_name,
         'department' => $department,
-        'user_type' => $user_type
+        'user_type' => $user_type,
+        'project_only' => $project_only
     ]);
 
     echo json_encode([
@@ -151,6 +171,13 @@ if ($action === 'fetch_users') {
     $password = isset($_POST['password']) ? $_POST['password'] : '';
     $department = isset($_POST['department']) ? trim($_POST['department']) : '';
     $user_type = isset($_POST['user_type']) ? trim($_POST['user_type']) : '';
+    $project_only = 0;
+    if (isset($_POST['project_only'])) {
+        $raw_po = $_POST['project_only'];
+        if ($raw_po === 1 || $raw_po === '1' || $raw_po === true || $raw_po === 'true' || $raw_po === 'on') {
+            $project_only = 1;
+        }
+    }
 
     if (empty($id) || empty($department) || empty($user_type)) {
         echo json_encode([
@@ -187,18 +214,20 @@ if ($action === 'fetch_users') {
         }
 
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-        $updateStmt = $db->prepare("UPDATE users SET password = :password, department = :department, user_type = :user_type WHERE id = :id");
+        $updateStmt = $db->prepare("UPDATE users SET password = :password, department = :department, user_type = :user_type, project_only = :project_only WHERE id = :id");
         $updateStmt->execute([
             'password' => $hashed_password,
             'department' => $department,
             'user_type' => $user_type,
+            'project_only' => $project_only,
             'id' => $id
         ]);
     } else {
-        $updateStmt = $db->prepare("UPDATE users SET department = :department, user_type = :user_type WHERE id = :id");
+        $updateStmt = $db->prepare("UPDATE users SET department = :department, user_type = :user_type, project_only = :project_only WHERE id = :id");
         $updateStmt->execute([
             'department' => $department,
             'user_type' => $user_type,
+            'project_only' => $project_only,
             'id' => $id
         ]);
     }
@@ -206,6 +235,10 @@ if ($action === 'fetch_users') {
     // If editing self, update active session parameters
     if ($id === intval($_SESSION['id'])) {
         $_SESSION['department'] = $department;
+        $_SESSION['project_only'] = $project_only;
+        if ($project_only === 1) {
+            $_SESSION['active_module'] = 'project_management';
+        }
     }
 
     echo json_encode([
