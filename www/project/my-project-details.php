@@ -67,10 +67,10 @@ $project_id = isset($_GET['project_id']) ? htmlspecialchars(trim($_GET['project_
               <span class="meta-label"><i class="fa-regular fa-calendar-days"></i> Project Date</span>
               <span class="meta-value" id="metaProjectDate">—</span>
             </div>
-            <div class="metadata-item">
+            <!-- <div class="metadata-item">
               <span class="meta-label"><i class="fa-solid fa-users-gear"></i> Assigned By</span>
               <span class="meta-value" id="metaAssignedBy">—</span>
-            </div>
+            </div> -->
             <div class="metadata-item">
               <span class="meta-label"><i class="fa-solid fa-bars-progress"></i> Project Status</span>
               <span class="meta-value" id="metaProjectStatus">—</span>
@@ -107,162 +107,57 @@ $project_id = isset($_GET['project_id']) ? htmlspecialchars(trim($_GET['project_
             <div class="desc-box" id="projectDescBox">Loading description...</div>
           </div>
 
-          <div class="project-attachments-section" id="projectAttachmentsSection">
-            <span class="desc-title"><i class="fa-solid fa-paperclip"></i> Attachments</span>
-            <div class="attachments-list" id="projectAttachmentsList"></div>
+          <div class="project-documents-section" id="projectDocumentsSection">
+            <span class="desc-title"><i class="fa-solid fa-folder-open"></i> Project Related Documents</span>
+            <div class="attachments-list" id="projectDocumentsList"></div>
           </div>
         </div>
       </div>
 
-      <!-- Subtasks Section Card -->
-      <div class="subtasks-section-card">
+      <!-- Subprojects Section Card -->
+      <div class="subprojects-section-card">
         <div class="loading-overlay" id="loadingOverlay">
           <div class="spinner"></div>
         </div>
 
-        <div class="subtasks-header">
-          <div class="subtasks-title-group">
-            <h2>Subtasks</h2>
-            <span class="subtasks-counter-badge" id="subtaskCounterBadge">0 Subtasks</span>
+        <div class="subprojects-header">
+          <div class="subprojects-title-group">
+            <h2>Sub Projects</h2>
+            <span class="subprojects-counter-badge" id="subprojectCounterBadge">0 Sub Projects</span>
           </div>
-
-          <button type="button" class="btn-primary-action" id="btnOpenSubtaskModal" style="display: none;">
-            <i class="fa-solid fa-plus"></i> Add Subtask
-          </button>
         </div>
 
-        <!-- Subtasks Stats Summary Pills -->
-        <div class="subtasks-stats-bar">
-          <span class="stat-pill" id="statTotal">Total: 0</span>
-          <span class="stat-pill stat-pill-pending" id="statPending">Pending: 0</span>
-          <span class="stat-pill stat-pill-progress" id="statInProgress">In Progress: 0</span>
-          <span class="stat-pill stat-pill-completed" id="statCompleted">Completed: 0</span>
-          <span class="stat-pill stat-pill-hold" id="statOnHold">On Hold: 0</span>
+        <!-- Subprojects Stats Summary Pills -->
+        <div class="subprojects-stats-bar">
+          <span class="stat-pill" id="statSubTotal">Total: 0</span>
+          <span class="stat-pill stat-pill-assigned" id="statSubAssigned">Assigned: 0</span>
+          <span class="stat-pill stat-pill-pending" id="statSubPending">Pending: 0</span>
+          <span class="stat-pill stat-pill-progress" id="statSubInProgress">In Progress: 0</span>
+          <span class="stat-pill stat-pill-completed" id="statSubCompleted">Completed: 0</span>
+          <span class="stat-pill stat-pill-hold" id="statSubOnHold">On Hold: 0</span>
         </div>
 
-        <!-- Subtasks Table -->
-        <div class="subtasks-table-wrapper">
-          <table class="subtasks-table">
+        <!-- Subprojects Table -->
+        <div class="subprojects-table-wrapper">
+          <table class="subprojects-table">
             <thead>
               <tr>
-                <th style="width: 140px;">ID</th>
-                <th>Subtask</th>
-                <!-- <th style="width: 110px;">Priority</th>
-                <th style="width: 120px;">Due Date</th> -->
-                <th style="width: 160px;">Created By</th>
-                <th style="width: 130px;">Total Time</th>
+                <th style="width: 150px;">Sub Project ID</th>
+                <th>Sub Project Name</th>
+                <th style="width: 140px;">Department</th>
+                <th style="width: 180px;">Assigned To</th>
+                <th style="width: 110px;">Priority</th>
+                <th style="width: 120px;">Total Time</th>
                 <th style="width: 130px;">Status</th>
-                <th style="width: 110px; text-align: center;">Action</th>
               </tr>
             </thead>
-            <tbody id="subtasksTableBody">
+            <tbody id="subprojectsTableBody">
               <!-- Dynamically populated via jQuery AJAX -->
             </tbody>
           </table>
         </div>
       </div>
 
-    </div>
-
-    <!-- Add Subtask Modal Dialog -->
-    <div class="subtask-modal-overlay" id="subtaskModal" style="display: none;">
-      <div class="subtask-modal-dialog">
-        <div class="modal-header-section">
-          <h3><i class="fa-solid fa-list-check"></i> Add New Subtask</h3>
-          <button type="button" class="modal-close-btn" id="btnCloseSubtaskModal" title="Close">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-
-        <form id="addSubtaskForm" autocomplete="off">
-          <div class="modal-body-section">
-            <div class="modal-form-group">
-              <label for="subtask_title">Subtask Title <span class="required-star">*</span></label>
-              <input type="text" id="subtask_title" name="subtask_title" class="modal-form-control" placeholder="e.g. Implement user authentication module" required>
-            </div>
-
-            <div class="modal-form-group">
-              <label for="subtask_due_date">Due Date</label>
-              <input type="date" id="subtask_due_date" name="subtask_due_date" class="modal-form-control">
-            </div>
-
-            <div class="modal-form-group">
-              <label for="subtask_description">Description / Notes</label>
-              <textarea id="subtask_description" name="subtask_description" class="modal-form-control" rows="3" placeholder="Optional details or specifications for this task..."></textarea>
-            </div>
-
-            <div class="modal-actions">
-              <button type="button" class="btn-modal-cancel" id="btnCancelSubtaskModal">Cancel</button>
-              <button type="submit" class="btn-modal-submit" id="btnSubmitSubtask">
-                <i class="fa-solid fa-check"></i> Add Subtask
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- View Subtask Modal Dialog -->
-    <div class="subtask-modal-overlay" id="viewSubtaskModal">
-      <div class="subtask-modal-dialog">
-        <div class="modal-header-section">
-          <div class="view-subtask-modal-header">
-            <i class="fa-solid fa-list-check"></i>
-            <h3>Subtask Details</h3>
-            <span class="subtask-id-pill" id="viewSubtaskIdPill"></span>
-          </div>
-          <button type="button" class="modal-close-btn" id="btnCloseViewSubtaskModal" title="Close">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-
-        <div class="modal-body-section">
-          <h2 class="view-subtask-title" id="viewSubtaskTitle"></h2>
-
-          <div class="view-subtask-meta-grid">
-            <div class="view-subtask-meta-item">
-              <span class="view-subtask-meta-label"><i class="fa-solid fa-bars-progress"></i> Status</span>
-              <div class="view-subtask-meta-value" id="viewSubtaskStatus"></div>
-            </div>
-            <div class="view-subtask-meta-item">
-              <span class="view-subtask-meta-label"><i class="fa-solid fa-flag"></i> Priority</span>
-              <div class="view-subtask-meta-value" id="viewSubtaskPriority"></div>
-            </div>
-            <div class="view-subtask-meta-item">
-              <span class="view-subtask-meta-label"><i class="fa-regular fa-calendar-days"></i> Due Date</span>
-              <div class="view-subtask-meta-value" id="viewSubtaskDueDate">—</div>
-            </div>
-            <div class="view-subtask-meta-item">
-              <span class="view-subtask-meta-label"><i class="fa-regular fa-clock"></i> Total Time</span>
-              <div class="view-subtask-meta-value" id="viewSubtaskTotalTime">—</div>
-            </div>
-            <div class="view-subtask-meta-item">
-              <span class="view-subtask-meta-label"><i class="fa-solid fa-user-check"></i> Assigned To</span>
-              <div class="view-subtask-meta-value" id="viewSubtaskAssignee">—</div>
-            </div>
-            <div class="view-subtask-meta-item">
-              <span class="view-subtask-meta-label"><i class="fa-solid fa-user-plus"></i> Created By</span>
-              <div class="view-subtask-meta-value" id="viewSubtaskCreatedBy">—</div>
-            </div>
-            <div class="view-subtask-meta-item">
-              <span class="view-subtask-meta-label"><i class="fa-solid fa-diagram-project"></i> Project</span>
-              <div class="view-subtask-meta-value" id="viewSubtaskProject">—</div>
-            </div>
-          </div>
-
-          <div class="view-subtask-desc-section">
-            <span class="view-subtask-meta-label"><i class="fa-solid fa-align-left"></i> Description / Specifications</span>
-            <div class="view-subtask-desc-box" id="viewSubtaskDesc"></div>
-          </div>
-
-          <div class="modal-actions">
-            <button type="button" class="btn-modal-cancel" id="btnCancelViewSubtaskModal">Close</button>
-            <button type="button" class="btn-primary-action" id="btnModalCreateReport">
-              <i class="fa-solid fa-file-circle-plus"></i> Create Report
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Header & Sidebar Navigation Component -->

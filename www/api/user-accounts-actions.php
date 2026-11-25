@@ -35,7 +35,7 @@ if (!$db) {
 }
 
 if ($action === 'fetch_users') {
-    $stmt = $db->query("SELECT id, username, real_name, department, user_type, project_only FROM users ORDER BY id DESC");
+    $stmt = $db->query("SELECT id, username, real_name, department, user_type, project_only, project_creator FROM users ORDER BY id DESC");
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $data = [];
@@ -60,6 +60,7 @@ if ($action === 'fetch_users') {
             'department' => $user['department'],
             'role' => $user['user_type'],
             'project_only' => intval($user['project_only'] ?? 0),
+            'project_creator' => intval($user['project_creator'] ?? 0),
             'profile_photo_url' => $profile_photo_url
         ];
     }
@@ -81,6 +82,13 @@ if ($action === 'fetch_users') {
         $raw_po = $_POST['project_only'];
         if ($raw_po === 1 || $raw_po === '1' || $raw_po === true || $raw_po === 'true' || $raw_po === 'on') {
             $project_only = 1;
+        }
+    }
+    $project_creator = 0;
+    if ($user_type === 'user' && isset($_POST['project_creator'])) {
+        $raw_pc = $_POST['project_creator'];
+        if ($raw_pc === 1 || $raw_pc === '1' || $raw_pc === true || $raw_pc === 'true' || $raw_pc === 'on') {
+            $project_creator = 1;
         }
     }
 
@@ -150,14 +158,15 @@ if ($action === 'fetch_users') {
 
     // Hash the password and save
     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-    $insertStmt = $db->prepare("INSERT INTO users (username, password, real_name, department, user_type, project_only, session_id) VALUES (:username, :password, :real_name, :department, :user_type, :project_only, '')");
+    $insertStmt = $db->prepare("INSERT INTO users (username, password, real_name, department, user_type, project_only, project_creator, session_id) VALUES (:username, :password, :real_name, :department, :user_type, :project_only, :project_creator, '')");
     $insertStmt->execute([
         'username' => $username,
         'password' => $hashed_password,
         'real_name' => $real_name,
         'department' => $department,
         'user_type' => $user_type,
-        'project_only' => $project_only
+        'project_only' => $project_only,
+        'project_creator' => $project_creator
     ]);
 
     echo json_encode([
@@ -176,6 +185,13 @@ if ($action === 'fetch_users') {
         $raw_po = $_POST['project_only'];
         if ($raw_po === 1 || $raw_po === '1' || $raw_po === true || $raw_po === 'true' || $raw_po === 'on') {
             $project_only = 1;
+        }
+    }
+    $project_creator = 0;
+    if ($user_type === 'user' && isset($_POST['project_creator'])) {
+        $raw_pc = $_POST['project_creator'];
+        if ($raw_pc === 1 || $raw_pc === '1' || $raw_pc === true || $raw_pc === 'true' || $raw_pc === 'on') {
+            $project_creator = 1;
         }
     }
 
@@ -214,20 +230,22 @@ if ($action === 'fetch_users') {
         }
 
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-        $updateStmt = $db->prepare("UPDATE users SET password = :password, department = :department, user_type = :user_type, project_only = :project_only WHERE id = :id");
+        $updateStmt = $db->prepare("UPDATE users SET password = :password, department = :department, user_type = :user_type, project_only = :project_only, project_creator = :project_creator WHERE id = :id");
         $updateStmt->execute([
             'password' => $hashed_password,
             'department' => $department,
             'user_type' => $user_type,
             'project_only' => $project_only,
+            'project_creator' => $project_creator,
             'id' => $id
         ]);
     } else {
-        $updateStmt = $db->prepare("UPDATE users SET department = :department, user_type = :user_type, project_only = :project_only WHERE id = :id");
+        $updateStmt = $db->prepare("UPDATE users SET department = :department, user_type = :user_type, project_only = :project_only, project_creator = :project_creator WHERE id = :id");
         $updateStmt->execute([
             'department' => $department,
             'user_type' => $user_type,
             'project_only' => $project_only,
+            'project_creator' => $project_creator,
             'id' => $id
         ]);
     }
@@ -236,6 +254,7 @@ if ($action === 'fetch_users') {
     if ($id === intval($_SESSION['id'])) {
         $_SESSION['department'] = $department;
         $_SESSION['project_only'] = $project_only;
+        $_SESSION['project_creator'] = $project_creator;
         if ($project_only === 1) {
             $_SESSION['active_module'] = 'project_management';
         }

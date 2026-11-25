@@ -457,31 +457,38 @@ if (is_dir($uploadDir) && !empty($case_id)) {
                 </select>
               </div>
             </div>
-
-            <!-- 7. Email -->
+            
+            <!-- 9. CONTACT DETAILS -->
             <div class="form-group col-6">
-              <label for="email">Email</label>
-              <div class="form-control-wrapper">
-                <i class="fa-regular fa-envelope input-icon"></i>
-                <input type="email" id="email" name="email" class="form-control" placeholder="Contact person email" value="<?php echo htmlspecialchars($record['email']); ?>" pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.([cC][oO][mM]|[cC][oO]\.[iI][nN]|[iI][nN]|[oO][rR][gG]|[nN][eE][tT]|[sS][gG]|[aA][eE])" title="Please enter a valid email address (.com, .co.in, .in, .org, .net, .sg, or .ae)">
+              <label for="contact_details">Contact Details</label>
+              <div class="form-control-wrapper autocomplete-wrapper">
+                <i class="fa-regular fa-address-book input-icon"></i>
+                <input type="text" id="contact_details" name="contact_details" class="form-control" placeholder="Contact person details" value="<?php echo htmlspecialchars($record['contact_details']); ?>" autocomplete="off" required>
+                <div class="autocomplete-suggestions" id="contactDetailsSuggestions"></div>
+              </div>
+              <div id="addPhonebookCheckboxContainer" class="add-company-checkbox-wrapper">
+                <input type="checkbox" id="add_to_phonebook" name="add_to_phonebook" value="1">
+                <label for="add_to_phonebook">Add to Phonebook</label>
               </div>
             </div>
 
             <!-- 8. PHONE -->
             <div class="form-group col-6">
               <label for="phone">Phone</label>
-              <div class="form-control-wrapper">
+              <div class="form-control-wrapper autocomplete-wrapper">
                 <i class="fa-regular fa-phone input-icon"></i>
-                <input type="text" id="phone" name="phone" class="form-control" placeholder="Contact person phone" value="<?php echo htmlspecialchars($record['phone']); ?>" required>
+                <input type="text" id="phone" name="phone" class="form-control" placeholder="Contact person phone" value="<?php echo htmlspecialchars($record['phone']); ?>" autocomplete="off" required>
+                <div class="autocomplete-suggestions" id="phoneSuggestions"></div>
               </div>
             </div>
 
-            <!-- 9. CONTACT DETAILS -->
+            <!-- 7. Email -->
             <div class="form-group col-6">
-              <label for="contact_details">Contact Details</label>
-              <div class="form-control-wrapper">
-                <i class="fa-regular fa-address-book input-icon"></i>
-                <input type="text" id="contact_details" name="contact_details" class="form-control" placeholder="Contact person details" value="<?php echo htmlspecialchars($record['contact_details']); ?>">
+              <label for="email">Email</label>
+              <div class="form-control-wrapper autocomplete-wrapper">
+                <i class="fa-regular fa-envelope input-icon"></i>
+                <input type="email" id="email" name="email" class="form-control" placeholder="Contact person email" value="<?php echo htmlspecialchars($record['email']); ?>" autocomplete="off" pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.([cC][oO][mM]|[cC][oO]\.[iI][nN]|[iI][nN]|[oO][rR][gG]|[nN][eE][tT]|[sS][gG]|[aA][eE])" title="Please enter a valid email address (.com, .co.in, .in, .org, .net, .sg, or .ae)">
+                <div class="autocomplete-suggestions" id="emailSuggestions"></div>
               </div>
             </div>
 
@@ -961,7 +968,7 @@ if (is_dir($uploadDir) && !empty($case_id)) {
                 }
                 .toast-error {
                   background-color: #ffffff;
-                  color: #f70909ff;
+                  color: #0a0909ff;
                   border: 1px solid #fecaca;
                 }
                 .toast-icon {
@@ -1451,6 +1458,7 @@ if (is_dir($uploadDir) && !empty($case_id)) {
         <?php endif; ?>
       });
     </script>
+    <script src="js/phonebook-autocomplete.js"></script>
   </body>
 
 </html>

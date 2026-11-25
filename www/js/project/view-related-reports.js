@@ -5,7 +5,8 @@ $(document).ready(function () {
 
   if (!subtaskIdParam) {
     alert('No Subtask ID specified. Returning to previous page.');
-    window.location.href = projectIdParam ? `my-project-details.php?id=${encodeURIComponent(projectIdParam)}` : 'my-projects.php';
+    const returnUrl = projectIdParam ? (projectIdParam.indexOf('_SP') !== -1 ? `my-subproject-details.php?project_id=${encodeURIComponent(projectIdParam)}` : `my-project-details.php?id=${encodeURIComponent(projectIdParam)}`) : 'my-projects.php';
+    window.location.href = returnUrl;
     return;
   }
 
@@ -13,6 +14,7 @@ $(document).ready(function () {
   const $reportsTableBody = $('#reportsTableBody');
   let currentSubtask = null;
   let serverDateToday = new Date().toISOString().split('T')[0];
+  let isSubprojectAssignedUser = false;
 
   function showLoading() {
     $loadingOverlay.css('display', 'flex');
@@ -92,6 +94,7 @@ $(document).ready(function () {
             serverDateToday = response.server_date;
           }
           currentSubtask = response.subtask;
+          isSubprojectAssignedUser = Boolean(response.is_subproject_assigned_user);
           renderSubtaskOverview(response.subtask, response.project_id);
           renderStats(response.stats);
           renderReportsTable(response.reports || []);
@@ -118,9 +121,15 @@ $(document).ready(function () {
 
     // Breadcrumbs
     $('#breadcrumbSubtaskName').text(sid);
-    if (pid) {
-      $('#backToProjectLink').attr('href', `my-project-details.php?id=${encodeURIComponent(pid)}`);
-      $('#breadcrumbProjectLink').attr('href', `my-project-details.php?id=${encodeURIComponent(pid)}`).text(pName);
+    const targetPid = subtask ? (subtask.sub_project_id || subtask.project_id || fallbackProjectId) : fallbackProjectId;
+    const isSubProjectDetails = document.referrer && document.referrer.indexOf('sub-project-details.php') !== -1;
+    const projectUrl = targetPid && targetPid.indexOf('_SP') !== -1
+      ? (isSubProjectDetails ? `sub-project-details.php?project_id=${encodeURIComponent(targetPid)}` : `my-subproject-details.php?project_id=${encodeURIComponent(targetPid)}`)
+      : (targetPid ? `my-project-details.php?id=${encodeURIComponent(targetPid)}` : 'my-projects.php');
+
+    if (targetPid) {
+      $('#backToProjectLink').attr('href', projectUrl);
+      $('#breadcrumbProjectLink').attr('href', projectUrl).text(pName);
     } else {
       $('#backToProjectLink').attr('href', 'my-projects.php');
       $('#breadcrumbProjectLink').attr('href', 'my-projects.php').text('My Projects');
@@ -157,8 +166,8 @@ $(document).ready(function () {
 
       // Metadata items
       $('#metaProject').html(`
-        <a href="my-project-details.php?id=${encodeURIComponent(pid)}" class="project-id-link" title="View Project Details">
-          <i class="fa-solid fa-diagram-project"></i> ${escapeHtml(pName)} (${escapeHtml(pid)})
+        <a href="${projectUrl}" class="project-id-link" title="View Details">
+          <i class="fa-solid fa-diagram-project"></i> ${escapeHtml(pName)} (${escapeHtml(targetPid)})
         </a>
       `);
       $('#metaAssignedTo').text(subtask.assigned_to || '—');
@@ -203,12 +212,8 @@ $(document).ready(function () {
               <div class="empty-reports-icon">
                 <i class="fa-solid fa-folder-open"></i>
               </div>
-              <h3 class="empty-reports-title">No reports created yet for this subtask</h3>
-              <p class="empty-reports-desc">Reports submitted for this subtask will appear here chronologically.</p>
-              ${!subtaskCompleted ? `
-              <button type="button" class="btn-primary-action" id="btnCreateFirstReport">
-                <i class="fa-solid fa-file-circle-plus"></i> Create Report
-              </button>
+              <h3 class="empty-reports-title">No reports created for this subtask</h3>
+              ${(!subtaskCompleted && isSubprojectAssignedUser) ? `
               ` : ''}
             </div>
           </td>
@@ -223,21 +228,23 @@ $(document).ready(function () {
     });
 
     const $topActionBtn = $('#btnTopReportAction');
-    if (subtaskCompleted) {
-      $topActionBtn.hide();
-    } else if (todayReport) {
-      $topActionBtn
-        .show()
-        .attr('href', `new-project-report.php?id=${encodeURIComponent(todayReport.id)}`)
-        .attr('target', '_blank')
-        .attr('rel', 'opener')
-        .html('<i class="fa-solid fa-pen-to-square"></i> Edit Today\'s Report');
-    } else {
-      $topActionBtn
-        .show()
-        .attr('href', '#')
-        .removeAttr('target')
-        .html('<i class="fa-solid fa-file-circle-plus"></i> Create Report');
+    if ($topActionBtn.length) {
+      if (subtaskCompleted || !isSubprojectAssignedUser) {
+        $topActionBtn.hide();
+      } else if (todayReport) {
+        $topActionBtn
+          .show()
+          .attr('href', `new-project-report.php?id=${encodeURIComponent(todayReport.id)}`)
+          .attr('target', '_blank')
+          .attr('rel', 'opener')
+          .html('<i class="fa-solid fa-pen-to-square"></i> Edit Today\'s Report');
+      } else {
+        $topActionBtn
+          .show()
+          .attr('href', '#')
+          .removeAttr('target')
+          .html('<i class="fa-solid fa-file-circle-plus"></i> Create Report');
+      }
     }
 
     let html = '';
@@ -249,7 +256,7 @@ $(document).ready(function () {
       const isToday = String(r.date || '').trim() === String(serverDateToday).trim();
 
       let editBtn = '';
-      if (isToday && !isSubtaskCompleted(r)) {
+      if (isToday && !isSubtaskCompleted(r) && isSubprojectAssignedUser) {
         editBtn = `
           <a href="new-project-report.php?id=${encodeURIComponent(r.id)}" target="_blank" rel="opener" class="btn-subtask-action btn-action-edit" data-report-id="${r.id}" title="Edit Report" aria-label="Edit Report">
             <i class="fa-solid fa-pen-to-square"></i>
@@ -307,12 +314,16 @@ $(document).ready(function () {
 
   // Top Action: Create Report
   function handleCreateReportAction() {
+    if (!isSubprojectAssignedUser) {
+      alert('Only subproject assigned users can create or edit reports.');
+      return;
+    }
     if (isSubtaskCompleted()) {
       alert('Cannot create reports for a completed subtask.');
       return;
     }
 
-    const pid = currentSubtask ? currentSubtask.project_id : projectIdParam;
+    const pid = currentSubtask ? (currentSubtask.sub_project_id || currentSubtask.project_id || projectIdParam) : projectIdParam;
     const sid = currentSubtask ? (currentSubtask.subtask_id || currentSubtask.id) : subtaskIdParam;
 
     if (!pid || !sid) {
@@ -356,6 +367,11 @@ $(document).ready(function () {
   }
 
   $('#btnTopReportAction').on('click', function (e) {
+    if (!isSubprojectAssignedUser) {
+      e.preventDefault();
+      alert('Only subproject assigned users can create or edit reports.');
+      return;
+    }
     if (isSubtaskCompleted()) {
       e.preventDefault();
       alert('Cannot create or edit reports for a completed subtask.');
@@ -372,6 +388,11 @@ $(document).ready(function () {
   });
 
   $reportsTableBody.on('click', '.btn-action-edit', function (e) {
+    if (!isSubprojectAssignedUser) {
+      e.preventDefault();
+      alert('Only subproject assigned users can edit reports.');
+      return;
+    }
     if (isSubtaskCompleted()) {
       e.preventDefault();
       alert('Cannot edit reports for a completed subtask.');
@@ -386,6 +407,10 @@ $(document).ready(function () {
 
   $reportsTableBody.on('click', '#btnCreateFirstReport', function (e) {
     e.preventDefault();
+    if (!isSubprojectAssignedUser) {
+      alert('Only subproject assigned users can create reports.');
+      return;
+    }
     handleCreateReportAction();
   });
 

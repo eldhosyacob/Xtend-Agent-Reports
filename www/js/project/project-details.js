@@ -9,40 +9,31 @@ $(document).ready(function () {
   }
 
   const $loadingOverlay = $('#loadingOverlay');
-  const $subtasksTableBody = $('#subtasksTableBody');
-  const $subtaskModal = $('#subtaskModal');
-  const $subtaskForm = $('#addSubtaskForm');
-  const $assigneeSelect = $('#subtask_assigned_to');
-  const $btnOpenSubtaskModal = $('#btnOpenSubtaskModal');
-  const $btnOpenSubtaskModalTop = $('#btnOpenSubtaskModalTop');
-  const $btnCloseModal = $('#btnCloseSubtaskModal, #btnCancelSubtaskModal');
+  const $subprojectsTableBody = $('#subprojectsTableBody');
+  const $btnAddSubProject = $('#btnAddSubProject');
 
   const containerIsAdmin = $('.project-details-container').data('is-admin') == 1;
+  const containerCanCreateSubproject = $('.project-details-container').data('can-create-subproject') == 1;
   let isAdmin = Boolean(containerIsAdmin);
-  let canCreateSubtask = isAdmin;
-
-  if (!canCreateSubtask) {
-    $btnOpenSubtaskModal.hide();
-    $btnOpenSubtaskModalTop.hide();
-  }
+  let canCreateSubproject = Boolean(isAdmin || containerCanCreateSubproject);
 
   let currentProject = null;
-  let currentSubtasks = [];
+  let currentSubprojects = [];
 
   function checkCanCompleteProject() {
-    if (!currentSubtasks || currentSubtasks.length === 0) {
+    if (!currentSubprojects || currentSubprojects.length === 0) {
       return {
         allowed: false,
-        message: 'Cannot set project status to "Completed". The project must have at least one subtask.'
+        message: 'Cannot set project status to "Completed". The project must have at least one sub project.'
       };
     }
-    const incompleteSubtasks = currentSubtasks.filter(function (s) {
-      return (s.status || '').trim().toLowerCase() !== 'completed';
+    const incompleteSubprojects = currentSubprojects.filter(function (s) {
+      return (s.project_status || s.status || '').trim().toLowerCase() !== 'completed';
     });
-    if (incompleteSubtasks.length > 0) {
+    if (incompleteSubprojects.length > 0) {
       return {
         allowed: false,
-        message: `Cannot set project status to "Completed". All subtasks related to this project must be "Completed" first.`
+        message: 'Cannot set project status to "Completed". All sub projects belonging to this project must be "Completed" first.'
       };
     }
     return { allowed: true };
@@ -120,23 +111,23 @@ $(document).ready(function () {
           if (typeof response.is_admin === 'boolean') {
             isAdmin = response.is_admin;
           }
-          if (typeof response.can_create_subtask === 'boolean') {
-            canCreateSubtask = response.can_create_subtask;
+          if (typeof response.can_create_sub_project === 'boolean') {
+            canCreateSubproject = response.can_create_sub_project;
           } else {
-            canCreateSubtask = isAdmin;
+            canCreateSubproject = Boolean(isAdmin || containerCanCreateSubproject);
           }
 
-          if (canCreateSubtask) {
-            $btnOpenSubtaskModal.show();
-            $btnOpenSubtaskModalTop.show();
-          } else {
-            $btnOpenSubtaskModal.hide();
-            $btnOpenSubtaskModalTop.hide();
-          }
           currentProject = response.project;
-          currentSubtasks = Array.isArray(response.subtasks) ? response.subtasks : [];
+          currentSubprojects = Array.isArray(response.subprojects) ? response.subprojects : [];
+
+          if (canCreateSubproject) {
+            $btnAddSubProject.show().attr('href', 'create-sub-project.php?project_id=' + encodeURIComponent(currentProject.project_id || projectId));
+          } else {
+            $btnAddSubProject.hide();
+          }
+
           renderProjectOverview(response.project);
-          renderSubtasks(currentSubtasks);
+          renderSubprojects(currentSubprojects);
         } else {
           alert(response.message || 'Project not found.');
           window.location.href = 'project-lists.php';
@@ -234,19 +225,38 @@ $(document).ready(function () {
       $('#projectDescBox').addClass('desc-empty').text('No project description provided.');
     }
 
-    // Render Project Attachments
-    const $attList = $('#projectAttachmentsList');
-    if ($attList.length) {
-      $attList.empty();
-      if (Array.isArray(project.attachments) && project.attachments.length > 0) {
-        project.attachments.forEach(function (att) {
-          const ext = (att.name || '').split('.').pop().toLowerCase();
+    // Render Project Documents (Uploaded Documents)
+    const $docList = $('#projectDocumentsList');
+    if ($docList.length) {
+      $docList.empty();
+      if (Array.isArray(project.documents) && project.documents.length > 0) {
+        project.documents.forEach(function (doc) {
+          const ext = (doc.name || '').split('.').pop().toLowerCase();
           let iconClass = 'fa-regular fa-file';
           if (['pdf'].includes(ext)) iconClass = 'fa-regular fa-file-pdf';
           else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) iconClass = 'fa-regular fa-file-image';
           else if (['csv', 'xls', 'xlsx'].includes(ext)) iconClass = 'fa-regular fa-file-excel';
           else if (['doc', 'docx'].includes(ext)) iconClass = 'fa-regular fa-file-word';
           else if (['zip', 'rar', '7z'].includes(ext)) iconClass = 'fa-regular fa-file-zipper';
+
+          const deleteBtnHtml = isAdmin ? `
+            <button type="button" class="btn-delete-file btn-delete-document" data-filename="${escapeHtml(doc.filename)}" data-name="${escapeHtml(doc.name)}" title="Delete document">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          ` : '';
+
+          const actionsHtml = isAdmin ? `
+            <div class="attachment-actions">
+              <a href="${escapeHtml(doc.url)}" download class="btn-download-file" title="Download">
+                <i class="fa-solid fa-download"></i>
+              </a>
+              ${deleteBtnHtml}
+            </div>
+          ` : `
+            <a href="${escapeHtml(doc.url)}" download class="btn-download-file" title="Download">
+              <i class="fa-solid fa-download"></i>
+            </a>
+          `;
 
           const $card = $(`
             <div class="attachment-card">
@@ -255,55 +265,56 @@ $(document).ready(function () {
                   <i class="${iconClass}"></i>
                 </div>
                 <div class="attachment-details">
-                  <span class="attachment-name">${escapeHtml(att.name)}</span>
-                  <span class="attachment-meta">${escapeHtml(att.size)}</span>
+                  <span class="attachment-name" title="${escapeHtml(doc.name)}">${escapeHtml(doc.name)}</span>
+                  <span class="attachment-meta">${escapeHtml(doc.size)}</span>
                 </div>
               </div>
-              <a href="${escapeHtml(att.url)}" download class="btn-download-file">
-                <i class="fa-solid fa-download"></i>
-              </a>
+              ${actionsHtml}
             </div>
           `);
-          $attList.append($card);
+          $docList.append($card);
         });
       } else {
-        $attList.html(`
+        $docList.html(`
           <div class="no-attachments-text">
-            <i class="fa-regular fa-folder-open"></i> No attachments uploaded for this project
+            <i class="fa-regular fa-folder-open"></i> No documents uploaded for this project
           </div>
         `);
       }
     }
   }
 
-  function renderSubtasks(subtasks) {
-    const totalCount = subtasks.length;
+  function renderSubprojects(subprojects) {
+    const totalCount = subprojects.length;
+    let assignedCount = 0;
     let pendingCount = 0;
     let progressCount = 0;
     let completedCount = 0;
     let onHoldCount = 0;
 
-    subtasks.forEach(function (s) {
-      if (s.status === 'Pending') pendingCount++;
-      else if (s.status === 'In Progress') progressCount++;
-      else if (s.status === 'Completed') completedCount++;
-      else if (s.status === 'On Hold') onHoldCount++;
+    subprojects.forEach(function (sp) {
+      const s = (sp.project_status || sp.status || 'Assigned').trim().toLowerCase();
+      if (s === 'assigned') assignedCount++;
+      else if (s === 'pending') pendingCount++;
+      else if (s === 'in progress') progressCount++;
+      else if (s === 'completed') completedCount++;
+      else if (s === 'on hold') onHoldCount++;
     });
 
-    $('#subtaskCounterBadge').text(`${totalCount} Subtask${totalCount === 1 ? '' : 's'}`);
-    $('#statTotal').text(`Total: ${totalCount}`);
-    $('#statPending').text(`Pending: ${pendingCount}`);
-    $('#statInProgress, #statProgress').text(`In Progress: ${progressCount}`);
-    $('#statCompleted').text(`Completed: ${completedCount}`);
-    $('#statOnHold').text(`On Hold: ${onHoldCount}`);
+    $('#subprojectCounterBadge').text(`${totalCount} Sub Project${totalCount === 1 ? '' : 's'}`);
+    $('#statSubTotal').text(`Total: ${totalCount}`);
+    $('#statSubAssigned').text(`Assigned: ${assignedCount}`);
+    $('#statSubPending').text(`Pending: ${pendingCount}`);
+    $('#statSubInProgress').text(`In Progress: ${progressCount}`);
+    $('#statSubCompleted').text(`Completed: ${completedCount}`);
+    $('#statSubOnHold').text(`On Hold: ${onHoldCount}`);
 
     if (totalCount === 0) {
-      $subtasksTableBody.html(`
+      $subprojectsTableBody.html(`
         <tr>
-          <td colspan="8">
-            <div class="empty-state" style="padding: 26px 16px;">
-              <i class="fa-solid fa-list-check" style="font-size: 36px; color: var(--text-muted); margin-bottom: 12px;"></i>
-              <h3 style="font-size: 15px; margin: 0 0 6px 0;">No subtasks created yet</h3>
+          <td colspan="7">
+            <div class="empty-state" style="padding: 36px 16px; text-align: center;">
+              <h3 style="font-size: 16px; margin: 0 0 6px 0; color: var(--text-primary);">No sub projects created</h3>
             </div>
           </td>
         </tr>
@@ -312,39 +323,44 @@ $(document).ready(function () {
     }
 
     let html = '';
-    subtasks.forEach(function (subtask) {
-      const isCompleted = subtask.status === 'Completed';
-      const prioClass = getPriorityBadgeClass(subtask.priority);
-      const prioIcon = getPriorityIcon(subtask.priority);
-      const assignedPhoto = subtask.assigned_to_photo || '../images/default-avatar.png';
-      const createdByPhoto = subtask.created_by_photo || '../images/default-avatar.png';
-
-      const statusVal = subtask.status || 'Pending';
+    subprojects.forEach(function (sp) {
+      const spid = escapeHtml(sp.sub_project_id || '—');
+      const name = escapeHtml(sp.sub_project_name || '—');
+      const dept = escapeHtml(sp.department || '—');
+      const assignee = escapeHtml(sp.asignee || 'Unassigned');
+      const prio = escapeHtml(sp.priority || 'Medium');
+      const prioClass = getPriorityBadgeClass(sp.priority);
+      const prioIcon = getPriorityIcon(sp.priority);
+      const statusVal = sp.project_status || 'Assigned';
       const statusClass = getStatusBadgeClass(statusVal);
       const statusIcon = getStatusIcon(statusVal);
+      const timeVal = escapeHtml(sp.total_time || '00:00:00');
+      const desc = sp.project_description ? escapeHtml(sp.project_description) : '';
+      const subDetailsUrl = `sub-project-details.php?project_id=${encodeURIComponent(sp.sub_project_id)}`;
 
       html += `
-        <tr class="${isCompleted ? 'subtask-completed' : ''}" data-subtask-id="${subtask.id}">
+        <tr class="clickable-subproject-row" data-href="${subDetailsUrl}">
           <td>
-            <span class="subtask-id-pill">${escapeHtml(subtask.subtask_id || '—')}</span>
+            <a href="${subDetailsUrl}" class="subproject-id-badge" onclick="event.stopPropagation();">${spid}</a>
+          </td>
+          <td style="text-align: left;">
+            <a href="${subDetailsUrl}" class="subproject-name-link" onclick="event.stopPropagation();">${name}</a>
+            ${desc ? `<span class="subproject-desc-text">${desc}</span>` : ''}
           </td>
           <td>
-            <span class="subtask-title-text">${escapeHtml(subtask.title)}</span>
-            ${subtask.description ? `<span class="subtask-desc-text">${escapeHtml(subtask.description)}</span>` : ''}
+            <span class="department-pill">${dept}</span>
           </td>
           <td>
-            <div class="user-chip">
-              <span>${escapeHtml(subtask.assigned_to)}</span>
+            <div class="user-chip" title="${assignee}">
+              <span>${assignee}</span>
             </div>
           </td>
           <td>
-            <div class="user-chip">
-              <span style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(subtask.created_by)} (${subtask.created_at ? subtask.created_at.substring(0, 10) : ''})</span>
-            </div>
+            <span class="badge-priority ${prioClass}"><i class="${prioIcon}"></i> ${prio}</span>
           </td>
           <td>
-            <span class="subtask-time-badge">
-              <i class="fa-regular fa-clock"></i> ${escapeHtml(subtask.total_time || '00:00:00')}
+            <span class="subproject-time-badge">
+              <i class="fa-regular fa-clock"></i> ${timeVal}
             </span>
           </td>
           <td>
@@ -356,101 +372,14 @@ $(document).ready(function () {
       `;
     });
 
-    $subtasksTableBody.html(html);
+    $subprojectsTableBody.html(html);
   }
 
-  // Load assignable users into modal dropdown
-  function loadAssignableUsers() {
-    $.ajax({
-      url: '../api/get-assignable-users.php',
-      type: 'GET',
-      dataType: 'json',
-      success: function (response) {
-        if (response.success && Array.isArray(response.users)) {
-          let opts = '<option value="" disabled selected>Select Assignee</option>';
-          response.users.forEach(function (user) {
-            opts += `<option value="${escapeHtml(user)}">${escapeHtml(user)}</option>`;
-          });
-          $assigneeSelect.html(opts);
-        }
-      }
-    });
-  }
-
-  // Modal open & close
-  function openSubtaskModal() {
-    $subtaskForm[0].reset();
-    $subtaskModal.css('display', 'flex');
-    $('#subtask_title').focus();
-  }
-
-  function closeSubtaskModal() {
-    $subtaskModal.hide();
-  }
-
-  $btnOpenSubtaskModal.on('click', openSubtaskModal);
-  $btnOpenSubtaskModalTop.on('click', openSubtaskModal);
-  $(document).on('click', '.btn-open-modal-trigger', openSubtaskModal);
-  $btnCloseModal.on('click', closeSubtaskModal);
-
-  $subtaskModal.on('click', function (e) {
-    if (e.target === this) {
-      closeSubtaskModal();
+  $(document).on('click', '.clickable-subproject-row', function () {
+    const href = $(this).data('href');
+    if (href) {
+      window.location.href = href;
     }
-  });
-
-  // Handle Subtask Form Submission
-  $subtaskForm.on('submit', function (e) {
-    e.preventDefault();
-
-    const title = $('#subtask_title').val().trim();
-    const assignedTo = $('#subtask_assigned_to').val();
-    const priority = $('#subtask_priority').val();
-    const dueDate = $('#subtask_due_date').val();
-    const description = $('#subtask_description').val().trim();
-
-    if (!title) {
-      alert('Please enter a subtask title');
-      $('#subtask_title').focus();
-      return;
-    }
-
-    if (!assignedTo) {
-      alert('Please select an assignee');
-      $('#subtask_assigned_to').focus();
-      return;
-    }
-
-    const $submitBtn = $('#btnSubmitSubtask');
-    const originalBtnHtml = $submitBtn.html();
-    $submitBtn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...');
-
-    $.ajax({
-      url: '../api/create-project-subtask.php',
-      type: 'POST',
-      data: {
-        project_id: currentProject ? currentProject.project_id : projectId,
-        title: title,
-        assigned_to: assignedTo,
-        priority: priority,
-        due_date: dueDate,
-        description: description
-      },
-      dataType: 'json',
-      success: function (response) {
-        $submitBtn.prop('disabled', false).html(originalBtnHtml);
-        if (response.success) {
-          closeSubtaskModal();
-          loadProjectDetails();
-        } else {
-          alert('Error: ' + (response.message || 'Failed to add subtask.'));
-        }
-      },
-      error: function () {
-        $submitBtn.prop('disabled', false).html(originalBtnHtml);
-        alert('An error occurred while creating the subtask.');
-      }
-    });
   });
 
   // Helper to determine select class by status
@@ -562,9 +491,72 @@ $(document).ready(function () {
     });
   });
 
-  // Initial loads
-  if (isAdmin) {
-    loadAssignableUsers();
-  }
+  // Handle Project Document Deletion (Admin only)
+  $('#projectDocumentsList').on('click', '.btn-delete-document', function (e) {
+    e.preventDefault();
+    if (!isAdmin) {
+      alert('Only administrators can delete project documents.');
+      return;
+    }
+
+    const $btn = $(this);
+    const filename = $btn.data('filename');
+    const displayName = $btn.data('name') || filename;
+
+    if (!filename) {
+      alert('Document filename is missing.');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete "${displayName}"?`)) {
+      return;
+    }
+
+    $btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
+
+    $.ajax({
+      url: '../api/delete-project-attachment.php',
+      type: 'POST',
+      data: {
+        project_id: projectId,
+        filename: filename
+      },
+      dataType: 'json',
+      success: function (response) {
+        if (response.success) {
+          const $card = $btn.closest('.attachment-card');
+          $card.fadeOut(300, function () {
+            $(this).remove();
+            if (currentProject && Array.isArray(currentProject.documents)) {
+              currentProject.documents = currentProject.documents.filter(function (d) {
+                return d.filename !== filename;
+              });
+            }
+            const $docList = $('#projectDocumentsList');
+            if ($docList.children('.attachment-card').length === 0) {
+              $docList.html(`
+                <div class="no-attachments-text">
+                  <i class="fa-regular fa-folder-open"></i> No documents uploaded for this project
+                </div>
+              `);
+            }
+          });
+        } else {
+          alert('Error: ' + (response.message || 'Failed to delete document.'));
+          $btn.prop('disabled', false).html('<i class="fa-solid fa-trash-can"></i>');
+        }
+      },
+      error: function (xhr) {
+        let msg = 'An error occurred while deleting the document.';
+        if (xhr.responseJSON && xhr.responseJSON.message) {
+          msg = xhr.responseJSON.message;
+        }
+        alert(msg);
+        $btn.prop('disabled', false).html('<i class="fa-solid fa-trash-can"></i>');
+      }
+    });
+  });
+
+  // Initial load
   loadProjectDetails();
 });

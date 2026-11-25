@@ -5,7 +5,7 @@ require_once __DIR__ . '/../config/session.php';
 // Get current page name from URL
 $current_page = basename($_SERVER['PHP_SELF'], '.php');
 $script_name = str_replace('\\', '/', $_SERVER['SCRIPT_NAME']);
-$in_project_folder = (strpos($script_name, '/project/') !== false || in_array($current_page, ['project-dashboard', 'create-project', 'project-lists', 'project-details', 'my-projects', 'my-project-details', 'my-project-reports', 'my-reports', 'view-project-report', 'new-project-report', 'view-related-reports', 'time-frame-reports', 'search-project-reports', 'search-report-results'], true));
+$in_project_folder = (strpos($script_name, '/project/') !== false || in_array($current_page, ['project-dashboard', 'create-project', 'create-sub-project', 'project-lists', 'project-details', 'my-projects', 'my-project-details', 'my-project-reports', 'my-reports', 'view-project-report', 'new-project-report', 'view-related-reports', 'time-frame-reports', 'search-project-reports', 'search-report-results'], true));
 $rel_path = $in_project_folder ? '../' : './';
 
 // Get user information from session
@@ -16,21 +16,25 @@ $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
 $user_department = isset($_SESSION['department']) ? $_SESSION['department'] : '';
 
 // Retrieve project_only setting (session with database fallback)
-if (!isset($_SESSION['project_only']) && !empty($user_id)) {
+if ((!isset($_SESSION['project_only']) || !isset($_SESSION['project_creator'])) && !empty($user_id)) {
     require_once __DIR__ . '/../config/database.php';
     $db_conn = getDatabaseConnection();
     if ($db_conn) {
         try {
-            $poStmt = $db_conn->prepare("SELECT project_only FROM users WHERE id = :id LIMIT 1");
+            $poStmt = $db_conn->prepare("SELECT project_only, project_creator FROM users WHERE id = :id LIMIT 1");
             $poStmt->execute(['id' => $user_id]);
-            $poVal = $poStmt->fetchColumn();
-            $_SESSION['project_only'] = ($poVal !== false) ? (int)$poVal : 0;
+            $uRow = $poStmt->fetch(PDO::FETCH_ASSOC);
+            if ($uRow) {
+                $_SESSION['project_only'] = (int)($uRow['project_only'] ?? 0);
+                $_SESSION['project_creator'] = (int)($uRow['project_creator'] ?? 0);
+            }
         } catch (PDOException $e) {
             error_log("Error fetching user project_only: " . $e->getMessage());
         }
     }
 }
 $user_project_only = isset($_SESSION['project_only']) ? (int)$_SESSION['project_only'] : 0;
+$user_project_creator = isset($_SESSION['project_creator']) ? (int)$_SESSION['project_creator'] : 0;
 
 // Store or preserve active module state in session
 if ($user_project_only === 1) {
@@ -58,6 +62,7 @@ $page_titles = [
   'search' => 'Search',
   'administration' => 'Administration',
   'create-project' => 'Create Project',
+  'create-sub-project' => 'Create Sub Project',
   'project-lists' => 'Project Lists',
   'project-details' => 'Project Details',
   'my-projects' => 'My Projects',
@@ -185,7 +190,7 @@ if (!empty($user_id)) {
             <span style="font-weight:700;">Dashboard</span>
           </a>
         </li>
-        <?php if ($user_role === 'admin'): ?>
+        <?php if ($user_role === 'admin' || $user_project_creator === 1): ?>
         <li class="sidebar-menu-item <?php echo ($current_page == 'create-project') ? 'active' : ''; ?>">
           <a href="<?php echo $rel_path; ?>project/create-project.php" class="sidebar-link">
             <i class="fa-solid fa-folder-plus"></i>

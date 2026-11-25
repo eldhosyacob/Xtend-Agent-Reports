@@ -53,9 +53,14 @@ if ($company_name === '' && $dealer_name === '') {
           <div class="results-info-badge" id="results-badge">
             Checking for pending records...
           </div>
-          <div class="search-input-wrapper">
-            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-            <input type="text" id="search-pending-records" class="search-control" placeholder="Search Record ID, Agent, Location, Hardware..." aria-label="Search pending records">
+          <div class="table-filter-actions">
+            <button type="button" id="btn-filter-latest-case" class="btn-filter-case-toggle" title="Show latest record only" aria-label="Filter: Show latest record only" aria-pressed="false">
+              <i class="fa-solid fa-filter"></i>
+            </button>
+            <div class="search-input-wrapper">
+              <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+              <input type="text" id="search-pending-records" class="search-control" placeholder="Search Record ID, Agent, Location, Hardware..." aria-label="Search pending records">
+            </div>
           </div>
         </div>
 
@@ -71,6 +76,7 @@ if ($company_name === '' && $dealer_name === '') {
                 <th scope="col">Product Category</th>
                 <th scope="col">Location</th>
                 <th scope="col">Hardware Details</th>
+                <th scope="col">Issue Details</th>
                 <th scope="col">Status</th>
                 <th scope="col">Actions</th>
               </tr>
@@ -125,11 +131,13 @@ if ($company_name === '' && $dealer_name === '') {
       $(document).ready(function() {
         const companyName = <?php echo json_encode($company_name); ?>;
         const dealerName = <?php echo json_encode($dealer_name); ?>;
+        const selectedDepartment = <?php echo json_encode($selected_department); ?>;
         const addToCompanyList = <?php echo json_encode($add_to_company_list); ?>;
         let pendingRecords = [];
         let filteredRecords = [];
         let currentPage = 1;
         const pageSize = 10;
+        let filterLatestCaseOnly = false;
 
         function getRecordIdentifier(r) {
           if (!r) return '';
@@ -147,11 +155,61 @@ if ($company_name === '' && $dealer_name === '') {
             .replace(/'/g, "&#039;");
         }
 
+        function filterLatestPerCase(records) {
+          const latestMap = new Map();
+
+          records.forEach(function(r) {
+            const rawCaseId = (r.case_id !== undefined && r.case_id !== null) ? String(r.case_id).trim() : '';
+            const dept = (r.record_department || r.department || '').trim();
+            // Group by case_id if present; otherwise treat record as distinct by its id
+            const groupKey = (rawCaseId !== '') ? ('case_' + (dept ? dept + '_' : '') + rawCaseId) : ('rec_' + (r.id || Math.random()));
+
+            if (!latestMap.has(groupKey)) {
+              latestMap.set(groupKey, r);
+            } else {
+              const existing = latestMap.get(groupKey);
+              const dateA = String(r.date || '');
+              const dateB = String(existing.date || '');
+              const idA = parseInt(r.id, 10) || 0;
+              const idB = parseInt(existing.id, 10) || 0;
+
+              let isNewer = false;
+              if (dateA > dateB) {
+                isNewer = true;
+              } else if (dateA === dateB) {
+                if (idA > idB) {
+                  isNewer = true;
+                }
+              }
+
+              if (isNewer) {
+                latestMap.set(groupKey, r);
+              }
+            }
+          });
+
+          const result = Array.from(latestMap.values());
+          result.sort(function(a, b) {
+            const dateA = String(a.date || '');
+            const dateB = String(b.date || '');
+            if (dateA === dateB) {
+              return (parseInt(b.id, 10) || 0) - (parseInt(a.id, 10) || 0);
+            }
+            return dateB.localeCompare(dateA);
+          });
+
+          return result;
+        }
+
         function loadPendingRecords() {
+          const reqData = { company_name: companyName, dealer_name: dealerName };
+          if (selectedDepartment) {
+            reqData.department = selectedDepartment;
+          }
           $.ajax({
             url: 'api/fetch-pending-records.php',
             type: 'GET',
-            data: { company_name: companyName, dealer_name: dealerName },
+            data: reqData,
             dataType: 'json',
             success: function(response) {
               if (response.success) {
@@ -170,16 +228,22 @@ if ($company_name === '' && $dealer_name === '') {
         }
 
         function filterRecords() {
+          let sourceRecords = pendingRecords;
+          if (filterLatestCaseOnly) {
+            sourceRecords = filterLatestPerCase(pendingRecords);
+          }
+
           const query = $('#search-pending-records').val().trim().toLowerCase();
           if (!query) {
-            filteredRecords = pendingRecords;
+            filteredRecords = sourceRecords;
           } else {
-            filteredRecords = pendingRecords.filter(function(r) {
+            filteredRecords = sourceRecords.filter(function(r) {
               const recordId = String(getRecordIdentifier(r)).toLowerCase();
               const agent = String(r.agent || '').toLowerCase();
               const location = String(r.location || '').toLowerCase();
               const hardwareDetails = String(r.hardware_details || '').toLowerCase();
-              return recordId.includes(query) || agent.includes(query) || location.includes(query) || hardwareDetails.includes(query);
+              const issueDetails = String(r.issue_details || '').toLowerCase();
+              return recordId.includes(query) || agent.includes(query) || location.includes(query) || hardwareDetails.includes(query) || issueDetails.includes(query);
             });
           }
           currentPage = 1;
@@ -188,6 +252,19 @@ if ($company_name === '' && $dealer_name === '') {
         }
 
         $('#search-pending-records').on('input', function() {
+          filterRecords();
+        });
+
+        // Filter latest record per case button
+        $('#btn-filter-latest-case').on('click', function() {
+          filterLatestCaseOnly = !filterLatestCaseOnly;
+          $(this).toggleClass('active', filterLatestCaseOnly);
+          $(this).attr('aria-pressed', filterLatestCaseOnly ? 'true' : 'false');
+          if (filterLatestCaseOnly) {
+            $(this).attr('title', 'Show all records');
+          } else {
+            $(this).attr('title', 'Show latest record only');
+          }
           filterRecords();
         });
 
@@ -222,7 +299,7 @@ if ($company_name === '' && $dealer_name === '') {
             let statusLower = rawStatus.toLowerCase();
             let statusClass = 'status-pending';
 
-            if (statusLower.startsWith('closed')) {
+            if (statusLower.includes('closed')) {
               statusClass = 'status-closed';
             } else if (statusLower === 'pending') {
               statusClass = 'status-pending';
@@ -234,7 +311,7 @@ if ($company_name === '' && $dealer_name === '') {
 
             const deptVal = r.record_department || r.department || '';
             let reopenBtn = '';
-            if (!statusLower.startsWith('closed') && r.is_latest !== false) {
+            if (!statusLower.includes('closed') && r.is_latest !== false) {
               reopenBtn = `
                 <a href="edit-record.php?record_id=${escapeHtml(getRecordIdentifier(r))}&department=${escapeHtml(deptVal)}" target="_blank" class="btn-action-reopen" data-record-id="${escapeHtml(getRecordIdentifier(r))}" data-department="${escapeHtml(deptVal)}" data-company-name="${escapeHtml(r.company_name || '')}" data-dealer-name="${escapeHtml(r.dealer_name || '')}" title="Reopen Record">
                   <i class="fa-solid fa-folder-open"></i>
@@ -250,6 +327,7 @@ if ($company_name === '' && $dealer_name === '') {
                 <td>${escapeHtml(r.product_category || '—')}</td>
                 <td>${escapeHtml(r.location || '—')}</td>
                 <td>${escapeHtml(r.hardware_details || '—')}</td>
+                <td>${escapeHtml(r.issue_details || '—')}</td>
                 <td>
                   <span class="status-pill ${statusClass}">
                     <i class="fa-solid fa-circle"></i> ${escapeHtml(rawStatus)}
@@ -277,10 +355,6 @@ if ($company_name === '' && $dealer_name === '') {
           // Draw pagination controls
           updatePaginationControls(records.length);
         }
-
-
-
-        const selectedDepartment = <?php echo json_encode($selected_department); ?>;
 
         // Create record directly button
         $('#btn-create-record-direct').on('click', function() {

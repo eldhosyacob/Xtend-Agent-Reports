@@ -53,8 +53,9 @@ if (empty($input)) {
     }
 }
 
-$projectId = isset($input['project_id']) ? trim($input['project_id']) : '';
+$projectId = isset($input['project_id']) ? trim($input['project_id']) : (isset($input['sub_project_id']) ? trim($input['sub_project_id']) : '');
 $status = isset($input['status']) ? trim($input['status']) : '';
+$isSubProjectParam = !empty($input['is_sub_project']);
 
 if (empty($projectId)) {
     echo json_encode([
@@ -73,18 +74,35 @@ if (!in_array($status, $validStatuses, true)) {
     exit;
 }
 
-// Verify project exists
-$checkStmt = $db->prepare("SELECT id, project_id, project_status FROM `projects` WHERE project_id = :pid OR id = :numeric_id LIMIT 1");
-$checkStmt->execute([
-    'pid' => $projectId,
-    'numeric_id' => is_numeric($projectId) ? (int)$projectId : 0
-]);
-$existingProject = $checkStmt->fetch();
+// Verify project or sub project exists
+$existingProject = null;
+$isSubProject = false;
+
+if (!$isSubProjectParam) {
+    $checkStmt = $db->prepare("SELECT id, project_id, project_status FROM `projects` WHERE project_id = :pid OR id = :numeric_id LIMIT 1");
+    $checkStmt->execute([
+        'pid' => $projectId,
+        'numeric_id' => is_numeric($projectId) ? (int)$projectId : 0
+    ]);
+    $existingProject = $checkStmt->fetch();
+}
+
+if (!$existingProject) {
+    $spCheckStmt = $db->prepare("SELECT id, project_id AS parent_project_id, sub_project_id AS project_id, project_status FROM `sub_projects` WHERE sub_project_id = :spid OR id = :numeric_id LIMIT 1");
+    $spCheckStmt->execute([
+        'spid' => $projectId,
+        'numeric_id' => is_numeric($projectId) ? (int)$projectId : 0
+    ]);
+    $existingProject = $spCheckStmt->fetch();
+    if ($existingProject) {
+        $isSubProject = true;
+    }
+}
 
 if (!$existingProject) {
     echo json_encode([
         'success' => false,
-        'message' => 'Project not found'
+        'message' => $isSubProjectParam ? 'Sub project not found' : 'Project not found'
     ]);
     exit;
 }
@@ -94,59 +112,113 @@ $currentDbStatus = trim($existingProject['project_status'] ?? '');
 if (strcasecmp($currentDbStatus, 'Assigned') !== 0 && strcasecmp($status, 'Assigned') === 0) {
     echo json_encode([
         'success' => false,
-        'message' => 'Cannot change project status back to "Assigned" once updated'
+        'message' => 'Cannot change status back to "Assigned" once updated'
     ]);
     exit;
 }
 
-// Disallow setting status to 'Completed' unless the project has subtasks and all subtasks are Completed
+// Disallow setting status to 'Completed' unless subtasks/tasks exist and all are Completed
 if (strcasecmp($status, 'Completed') === 0) {
-    $subtasksStmt = $db->prepare("
-        SELECT pst.id, pst.subtask_id,
-               COALESCE(
-                   (
-                       SELECT pr.status 
-                       FROM `project_reports` pr 
-                       WHERE (pr.subtask_id = pst.subtask_id OR (pr.subtask_id = CAST(pst.id AS CHAR) AND pr.project_id = pst.project_id))
-                         AND pr.status IS NOT NULL 
-                         AND TRIM(pr.status) != ''
-                       ORDER BY pr.id DESC 
-                       LIMIT 1
-                   ),
-                   pst.status,
-                   'Pending'
-               ) AS status
-        FROM `project_subtasks` pst
-        WHERE pst.project_id = :canonical_pid OR pst.project_id = :num_id
-    ");
-    $subtasksStmt->execute([
-        'canonical_pid' => $existingProject['project_id'],
-        'num_id' => (string)$existingProject['id']
-    ]);
-    $subtasks = $subtasksStmt->fetchAll(PDO::FETCH_ASSOC);
-
-    if (empty($subtasks)) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Cannot set project status to "Completed": The project has no subtasks.'
+    if ($isSubProject) {
+        $subtasksStmt = $db->prepare("
+            SELECT pst.id, pst.subtask_id,
+                   CASE
+                       WHEN LOWER(TRIM(pst.status)) = 'completed' THEN 'Completed'
+                       ELSE COALESCE(
+                           (
+                               SELECT pr.status 
+                               FROM `project_reports` pr 
+                               WHERE (pr.subtask_id = pst.subtask_id OR (pr.subtask_id = CAST(pst.id AS CHAR) AND pr.project_id = pst.project_id))
+                                 AND pr.status IS NOT NULL 
+                                 AND TRIM(pr.status) != ''
+                               ORDER BY pr.id DESC 
+                               LIMIT 1
+                           ),
+                           pst.status,
+                           'Pending'
+                       )
+                   END AS status
+            FROM `project_subtasks` pst
+            WHERE pst.sub_project_id = :spid_1 OR pst.project_id = :spid_2 OR pst.subtask_id LIKE :sp_prefix
+        ");
+        $subtasksStmt->execute([
+            'spid_1' => $existingProject['project_id'],
+            'spid_2' => $existingProject['project_id'],
+            'sp_prefix' => $existingProject['project_id'] . '_T%'
         ]);
-        exit;
-    }
+        $subtasks = $subtasksStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $incompleteCount = 0;
-    foreach ($subtasks as $st) {
-        $stStatus = trim($st['status'] ?? '');
-        if (strcasecmp($stStatus, 'Completed') !== 0) {
-            $incompleteCount++;
+        if (empty($subtasks)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Cannot set sub project status to "Completed": The sub project has no tasks.'
+            ]);
+            exit;
         }
-    }
 
-    if ($incompleteCount > 0) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Cannot set project status to "Completed": All subtasks related to this project must be "Completed" first (' . $incompleteCount . ' remaining).'
+        $incompleteCount = 0;
+        foreach ($subtasks as $st) {
+            $stStatus = trim($st['status'] ?? '');
+            if (strcasecmp($stStatus, 'Completed') !== 0) {
+                $incompleteCount++;
+            }
+        }
+
+        if ($incompleteCount > 0) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Cannot set sub project status to "Completed": All tasks related to this sub project must be "Completed" first (' . $incompleteCount . ' remaining).'
+            ]);
+            exit;
+        }
+    } else {
+        $subtasksStmt = $db->prepare("
+            SELECT pst.id, pst.subtask_id,
+                   COALESCE(
+                       (
+                           SELECT pr.status 
+                           FROM `project_reports` pr 
+                           WHERE (pr.subtask_id = pst.subtask_id OR (pr.subtask_id = CAST(pst.id AS CHAR) AND pr.project_id = pst.project_id))
+                             AND pr.status IS NOT NULL 
+                             AND TRIM(pr.status) != ''
+                           ORDER BY pr.id DESC 
+                           LIMIT 1
+                       ),
+                       pst.status,
+                       'Pending'
+                   ) AS status
+            FROM `project_subtasks` pst
+            WHERE pst.project_id = :canonical_pid OR pst.project_id = :num_id
+        ");
+        $subtasksStmt->execute([
+            'canonical_pid' => $existingProject['project_id'],
+            'num_id' => (string)$existingProject['id']
         ]);
-        exit;
+        $subtasks = $subtasksStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($subtasks)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Cannot set project status to "Completed": The project has no subtasks.'
+            ]);
+            exit;
+        }
+
+        $incompleteCount = 0;
+        foreach ($subtasks as $st) {
+            $stStatus = trim($st['status'] ?? '');
+            if (strcasecmp($stStatus, 'Completed') !== 0) {
+                $incompleteCount++;
+            }
+        }
+
+        if ($incompleteCount > 0) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Cannot set project status to "Completed": All subtasks related to this project must be "Completed" first (' . $incompleteCount . ' remaining).'
+            ]);
+            exit;
+        }
     }
 }
 
@@ -160,9 +232,10 @@ if (!empty($_SESSION['full_name'])) {
     $editedBy = trim($_SESSION['username']);
 }
 
-// Update project status and audit fields
+// Update project or sub project status and audit fields
+$targetTable = $isSubProject ? 'sub_projects' : 'projects';
 $updateStmt = $db->prepare("
-    UPDATE `projects`
+    UPDATE `{$targetTable}`
     SET `project_status` = :status,
         `edited_by` = :edited_by,
         `edited_at` = NOW()

@@ -481,7 +481,7 @@
   z-index: 1;
 }
 
-.sidebar-module-select:focus + .sidebar-module-arrow {
+.sidebar-module-select:focus+.sidebar-module-arrow {
   transform: translateY(-50%) rotate(180deg);
   color: #2563eb;
 }
@@ -1091,7 +1091,7 @@
 }
 
 .confirm-modal-card .btn-primary:hover {
-  box-shadow: 0 5px 12px rgb(102, 132, 228);
+  /* box-shadow: 0 5px 12px rgb(102, 132, 228); */
   filter: brightness(1.05);
 }
 

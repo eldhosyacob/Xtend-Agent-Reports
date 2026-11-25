@@ -551,10 +551,17 @@
   }
 }
 
-/* Action Delete Button */
+/* Action Delete & Edit Buttons */
 .col-action {
-  width: 70px;
+  width: 90px;
   text-align: center;
+}
+
+.action-buttons-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .btn-action-icon {
@@ -570,6 +577,8 @@
   transition: all 0.2s ease;
   padding: 0;
   font-size: 13px;
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
 [data-theme="dark"] .btn-action-icon {
@@ -591,6 +600,25 @@
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+.btn-action-edit {
+  color: var(--accent-primary);
+}
+
+.btn-action-edit:hover:not(:disabled) {
+  background-color: rgba(24, 103, 142, 0.1);
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .btn-action-edit {
+  color: #38bdf8;
+}
+
+[data-theme="dark"] .btn-action-edit:hover:not(:disabled) {
+  background-color: rgba(56, 189, 248, 0.15);
+  border-color: #38bdf8;
 }
 
 .action-na {

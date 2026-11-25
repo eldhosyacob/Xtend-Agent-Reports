@@ -138,7 +138,7 @@ if ($report && is_dir($projectUploadDir) && !empty($report['project_id']) && !em
                 <i class="fa-solid fa-arrow-left"></i> My Reports
               </a> -->
               <?php if (!empty($report['project_id'])): ?>
-                <a href="my-project-details.php?id=<?php echo urlencode($report['project_id']); ?>" class="btn-header-project">
+                <a href="project-details.php?id=<?php echo urlencode($report['project_id']); ?>" class="btn-header-project">
                   <i class="fa-solid fa-diagram-project"></i> Project Details
                 </a>
               <?php endif; ?>
@@ -166,7 +166,7 @@ if ($report && is_dir($projectUploadDir) && !empty($report['project_id']) && !em
               </div>
 
               <div class="field-item col-4">
-                <span class="field-label">Subtask ID</span>
+                <span class="field-label">Task ID</span>
                 <div class="field-control-wrapper">
                   <i class="fa-solid fa-list-check field-icon"></i>
                   <div class="field-value monospace"><?php echo htmlspecialchars($report['subtask_id'] ?: '—'); ?></div>
@@ -174,7 +174,7 @@ if ($report && is_dir($projectUploadDir) && !empty($report['project_id']) && !em
               </div>
 
               <div class="field-item col-4">
-                <span class="field-label">Subtask Title</span>
+                <span class="field-label">Task Title</span>
                 <div class="field-control-wrapper">
                   <i class="fa-solid fa-heading field-icon"></i>
                   <div class="field-value"><?php echo htmlspecialchars($report['subtask_title'] ?: '—'); ?></div>

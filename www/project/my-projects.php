@@ -12,7 +12,8 @@ require_once __DIR__ . '/../config/auth_check.php';
     <link rel="shortcut icon" href="../images/favicon.png">
     <link rel="stylesheet" href="../styles/header-sidebar.css">
     <link rel="stylesheet" href="../styles/common.css">
-    <link rel="stylesheet" href="../styles/project/my-projects.css">
+    <link rel="stylesheet" href="../styles/project/project-details.css">
+    <link rel="stylesheet" href="../styles/project/my-projects.css?v=<?php echo file_exists(__DIR__ . '/../styles/project/my-projects.css') ? filemtime(__DIR__ . '/../styles/project/my-projects.css') : time(); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   </head>
 
@@ -39,37 +40,27 @@ require_once __DIR__ . '/../config/auth_check.php';
 
       <!-- Quick Metrics Bar -->
       <div class="stats-summary-grid">
-        <div class="stat-metric-card">
-          <div class="stat-metric-icon stat-icon-projects">
+        <div class="stat-metric-card" data-status="" title="Filter by All Statuses">
+          <div class="stat-metric-icon stat-icon-total">
             <i class="fa-solid fa-diagram-project"></i>
           </div>
           <div class="stat-metric-content">
-            <span class="stat-metric-value" id="statProjectsVal">0</span>
-            <span class="stat-metric-label">Assigned Projects</span>
+            <span class="stat-metric-value" id="statTotalVal">0</span>
+            <span class="stat-metric-label">Total</span>
           </div>
         </div>
 
-        <div class="stat-metric-card">
-          <div class="stat-metric-icon stat-icon-tasks">
-            <i class="fa-solid fa-list-check"></i>
+        <div class="stat-metric-card" data-status="Assigned" title="Filter by Assigned">
+          <div class="stat-metric-icon stat-icon-assigned">
+            <i class="fa-solid fa-user-check"></i>
           </div>
           <div class="stat-metric-content">
-            <span class="stat-metric-value" id="statTasksVal">0</span>
-            <span class="stat-metric-label">Total Tasks</span>
+            <span class="stat-metric-value" id="statAssignedVal">0</span>
+            <span class="stat-metric-label">Assigned</span>
           </div>
         </div>
 
-        <div class="stat-metric-card">
-          <div class="stat-metric-icon stat-icon-pending">
-            <i class="fa-solid fa-clock"></i>
-          </div>
-          <div class="stat-metric-content">
-            <span class="stat-metric-value" id="statPendingVal">0</span>
-            <span class="stat-metric-label">Pending Tasks</span>
-          </div>
-        </div>
-
-        <div class="stat-metric-card">
+        <div class="stat-metric-card" data-status="In Progress" title="Filter by In Progress">
           <div class="stat-metric-icon stat-icon-progress">
             <i class="fa-solid fa-spinner"></i>
           </div>
@@ -79,13 +70,33 @@ require_once __DIR__ . '/../config/auth_check.php';
           </div>
         </div>
 
-        <div class="stat-metric-card">
+        <div class="stat-metric-card" data-status="Pending" title="Filter by Pending">
+          <div class="stat-metric-icon stat-icon-pending">
+            <i class="fa-solid fa-clock"></i>
+          </div>
+          <div class="stat-metric-content">
+            <span class="stat-metric-value" id="statPendingVal">0</span>
+            <span class="stat-metric-label">Pending</span>
+          </div>
+        </div>
+
+        <div class="stat-metric-card" data-status="On Hold" title="Filter by Hold">
+          <div class="stat-metric-icon stat-icon-hold">
+            <i class="fa-solid fa-circle-pause"></i>
+          </div>
+          <div class="stat-metric-content">
+            <span class="stat-metric-value" id="statHoldVal">0</span>
+            <span class="stat-metric-label">Hold</span>
+          </div>
+        </div>
+
+        <div class="stat-metric-card" data-status="Completed" title="Filter by Completed">
           <div class="stat-metric-icon stat-icon-completed">
             <i class="fa-solid fa-circle-check"></i>
           </div>
           <div class="stat-metric-content">
             <span class="stat-metric-value" id="statCompletedVal">0</span>
-            <span class="stat-metric-label">Completed Tasks</span>
+            <span class="stat-metric-label">Completed</span>
           </div>
         </div>
       </div>
@@ -96,7 +107,7 @@ require_once __DIR__ . '/../config/auth_check.php';
           <!-- Search Input -->
           <div class="search-wrapper">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" id="search-input" class="search-input" placeholder="Search by Project Name, ID, Task..." autocomplete="off">
+            <input type="text" id="search-input" class="search-input" placeholder="Search by Project Name, ID, Sub Project..." autocomplete="off">
           </div>
 
           <!-- Category Filter -->
@@ -117,13 +128,48 @@ require_once __DIR__ . '/../config/auth_check.php';
           </select>
 
           <!-- Status Filter -->
-          <select id="status-filter" class="select-filter-control" aria-label="Filter by Project Status">
-            <option value="">All Statuses</option>
-            <option value="Assigned">Assigned</option>
-            <option value="In Progress">In Progress</option>
-            <option value="On Hold">On Hold</option>
-            <option value="Completed">Completed</option>
-          </select>
+          <div class="status-filter-wrapper" id="statusFilterWrapper">
+            <div class="status-filter-display" id="statusFilterDisplay" tabindex="0" role="button" aria-haspopup="listbox" aria-expanded="false" title="Assigned, In Progress, Pending, On Hold">
+              <span class="status-filter-text" id="statusFilterText">Statuses</span>
+              <i class="fa-solid fa-chevron-down status-filter-arrow"></i>
+            </div>
+            <input type="hidden" id="status-filter" value="Assigned,In Progress,Pending,On Hold">
+
+            <div class="status-filter-dropdown" id="statusFilterDropdown">
+              <div class="status-filter-options-list">
+                <label class="status-filter-option status-filter-all-option" id="statusAllOption">
+                  <input type="checkbox" id="statusFilterAll" class="status-filter-all-checkbox">
+                  <span class="status-option-label status-all-label">All Statuses</span>
+                </label>
+                <div class="status-filter-divider"></div>
+                <label class="status-filter-option">
+                  <input type="checkbox" class="status-filter-checkbox" value="Assigned" checked>
+                  <span class="status-dot dot-assigned"></span>
+                  <span class="status-option-label">Assigned</span>
+                </label>
+                <label class="status-filter-option">
+                  <input type="checkbox" class="status-filter-checkbox" value="In Progress" checked>
+                  <span class="status-dot dot-progress"></span>
+                  <span class="status-option-label">In Progress</span>
+                </label>
+                <label class="status-filter-option">
+                  <input type="checkbox" class="status-filter-checkbox" value="Pending" checked>
+                  <span class="status-dot dot-pending"></span>
+                  <span class="status-option-label">Pending</span>
+                </label>
+                <label class="status-filter-option">
+                  <input type="checkbox" class="status-filter-checkbox" value="On Hold" checked>
+                  <span class="status-dot dot-hold"></span>
+                  <span class="status-option-label">On Hold</span>
+                </label>
+                <label class="status-filter-option">
+                  <input type="checkbox" class="status-filter-checkbox" value="Completed">
+                  <span class="status-dot dot-completed"></span>
+                  <span class="status-option-label">Completed</span>
+                </label>
+              </div>
+            </div>
+          </div>
 
           <!-- Reset Filter Button -->
           <button type="button" id="btnResetFilters" class="btn-reset-filter" title="Reset all filters">
@@ -139,8 +185,8 @@ require_once __DIR__ . '/../config/auth_check.php';
         </div>
       </div>
 
-      <!-- Projects Cards & Tasks Container -->
-      <div style="position: relative; min-height: 200px;">
+      <!-- Projects Cards & Assigned Subprojects Container -->
+      <div class="projects-cards-wrapper">
         <div class="loading-overlay" id="loadingOverlay">
           <div class="spinner"></div>
         </div>
@@ -156,7 +202,7 @@ require_once __DIR__ . '/../config/auth_check.php';
     <?php include '../components/header-sidebar.php'; ?>
 
     <script src="../plugins/jquery-3.7.1.min.js"></script>
-    <script src="../js/project/my-projects.js"></script>
+    <script src="../js/project/my-projects.js?v=<?php echo time(); ?>"></script>
   </body>
 
 </html>

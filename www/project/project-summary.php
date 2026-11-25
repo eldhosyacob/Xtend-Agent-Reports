@@ -140,7 +140,7 @@ $project_id = isset($_GET['project_id']) ? htmlspecialchars(trim($_GET['project_
               <tr>
                 <th class="col-sl">Sl No</th>
                 <th class="col-agent">Agent</th>
-                <th class="col-subtask">Subtask Name</th>
+                <th class="col-subtask">Task Name</th>
                 <th class="col-date">Start Date</th>
                 <th class="col-date">End Date</th>
                 <th class="col-duration">Duration</th>

@@ -170,6 +170,7 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
                 <th scope="col">Company Name</th>
                 <th scope="col">Dealer Name</th>
                 <th scope="col">Issue Category</th>
+                <th scope="col">Issue Details</th>
                 <th scope="col">Location</th>
                 <th scope="col">Hardware Details</th>
                 <th scope="col">Status</th>
@@ -403,10 +404,11 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
               const comp = (r.company_name || '').toLowerCase();
               const dealer = (r.dealer_name || '').toLowerCase();
               const issue = (r.issue_category || '').toLowerCase();
+              const issueDetails = (r.issue_details || '').toLowerCase();
               const loc = (r.location || '').toLowerCase();
               const hw = (r.hardware_details || '').toLowerCase();
               const status = (r.support_status || '').toLowerCase();
-              const match = recId.indexOf(searchVal) > -1 || comp.indexOf(searchVal) > -1 || dealer.indexOf(searchVal) > -1 || issue.indexOf(searchVal) > -1 || loc.indexOf(searchVal) > -1 || hw.indexOf(searchVal) > -1 || status.indexOf(searchVal) > -1;
+              const match = recId.indexOf(searchVal) > -1 || comp.indexOf(searchVal) > -1 || dealer.indexOf(searchVal) > -1 || issue.indexOf(searchVal) > -1 || issueDetails.indexOf(searchVal) > -1 || loc.indexOf(searchVal) > -1 || hw.indexOf(searchVal) > -1 || status.indexOf(searchVal) > -1;
               if (!match) return false;
             }
             return true;
@@ -679,6 +681,7 @@ $default_status = isset($_GET['status']) ? trim($_GET['status']) : '';
                 <td class="company-name-cell">${escapeHtml(r.company_name) || '—'}</td>
                 <td>${escapeHtml(r.dealer_name) || '—'}</td>
                 <td>${escapeHtml(r.issue_category || '—')}</td>
+                <td>${escapeHtml(r.issue_details || '—')}</td>
                 <td>${escapeHtml(r.location || '—')}</td>
                 <td>${escapeHtml(r.hardware_details || '—')}</td>
                 <td>

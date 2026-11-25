@@ -244,3 +244,63 @@
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   color: #ffffff;
 }
+
+.fa-code-branch {
+  color: palevioletred;
+}
+
+.fa-desktop {
+  color: #7998d9;
+}
+
+.fa-key {
+  color: #be871f;
+}
+
+.fa-calendar-check {
+  color: #c94949;
+}
+
+.fa-calendar-days {
+  color: #419693;
+}
+
+.fa-clock {
+  color: #18ad9f;
+}
+
+.fa-arrow-left-long {
+  color: var(--text-secondary);
+}
+
+.fa-arrow-left-long:hover {
+  color: var(--accent-indigo);
+}
+
+.fa-code-branch {
+  color: palevioletred;
+}
+
+.fa-desktop {
+  color: #7998d9;
+}
+
+.fa-key {
+  color: #be871f;
+}
+
+.fa-calendar-check {
+  color: #c94949;
+}
+
+.fa-calendar-plus {
+  color: #419693;
+}
+
+.fa-users-gear {
+  color: green;
+}
+
+.fa-circle-check {
+  color: #10b981;
+}

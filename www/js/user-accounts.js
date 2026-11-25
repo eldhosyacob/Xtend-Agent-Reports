@@ -30,10 +30,41 @@ $(document).ready(function() {
         }
     });
 
+    // Helper to toggle visibility of Allow Project Creation checkbox
+    function toggleProjectCreatorVisibility(context, role) {
+        const isUser = (role && role.toString().trim().toLowerCase() === 'user');
+        const $group = (context === 'modal') ? $('#modalProjectCreatorGroup') : $('#editProjectCreatorGroup');
+        if (isUser) {
+            $group.removeClass('is-hidden');
+        } else {
+            $group.addClass('is-hidden');
+        }
+    }
+
+    // Role change handlers to toggle Allow Project Creation checkbox
+    $('#modalUserType').on('change', function() {
+        const role = $(this).val();
+        toggleProjectCreatorVisibility('modal', role);
+        if (role !== 'user') {
+            $('#modalProjectCreator').prop('checked', false);
+        }
+    });
+
+    $('#editUserType').on('change', function() {
+        const role = $(this).val();
+        toggleProjectCreatorVisibility('edit', role);
+        if (role !== 'user') {
+            $('#editProjectCreator').prop('checked', false);
+        }
+    });
+
     // Open Add User Modal
     $('#btnAddUser').on('click', function() {
         $('#addUserForm')[0].reset();
+        $('#modalUserType').val('user');
         $('#modalProjectOnly').prop('checked', false);
+        $('#modalProjectCreator').prop('checked', false);
+        toggleProjectCreatorVisibility('modal', 'user');
         
         // Reset password fields to hidden state
         $('#modalPassword, #modalConfirmPassword').attr('type', 'password');
@@ -61,8 +92,9 @@ $(document).ready(function() {
         const username = $(this).data('username');
         const name = $(this).data('name');
         const dept = $(this).data('dept');
-        const role = $(this).data('role');
+        const role = $(this).data('role') || 'user';
         const projectOnly = $(this).data('project-only');
+        const projectCreator = $(this).data('project-creator');
 
         // Reset edit form fields
         $('#editUserForm')[0].reset();
@@ -74,9 +106,16 @@ $(document).ready(function() {
         $('#editUsername').val(username);
         $('#editRealName').val(name);
         $('#editDepartment').val(dept || 'Voice Logger');
-        $('#editUserType').val(role || 'user');
+        $('#editUserType').val(role);
         const isProjOnly = (projectOnly == 1 || projectOnly === '1' || projectOnly === true);
         $('#editProjectOnly').prop('checked', isProjOnly);
+        const isProjCreator = (projectCreator == 1 || projectCreator === '1' || projectCreator === true);
+        $('#editProjectCreator').prop('checked', isProjCreator);
+
+        toggleProjectCreatorVisibility('edit', role);
+        if (role !== 'user') {
+            $('#editProjectCreator').prop('checked', false);
+        }
 
         $('#editUserModal').addClass('active');
         $('#editPassword').focus();
@@ -247,6 +286,7 @@ $(document).ready(function() {
                             data-dept="${escapeHtml(user.department)}" 
                             data-role="${escapeHtml(user.role)}"
                             data-project-only="${parseInt(user.project_only) === 1 ? 1 : 0}"
+                            data-project-creator="${parseInt(user.project_creator) === 1 ? 1 : 0}"
                             title="Edit User">
                         <i class="fa-solid fa-pen-to-square"></i>
                     </button>
@@ -255,6 +295,7 @@ $(document).ready(function() {
             `;
 
             const projectOnlyBadge = parseInt(user.project_only) === 1 ? `<span class="badge badge-project-only" title="Allow only Project Management">Project Only</span>` : '';
+            const projectCreatorBadge = (user.role === 'user' && parseInt(user.project_creator) === 1) ? `<span class="badge badge-project-creator" title="Allow Project Creation">Project Creator</span>` : '';
 
             const rowHtml = `
                 <tr>
@@ -270,7 +311,7 @@ $(document).ready(function() {
                     </td>
                     <td><span class="user-display-username">${escapeHtml(user.username)}</span></td>
                     <td><span class="badge badge-dept">${escapeHtml(user.department || '-')}</span></td>
-                    <td><span class="badge ${roleClass}">${escapeHtml(user.role)}</span>${projectOnlyBadge}</td>
+                    <td><span class="badge ${roleClass}">${escapeHtml(user.role)}</span>${projectOnlyBadge}${projectCreatorBadge}</td>
                     <td>${actionsHtml}</td>
                 </tr>
             `;
@@ -346,6 +387,7 @@ $(document).ready(function() {
         const department = $('#modalDepartment').val();
         const userType = $('#modalUserType').val();
         const projectOnly = $('#modalProjectOnly').is(':checked') ? 1 : 0;
+        const projectCreator = ($('#modalUserType').val() === 'user' && $('#modalProjectCreator').is(':checked')) ? 1 : 0;
 
         // Extra client-side checks
         if (username.length < 3) {
@@ -392,7 +434,8 @@ $(document).ready(function() {
                 password: password,
                 department: department,
                 user_type: userType,
-                project_only: projectOnly
+                project_only: projectOnly,
+                project_creator: projectCreator
             },
             dataType: 'json',
             success: function(response) {
@@ -429,6 +472,7 @@ $(document).ready(function() {
         const department = $('#editDepartment').val();
         const userType = $('#editUserType').val();
         const projectOnly = $('#editProjectOnly').is(':checked') ? 1 : 0;
+        const projectCreator = ($('#editUserType').val() === 'user' && $('#editProjectCreator').is(':checked')) ? 1 : 0;
 
         // Extra client-side checks
         if (password) {
@@ -457,7 +501,8 @@ $(document).ready(function() {
                 password: password,
                 department: department,
                 user_type: userType,
-                project_only: projectOnly
+                project_only: projectOnly,
+                project_creator: projectCreator
             },
             dataType: 'json',
             success: function(response) {

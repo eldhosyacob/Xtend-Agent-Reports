@@ -32,7 +32,7 @@ if (!$db) {
     exit;
 }
 
-$projectId = isset($_GET['project_id']) ? trim($_GET['project_id']) : '';
+$projectId = isset($_GET['project_id']) ? trim($_GET['project_id']) : (isset($_GET['sub_project_id']) ? trim($_GET['sub_project_id']) : (isset($_GET['id']) ? trim($_GET['id']) : ''));
 
 if ($projectId === '') {
     echo json_encode([
@@ -56,6 +56,40 @@ $projectStmt->execute([
 ]);
 
 $project = $projectStmt->fetch();
+$isSubProject = false;
+
+if (!$project) {
+    // Check if it's a sub project in sub_projects table
+    $spStmt = $db->prepare("
+        SELECT id, project_id, sub_project_id, date, project_name, sub_project_name, product_name, product_sub_category, created_by, created_at, edited_by, edited_at, category, department, assigned_by, asignee, priority, project_status, project_description, client_dealer_specific, client_dealer_name, product_serial_no, lcd_id, hardware_id, software_version, hasp_id 
+        FROM `sub_projects` 
+        WHERE sub_project_id = :spid OR id = :numeric_id
+        LIMIT 1
+    ");
+    $spStmt->execute([
+        'spid' => $projectId,
+        'numeric_id' => is_numeric($projectId) ? (int)$projectId : 0
+    ]);
+    $project = $spStmt->fetch();
+    if ($project) {
+        $isSubProject = true;
+        // Display sub project name prominently
+        $project['parent_project_id'] = $project['project_id'];
+        $project['parent_project_name'] = $project['project_name'];
+        if (empty($project['parent_project_name'])) {
+            $pNameStmt = $db->prepare("SELECT project_name FROM `projects` WHERE `project_id` = :pid LIMIT 1");
+            $pNameStmt->execute(['pid' => $project['parent_project_id']]);
+            $fetchedName = $pNameStmt->fetchColumn();
+            if (!empty($fetchedName)) {
+                $project['parent_project_name'] = $fetchedName;
+            } else {
+                $project['parent_project_name'] = $project['parent_project_id'];
+            }
+        }
+        $project['project_name'] = $project['sub_project_name'];
+        $project['project_id'] = $project['sub_project_id'];
+    }
+}
 
 if (!$project) {
     echo json_encode([
@@ -65,16 +99,24 @@ if (!$project) {
     exit;
 }
 
-// Fetch sum of total_time across all records for this project
+$project['is_sub_project'] = $isSubProject;
+
+// Fetch sum of total_time across all records for this project and its subprojects
 $projectTimeStmt = $db->prepare("
     SELECT COALESCE(SUM(TIME_TO_SEC(pr.total_time)), 0) AS total_seconds
     FROM `project_reports` pr
-    WHERE pr.project_id = :pid_canonical OR pr.project_id = :pid_num OR pr.project_id = :pid_raw
+    WHERE pr.project_id = :pid_canonical 
+       OR pr.project_id = :pid_num 
+       OR pr.project_id = :pid_raw 
+       OR pr.project_id LIKE :pid_prefix 
+       OR pr.subtask_id LIKE :subtask_prefix
 ");
 $projectTimeStmt->execute([
     'pid_canonical' => $project['project_id'],
     'pid_num' => (string)$project['id'],
-    'pid_raw' => $projectId
+    'pid_raw' => $projectId,
+    'pid_prefix' => $project['project_id'] . '_%',
+    'subtask_prefix' => $project['project_id'] . '_%'
 ]);
 $timeRow = $projectTimeStmt->fetch();
 $totalProjectSeconds = (int)($timeRow['total_seconds'] ?? 0);
@@ -83,6 +125,44 @@ $projM = floor(($totalProjectSeconds % 3600) / 60);
 $projS = $totalProjectSeconds % 60;
 $project['total_seconds'] = $totalProjectSeconds;
 $project['total_time'] = sprintf('%02d:%02d:%02d', $projH, $projM, $projS);
+
+// Fetch all subprojects belonging to this project
+$subprojects = [];
+$spStmt = $db->prepare("
+    SELECT sp.id, sp.project_id, sp.sub_project_id, sp.sub_project_name, sp.date, sp.category, sp.department, 
+           sp.assigned_by, sp.asignee, sp.priority, sp.project_status, sp.project_description, 
+           sp.product_name, sp.product_sub_category, sp.created_by, sp.created_at, sp.edited_by, sp.edited_at,
+           (
+               SELECT COALESCE(SUM(TIME_TO_SEC(pr.total_time)), 0)
+               FROM `project_reports` pr
+               WHERE pr.project_id = sp.sub_project_id 
+                  OR pr.subtask_id LIKE CONCAT(sp.sub_project_id, '_%')
+           ) AS total_seconds,
+           (
+               SELECT COUNT(*) 
+               FROM `project_subtasks` pst 
+               WHERE pst.sub_project_id = sp.sub_project_id 
+                  OR pst.project_id = sp.sub_project_id
+                  OR pst.subtask_id LIKE CONCAT(sp.sub_project_id, '_%')
+           ) AS tasks_count
+    FROM `sub_projects` sp
+    WHERE sp.project_id = :parent_project_id OR sp.project_id = :parent_numeric_id
+    ORDER BY sp.id ASC
+");
+$spStmt->execute([
+    'parent_project_id' => $project['project_id'],
+    'parent_numeric_id' => (string)($project['id'] ?? 0)
+]);
+$subprojects = $spStmt->fetchAll(PDO::FETCH_ASSOC);
+
+foreach ($subprojects as &$sp) {
+    $sec = (int)($sp['total_seconds'] ?? 0);
+    $h = floor($sec / 3600);
+    $m = floor(($sec % 3600) / 60);
+    $s = $sec % 60;
+    $sp['total_time'] = sprintf('%02d:%02d:%02d', $h, $m, $s);
+}
+unset($sp);
 
 // Fetch all subtasks for this project (status resolved from latest project report if available)
 $subtasksStmt = $db->prepare("
@@ -119,7 +199,7 @@ $subtasksStmt = $db->prepare("
            ) AS total_seconds,
            pst.due_date, pst.created_by, pst.created_at, pst.completed_at
     FROM `project_subtasks` pst
-    WHERE pst.project_id = :project_id
+    WHERE (pst.project_id = :project_id_1 OR pst.sub_project_id = :project_id_2 OR pst.subtask_id LIKE :prefix)
     ORDER BY CASE WHEN (
         CASE 
             WHEN LOWER(TRIM(pst.status)) = 'completed' THEN 'Completed'
@@ -141,20 +221,19 @@ $subtasksStmt = $db->prepare("
 ");
 
 $subtasksStmt->execute([
-    'project_id' => $project['project_id']
+    'project_id_1' => $project['project_id'],
+    'project_id_2' => $project['project_id'],
+    'prefix' => $project['project_id'] . '_T%'
 ]);
 
 $subtasks = $subtasksStmt->fetchAll();
 
-// Optional filter: only subtasks assigned to the current logged-in user
-$mySubtasksOnly = isset($_GET['my_subtasks_only']) && in_array(strtolower(trim($_GET['my_subtasks_only'])), ['1', 'true', 'yes'], true);
+$userId = (int)($_SESSION['id'] ?? 0);
+$currentUsername = trim($_SESSION['username'] ?? '');
+$currentRealName = trim($_SESSION['real_name'] ?? ($_SESSION['full_name'] ?? ''));
 
-if ($mySubtasksOnly) {
-    $userId = (int)$_SESSION['id'];
-    $currentUsername = trim($_SESSION['username'] ?? '');
-    $currentRealName = trim($_SESSION['real_name'] ?? ($_SESSION['full_name'] ?? ''));
-
-    // Fetch user info from database to ensure fresh identifiers
+// Fetch user info from database to ensure fresh identifiers
+if ($userId > 0 && $db) {
     $userStmt = $db->prepare("SELECT id, username, real_name FROM users WHERE id = :id LIMIT 1");
     $userStmt->execute(['id' => $userId]);
     $userData = $userStmt->fetch();
@@ -167,20 +246,44 @@ if ($mySubtasksOnly) {
             $currentRealName = trim($userData['real_name']);
         }
     }
+}
 
-    $userNames = array_values(array_unique(array_filter([
-        $currentUsername,
-        $currentRealName
-    ])));
+$userNames = array_values(array_unique(array_filter([
+    $currentUsername,
+    $currentRealName
+])));
 
-    if (!empty($currentRealName)) {
-        $parts = explode(' ', $currentRealName);
-        if (!empty($parts[0])) {
-            $userNames[] = trim($parts[0]);
-        }
+if (!empty($currentRealName)) {
+    $parts = explode(' ', $currentRealName);
+    if (!empty($parts[0])) {
+        $userNames[] = trim($parts[0]);
     }
-    $userNamesLower = array_map('strtolower', array_values(array_unique(array_filter($userNames))));
+}
+$userNamesLower = array_map('strtolower', array_values(array_unique(array_filter($userNames))));
 
+if (!function_exists('checkIsUserAssigned')) {
+    function checkIsUserAssigned($assigneeString, $userNamesLower) {
+        $clean = strtolower(trim((string)$assigneeString));
+        if ($clean === '' || $clean === 'na' || $clean === 'n/a') {
+            return false;
+        }
+        if ($clean === 'all') {
+            return true;
+        }
+        $parts = array_map('trim', explode(',', $clean));
+        foreach ($userNamesLower as $uname) {
+            if ($uname !== '' && in_array($uname, $parts, true)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+// Optional filter: only subtasks assigned to the current logged-in user
+$mySubtasksOnly = isset($_GET['my_subtasks_only']) && in_array(strtolower(trim($_GET['my_subtasks_only'])), ['1', 'true', 'yes'], true);
+
+if ($mySubtasksOnly) {
     $subtasks = array_values(array_filter($subtasks, function ($st) use ($userNamesLower) {
         $stAssigneeLower = strtolower(trim($st['assigned_to'] ?? ''));
         return in_array($stAssigneeLower, $userNamesLower, true);
@@ -246,16 +349,48 @@ foreach ($subtasks as &$st) {
 unset($st);
 
 // Fetch project attachments from file-uploads/project/
+// Test related attachments from new-project-report.php are shown only on subprojects
 $projectAttachments = [];
 $projectUploadDir = __DIR__ . '/../file-uploads/project/';
-if (is_dir($projectUploadDir)) {
+if ($isSubProject && is_dir($projectUploadDir)) {
+    // Fetch all report IDs that belong to this subproject
+    $subIdStmt = $db->prepare("
+        SELECT pr.id 
+        FROM `project_reports` pr
+        WHERE pr.project_id = :sp_id_1 
+           OR pr.project_id = :sp_id_2
+           OR pr.subtask_id LIKE :sp_prefix
+           OR pr.subtask_id IN (
+               SELECT pst.subtask_id 
+               FROM `project_subtasks` pst 
+               WHERE pst.sub_project_id = :sp_id_3 
+                  OR pst.project_id = :sp_id_4
+           )
+    ");
+    $subIdStmt->execute([
+        'sp_id_1' => $project['project_id'],
+        'sp_id_2' => (string)($project['id'] ?? ''),
+        'sp_prefix' => $project['project_id'] . '_%',
+        'sp_id_3' => $project['project_id'],
+        'sp_id_4' => $project['project_id']
+    ]);
+    $subprojectReportIds = $subIdStmt->fetchAll(PDO::FETCH_COLUMN);
+    $subprojectReportIds = array_map('intval', $subprojectReportIds);
+
     $cleanCanonicalPid = preg_replace('/[^a-zA-Z0-9_-]/', '_', $project['project_id'] ?? '');
     $cleanNumPid = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string)($project['id'] ?? ''));
+    $cleanParentPid = preg_replace('/[^a-zA-Z0-9_-]/', '_', $project['parent_project_id'] ?? '');
+
     $pFiles = scandir($projectUploadDir);
     foreach ($pFiles as $f) {
         if ($f === '.' || $f === '..') continue;
+        $filePath = $projectUploadDir . $f;
+        if (!is_file($filePath)) continue;
+
         $matches = false;
         $matchedPrefix = '';
+
+        // Case 1: Direct subproject prefix
         if (!empty($cleanCanonicalPid) && strpos($f, $cleanCanonicalPid . '_') === 0) {
             $matches = true;
             $matchedPrefix = $cleanCanonicalPid . '_';
@@ -264,11 +399,24 @@ if (is_dir($projectUploadDir)) {
             $matchedPrefix = $cleanNumPid . '_';
         }
 
+        // Case 2: Parent project prefix with report ID belonging to this subproject
+        if (!$matches && !empty($cleanParentPid) && !empty($subprojectReportIds)) {
+            if (strpos($f, $cleanParentPid . '_') === 0) {
+                $afterParent = substr($f, strlen($cleanParentPid . '_'));
+                if (preg_match('/^(\d+)_/', $afterParent, $repMatch)) {
+                    $fileRepId = (int)$repMatch[1];
+                    if (in_array($fileRepId, $subprojectReportIds, true)) {
+                        $matches = true;
+                        $matchedPrefix = $cleanParentPid . '_' . $fileRepId . '_';
+                    }
+                }
+            }
+        }
+
         if ($matches) {
             $rest = substr($f, strlen($matchedPrefix));
             $restWithoutReportId = preg_replace('/^\d+_/', '', $rest);
             $origName = preg_replace('/^[a-f0-9]{13}_/', '', $restWithoutReportId);
-            $filePath = $projectUploadDir . $f;
             $sizeBytes = file_exists($filePath) ? filesize($filePath) : 0;
             $units = ['B', 'KB', 'MB', 'GB'];
             $pow = $sizeBytes ? floor(log($sizeBytes, 1024)) : 0;
@@ -285,45 +433,129 @@ if (is_dir($projectUploadDir)) {
 }
 $project['attachments'] = $projectAttachments;
 
+// Fetch project documents from file-uploads/project/projectRelated/
+$projectDocuments = [];
+$projectRelatedUploadDir = __DIR__ . '/../file-uploads/project/projectRelated/';
+if (is_dir($projectRelatedUploadDir)) {
+    $cleanCanonicalPid = preg_replace('/[^a-zA-Z0-9_-]/', '_', $project['project_id'] ?? '');
+    $cleanNumPid = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string)($project['id'] ?? ''));
+    $dFiles = scandir($projectRelatedUploadDir);
+    if ($dFiles !== false) {
+        foreach ($dFiles as $f) {
+            if ($f === '.' || $f === '..') continue;
+            $filePath = $projectRelatedUploadDir . $f;
+            if (!is_file($filePath)) continue;
+
+            // If viewing parent project, skip documents that belong to subprojects
+            if (!$isSubProject && !empty($cleanCanonicalPid) && strpos($f, $cleanCanonicalPid . '_SP') === 0) {
+                continue;
+            }
+
+            $matches = false;
+            $matchedPrefix = '';
+            if (!empty($cleanCanonicalPid) && strpos($f, $cleanCanonicalPid . '_') === 0) {
+                $matches = true;
+                $matchedPrefix = $cleanCanonicalPid . '_';
+            } elseif (!empty($cleanNumPid) && strpos($f, $cleanNumPid . '_') === 0) {
+                $matches = true;
+                $matchedPrefix = $cleanNumPid . '_';
+            }
+
+            if ($matches) {
+                $rest = substr($f, strlen($matchedPrefix));
+                $restWithoutReportId = preg_replace('/^\d+_/', '', $rest);
+                $origName = preg_replace('/^[a-f0-9]{13}_/', '', $restWithoutReportId);
+                $sizeBytes = file_exists($filePath) ? filesize($filePath) : 0;
+                $units = ['B', 'KB', 'MB', 'GB'];
+                $pow = $sizeBytes ? floor(log($sizeBytes, 1024)) : 0;
+                $pow = min($pow, count($units) - 1);
+                $sizeFormatted = round($sizeBytes / pow(1024, $pow), 2) . ' ' . $units[$pow];
+                $projectDocuments[] = [
+                    'filename' => $f,
+                    'name' => $origName,
+                    'size' => $sizeFormatted,
+                    'url' => '../file-uploads/project/projectRelated/' . rawurlencode($f)
+                ];
+            }
+        }
+    }
+}
+$project['documents'] = $projectDocuments;
+
 $userRole = strtolower(trim($_SESSION['role'] ?? ($_SESSION['user_type'] ?? '')));
 $isAdmin = ($userRole === 'admin');
 
-$canCreateSubtask = $isAdmin;
-if (!$canCreateSubtask) {
-    $currentUsername = trim($_SESSION['username'] ?? '');
-    $currentRealName = trim($_SESSION['real_name'] ?? ($_SESSION['full_name'] ?? ''));
-    $userNamesLower = array_map('strtolower', array_values(array_filter([$currentUsername, $currentRealName])));
+// Check specifically if the sub project itself is directly assigned to the current user
+$isSubprojectAssignedUser = checkIsUserAssigned($project['asignee'] ?? '', $userNamesLower);
 
-    $projectAssignee = trim($project['asignee'] ?? '');
-    $projectAssigneeLower = strtolower($projectAssignee);
+// Determine if the current user is assigned to this project / subproject
+$isProjectAssignedUser = $isAdmin;
+if (!$isProjectAssignedUser) {
+    if ($isSubprojectAssignedUser) {
+        $isProjectAssignedUser = true;
+    }
 
-    if ($projectAssigneeLower === 'all') {
-        $canCreateSubtask = true;
-    } else {
-        $assignees = array_map('trim', explode(',', $projectAssigneeLower));
-        foreach ($userNamesLower as $uname) {
-            if (in_array($uname, $assignees, true)) {
-                $canCreateSubtask = true;
-                break;
+    if (!$isProjectAssignedUser && !empty($project['parent_project_id'])) {
+        $parentStmt = $db->prepare("SELECT asignee, created_by FROM `projects` WHERE project_id = :pid OR id = :numeric_id LIMIT 1");
+        $parentStmt->execute([
+            'pid' => $project['parent_project_id'],
+            'numeric_id' => is_numeric($project['parent_project_id']) ? (int)$project['parent_project_id'] : 0
+        ]);
+        $parentRow = $parentStmt->fetch();
+        if ($parentRow) {
+            if (checkIsUserAssigned($parentRow['asignee'] ?? '', $userNamesLower)) {
+                $isProjectAssignedUser = true;
+            }
+            if (!$isProjectAssignedUser && !empty($parentRow['created_by'])) {
+                $pCreatorLower = strtolower(trim($parentRow['created_by']));
+                if (in_array($pCreatorLower, $userNamesLower, true)) {
+                    $isProjectAssignedUser = true;
+                }
             }
         }
     }
 
-    if (!$canCreateSubtask && !empty($project['created_by'])) {
+    if (!$isProjectAssignedUser && !empty($project['created_by'])) {
         $creatorLower = strtolower(trim($project['created_by']));
         if (in_array($creatorLower, $userNamesLower, true)) {
-            $canCreateSubtask = true;
+            $isProjectAssignedUser = true;
         }
     }
 }
+
+// Mark each subtask with whether current user can create/edit reports for it
+foreach ($subtasks as &$st) {
+    $isSubtaskAssigned = checkIsUserAssigned($st['assigned_to'] ?? '', $userNamesLower);
+    $st['can_report'] = $isProjectAssignedUser || $isSubtaskAssigned;
+}
+unset($st);
+
+$canCreateSubtask = $isAdmin || $isProjectAssignedUser;
+
+// Check permission to create sub project: admin or user with project_creator flag
+$userProjectCreator = isset($_SESSION['project_creator']) ? (int)$_SESSION['project_creator'] : 0;
+if (!$isAdmin && $userProjectCreator !== 1) {
+    if (!empty($_SESSION['id']) && $db) {
+        $checkCreatorStmt = $db->prepare("SELECT project_creator FROM users WHERE id = :id LIMIT 1");
+        $checkCreatorStmt->execute(['id' => $_SESSION['id']]);
+        $userProjectCreator = (int)$checkCreatorStmt->fetchColumn();
+        $_SESSION['project_creator'] = $userProjectCreator;
+    }
+}
+$canCreateSubProject = ($isAdmin || $userProjectCreator === 1);
 
 echo json_encode([
     'success' => true,
     'server_date' => date('Y-m-d'),
     'project' => $project,
+    'subprojects' => $subprojects,
+    'subprojects_count' => count($subprojects),
     'subtasks' => $subtasks,
     'subtasks_count' => count($subtasks),
     'user_photos' => $userPhotoMap,
     'is_admin' => $isAdmin,
+    'is_project_assigned_user' => $isProjectAssignedUser,
+    'is_subproject_assigned_user' => $isSubprojectAssignedUser,
+    'can_create_sub_project' => $canCreateSubProject,
     'can_create_subtask' => $canCreateSubtask
 ]);

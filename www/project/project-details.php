@@ -4,6 +4,8 @@ require_once __DIR__ . '/../config/auth_check.php';
 $project_id = isset($_GET['project_id']) ? htmlspecialchars(trim($_GET['project_id'])) : (isset($_GET['id']) ? htmlspecialchars(trim($_GET['id'])) : '');
 $user_role = isset($_SESSION['role']) ? trim($_SESSION['role']) : '';
 $is_admin = (strtolower($user_role) === 'admin');
+$user_project_creator = isset($_SESSION['project_creator']) ? (int)$_SESSION['project_creator'] : 0;
+$can_create_sub_project = ($is_admin || $user_project_creator === 1);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,7 +23,7 @@ $is_admin = (strtolower($user_role) === 'admin');
   </head>
 
   <body>
-    <div class="project-details-container page-containers" data-is-admin="<?php echo $is_admin ? '1' : '0'; ?>">
+    <div class="project-details-container page-containers" data-is-admin="<?php echo $is_admin ? '1' : '0'; ?>" data-can-create-subproject="<?php echo $can_create_sub_project ? '1' : '0'; ?>">
 
       <!-- Navigation & Top Actions Bar -->
       <!-- <div class="page-top-nav">
@@ -81,10 +83,10 @@ $is_admin = (strtolower($user_role) === 'admin');
               <span class="meta-label"><i class="fa-regular fa-calendar-days"></i> Project Date</span>
               <span class="meta-value" id="metaProjectDate">—</span>
             </div>
-            <div class="metadata-item">
+            <!-- <div class="metadata-item">
               <span class="meta-label"><i class="fa-solid fa-users-gear"></i> Assigned By</span>
               <span class="meta-value" id="metaAssignedBy">—</span>
-            </div>
+            </div> -->
             <div class="metadata-item">
               <span class="meta-label"><i class="fa-solid fa-bars-progress"></i> Project Status</span>
               <span class="meta-value" id="metaProjectStatus">—</span>
@@ -120,55 +122,57 @@ $is_admin = (strtolower($user_role) === 'admin');
             <div class="desc-box" id="projectDescBox">Loading description...</div>
           </div>
 
-          <div class="project-attachments-section" id="projectAttachmentsSection">
-            <span class="desc-title"><i class="fa-solid fa-paperclip"></i> Test Related Attachments</span>
-            <div class="attachments-list" id="projectAttachmentsList"></div>
+          <div class="project-documents-section" id="projectDocumentsSection">
+            <span class="desc-title"><i class="fa-solid fa-folder-open"></i> Project Related Documents</span>
+            <div class="attachments-list" id="projectDocumentsList"></div>
           </div>
         </div>
       </div>
 
-      <!-- Subtasks Section Card -->
-      <div class="subtasks-section-card">
+      <!-- Subprojects Section Card -->
+      <div class="subprojects-section-card">
         <div class="loading-overlay" id="loadingOverlay">
           <div class="spinner"></div>
         </div>
 
-        <div class="subtasks-header">
-          <div class="subtasks-title-group">
-            <h2>Subtasks</h2>
-            <span class="subtasks-counter-badge" id="subtaskCounterBadge">0 Subtasks</span>
+        <div class="subprojects-header">
+          <div class="subprojects-title-group">
+            <h2> Sub Projects</h2>
+            <span class="subprojects-counter-badge" id="subprojectCounterBadge">0 Sub Projects</span>
           </div>
 
-          <!-- <button type="button" class="btn-primary-action" id="btnOpenSubtaskModal" style="display: none;">
-            <i class="fa-solid fa-plus"></i> Add Subtask
-          </button> -->
+          <div class="subprojects-header-actions">
+            <a href="create-sub-project.php?project_id=<?php echo urlencode($project_id); ?>" class="btn-primary-action btn-add-subproject" id="btnAddSubProject">
+              <i class="fa-solid fa-plus"></i> Add Sub Project
+            </a>
+          </div>
         </div>
 
-        <!-- Subtasks Stats Summary Pills -->
-        <div class="subtasks-stats-bar">
-          <span class="stat-pill" id="statTotal">Total: 0</span>
-          <span class="stat-pill stat-pill-pending" id="statPending">Pending: 0</span>
-          <span class="stat-pill stat-pill-progress" id="statInProgress">In Progress: 0</span>
-          <span class="stat-pill stat-pill-completed" id="statCompleted">Completed: 0</span>
-          <span class="stat-pill stat-pill-hold" id="statOnHold">On Hold: 0</span>
+        <!-- Subprojects Stats Summary Pills -->
+        <div class="subprojects-stats-bar">
+          <span class="stat-pill" id="statSubTotal">Total: 0</span>
+          <span class="stat-pill stat-pill-assigned" id="statSubAssigned">Assigned: 0</span>
+          <span class="stat-pill stat-pill-pending" id="statSubPending">Pending: 0</span>
+          <span class="stat-pill stat-pill-progress" id="statSubInProgress">In Progress: 0</span>
+          <span class="stat-pill stat-pill-completed" id="statSubCompleted">Completed: 0</span>
+          <span class="stat-pill stat-pill-hold" id="statSubOnHold">On Hold: 0</span>
         </div>
 
-        <!-- Subtasks Table -->
-        <div class="subtasks-table-wrapper">
-          <table class="subtasks-table">
+        <!-- Subprojects Table -->
+        <div class="subprojects-table-wrapper">
+          <table class="subprojects-table">
             <thead>
               <tr>
-                <th style="width: 140px;">ID</th>
-                <th>Subtask</th>
-                <th style="width: 150px;">Assigned To</th>
-                <!-- <th style="width: 110px;">Priority</th>
-                <th style="width: 120px;">Due Date</th> -->
-                <th style="width: 160px;">Created By</th>
-                <th style="width: 130px;">Total Time</th>
+                <th style="width: 150px;">Sub Project ID</th>
+                <th>Sub Project Name</th>
+                <th style="width: 140px;">Department</th>
+                <th style="width: 180px;">Assigned To</th>
+                <th style="width: 110px;">Priority</th>
+                <th style="width: 120px;">Total Time</th>
                 <th style="width: 130px;">Status</th>
               </tr>
             </thead>
-            <tbody id="subtasksTableBody">
+            <tbody id="subprojectsTableBody">
               <!-- Dynamically populated via jQuery AJAX -->
             </tbody>
           </table>
@@ -177,64 +181,8 @@ $is_admin = (strtolower($user_role) === 'admin');
 
     </div>
 
-    <!-- Add Subtask Modal Dialog -->
-    <div class="subtask-modal-overlay" id="subtaskModal">
-      <div class="subtask-modal-dialog">
-        <div class="modal-header-section">
-          <h3><i class="fa-solid fa-list-check"></i> Add New Subtask</h3>
-          <button type="button" class="modal-close-btn" id="btnCloseSubtaskModal" title="Close">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-
-        <form id="addSubtaskForm" autocomplete="off">
-          <div class="modal-body-section">
-            <div class="modal-form-group">
-              <label for="subtask_title">Subtask Title <span class="required-star">*</span></label>
-              <input type="text" id="subtask_title" name="subtask_title" class="modal-form-control" placeholder="e.g. Implement user authentication module" required>
-            </div>
-
-            <div class="modal-form-row-2">
-              <div class="modal-form-group">
-                <label for="subtask_assigned_to">Assignee <span class="required-star">*</span></label>
-                <select id="subtask_assigned_to" name="subtask_assigned_to" class="modal-form-control" required>
-                  <option value="" disabled selected>Loading users...</option>
-                </select>
-              </div>
-
-              <div class="modal-form-group">
-                <label for="subtask_priority">Priority</label>
-                <select id="subtask_priority" name="subtask_priority" class="modal-form-control">
-                  <option value="Low">Low</option>
-                  <option value="Medium" selected>Medium</option>
-                  <option value="High">High</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="modal-form-group">
-              <label for="subtask_due_date">Due Date</label>
-              <input type="date" id="subtask_due_date" name="subtask_due_date" class="modal-form-control">
-            </div>
-
-            <div class="modal-form-group">
-              <label for="subtask_description">Description / Notes</label>
-              <textarea id="subtask_description" name="subtask_description" class="modal-form-control" rows="3" placeholder="Optional details or specifications for this task..."></textarea>
-            </div>
-
-            <div class="modal-actions">
-              <button type="button" class="btn-modal-cancel" id="btnCancelSubtaskModal">Cancel</button>
-              <button type="submit" class="btn-modal-submit" id="btnSubmitSubtask">
-                <i class="fa-solid fa-check"></i> Add Subtask
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-
     <!-- Header & Sidebar Navigation Component -->
-    <?php include '../components/header-sidebar.php'; ?>
+    <?php include __DIR__ . '/../components/header-sidebar.php'; ?>
 
     <script src="../plugins/jquery-3.7.1.min.js"></script>
     <script src="../js/project/project-details.js"></script>

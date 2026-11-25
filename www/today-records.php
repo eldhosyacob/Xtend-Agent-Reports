@@ -106,6 +106,7 @@ $default_to_date = isset($_GET['to_date']) ? trim($_GET['to_date']) : '';
               <th>Dealer Name</th>
               <th>Location</th>
               <th>Issue Category</th>
+              <th>Issue Details</th>
               <th>Support Status</th>
             </tr>
           </thead>

@@ -148,13 +148,22 @@ $(document).ready(function () {
       if (isAdmin) {
         if (rawStatus.toLowerCase() === 'assigned') {
           actionTd = `<td>
-            <button type="button" class="btn-action-icon btn-action-delete btn-delete-project" 
-              data-id="${escapeHtml(proj.id)}" 
-              data-project-id="${pid}" 
-              data-project-name="${name}" 
-              title="Delete Project">
-              <i class="fa-solid fa-trash-can"></i>
-            </button>
+            <div class="action-buttons-wrapper">
+              <button type="button" class="btn-action-icon btn-action-delete btn-delete-project" 
+                data-id="${escapeHtml(proj.id)}" 
+                data-project-id="${pid}" 
+                data-project-name="${name}" 
+                title="Delete Project">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+              <a href="edit_project_details.php?project_id=${encodeURIComponent(proj.project_id)}" 
+                class="btn-action-icon btn-action-edit btn-edit-project" 
+                data-project-id="${pid}" 
+                title="Edit Project"
+                onclick="event.stopPropagation();">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </a>
+            </div>
           </td>`;
         } else {
           actionTd = `<td><span class="action-na">—</span></td>`;
@@ -220,6 +229,11 @@ $(document).ready(function () {
     if (href) {
       window.location.href = href;
     }
+  });
+
+  // Edit project button handler
+  $tableBody.on('click', '.btn-edit-project', function (e) {
+    e.stopPropagation();
   });
 
   // Delete project button handler

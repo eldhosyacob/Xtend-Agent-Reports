@@ -486,7 +486,9 @@ $(document).ready(function () {
       if (window.opener && !window.opener.closed) {
         try {
           const openerHref = window.opener.location.href || '';
-          if (openerHref.indexOf('my-project-details.php') !== -1 ||
+          if (openerHref.indexOf('sub-project-details.php') !== -1 ||
+              openerHref.indexOf('my-subproject-details.php') !== -1 ||
+              openerHref.indexOf('my-project-details.php') !== -1 ||
               openerHref.indexOf('view-related-reports.php') !== -1 ||
               openerHref.indexOf('my-project-reports.php') !== -1) {
             window.opener.location.reload();

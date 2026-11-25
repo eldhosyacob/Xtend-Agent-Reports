@@ -134,7 +134,7 @@ if (!$latestRecord) {
 }
 
 $latest_status = strtolower(trim($latestRecord['support_status'] ?? ''));
-if (strpos($latest_status, 'closed') === 0) {
+if (strpos($latest_status, 'closed') !== false) {
     echo json_encode([
         'success' => false,
         'message' => 'Closed records cannot be reopened'

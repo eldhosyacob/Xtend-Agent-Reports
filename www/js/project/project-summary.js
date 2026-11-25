@@ -118,7 +118,7 @@ $(document).ready(function () {
     $('#statOnHold').text(`On Hold: ${stats.on_hold || 0}`);
     $('#statCompleted').text(`Completed: ${stats.completed || 0}`);
     $('#statTotalTime').html(`<i class="fa-regular fa-clock"></i> Duration: ${stats.total_duration || '00:00:00'}`);
-    $('#subtaskCounterBadge').text(`${stats.total_subtasks || 0} Subtasks`);
+    $('#subtaskCounterBadge').text(`${stats.total_subtasks || 0} Tasks`);
   }
 
   function renderSubtasksTable(subtasks) {
@@ -130,7 +130,7 @@ $(document).ready(function () {
               <div class="summary-empty-icon">
                 <i class="fa-solid fa-list-check"></i>
               </div>
-              <h3 class="summary-empty-title">No subtasks found</h3>
+              <h3 class="summary-empty-title">No tasks found</h3>
             </div>
           </td>
         </tr>

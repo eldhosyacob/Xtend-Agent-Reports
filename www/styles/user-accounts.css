@@ -103,6 +103,12 @@
     border-color: rgba(99, 102, 241, 0.3);
 }
 
+[data-theme="dark"] .badge-project-creator {
+    background-color: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
 .accounts-page-container {
     background-color: var(--bg-dark);
     font-family: 'Plus Jakarta Sans', sans-serif;
@@ -308,6 +314,13 @@
     background-color: rgba(99, 102, 241, 0.1);
     color: #4f46e5;
     border: 1px solid rgba(99, 102, 241, 0.25);
+    margin-left: 6px;
+}
+
+.badge-project-creator {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.25);
     margin-left: 6px;
 }
 
@@ -528,13 +541,17 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     padding: 10px 14px;
     /* background-color: #f8fafc;
     border: 1px solid #e2e8f0; */
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.2s ease;
+}
+
+.form-checkbox-group.is-hidden {
+    display: none !important;
 }
 
 .form-checkbox-group:hover {

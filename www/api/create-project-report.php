@@ -110,6 +110,38 @@ if ($project) {
     if (!empty($project['client_dealer_name']) && strcasecmp(trim($project['client_dealer_name']), 'NA') !== 0 && strcasecmp(trim($project['client_dealer_name']), 'N/A') !== 0) {
         $clientName = trim($project['client_dealer_name']);
     }
+} else {
+    // Check in sub_projects table if this is a subproject
+    $spStmt = $db->prepare("SELECT * FROM `sub_projects` WHERE `sub_project_id` = :pid OR `id` = :numeric_id LIMIT 1");
+    $spStmt->execute([
+        'pid' => $projectId,
+        'numeric_id' => is_numeric($projectId) ? (int)$projectId : 0
+    ]);
+    $spProject = $spStmt->fetch();
+    if ($spProject) {
+        if (!empty($spProject['sub_project_id'])) {
+            $canonicalProjectId = $spProject['sub_project_id'];
+        }
+        if (!empty($spProject['id'])) {
+            $numericProjectId = (int)$spProject['id'];
+        }
+        $productName = !empty($spProject['product_name']) ? trim($spProject['product_name']) : (!empty($spProject['sub_project_name']) ? trim($spProject['sub_project_name']) : '');
+        $productSubCategory = !empty($spProject['product_sub_category']) ? trim($spProject['product_sub_category']) : null;
+        $department = !empty($spProject['department']) ? trim($spProject['department']) : null;
+        $productIdField = !empty($spProject['product_serial_no']) ? trim($spProject['product_serial_no']) : null;
+        $softwareVersion = !empty($spProject['software_version']) ? trim($spProject['software_version']) : null;
+        $lcdId = !empty($spProject['lcd_id']) ? trim($spProject['lcd_id']) : null;
+        $hardwareId = !empty($spProject['hardware_id']) ? trim($spProject['hardware_id']) : null;
+        $haspId = !empty($spProject['hasp_id']) ? trim($spProject['hasp_id']) : null;
+
+        $assignedBy = $spProject['assigned_by'] ?? '';
+        $productType = $spProject['category'] ?? '';
+        $receivedFrom = !empty($spProject['date']) ? $spProject['date'] : null;
+
+        if (!empty($spProject['client_dealer_name']) && strcasecmp(trim($spProject['client_dealer_name']), 'NA') !== 0 && strcasecmp(trim($spProject['client_dealer_name']), 'N/A') !== 0) {
+            $clientName = trim($spProject['client_dealer_name']);
+        }
+    }
 }
 
 // Check if subtask exists and resolve subtask_id string

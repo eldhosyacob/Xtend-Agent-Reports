@@ -199,6 +199,7 @@ $(document).ready(function () {
                     <td>${escapeHtml(row.dealer_name || '-')}</td>
                     <td>${escapeHtml(row.location || '-')}</td>
                     <td>${escapeHtml(row.issue_category || '-')}</td>
+                    <td>${escapeHtml(row.issue_details || '-')}</td>
                     <td>${getStatusBadge(row.support_status)}</td>
                 </tr>
             `;

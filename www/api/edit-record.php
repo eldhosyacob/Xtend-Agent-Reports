@@ -374,6 +374,41 @@ $statusUpdateStmt->execute([
     'case_id' => $case_id
 ]);
 
+// Add contact details, email, and phone to phonebook table if requested
+$add_to_phonebook = !empty($_POST['add_to_phonebook']) && $_POST['add_to_phonebook'] !== '0';
+if ($add_to_phonebook) {
+    $pb_contact = $data['contact_details'];
+    $pb_email = $data['email'];
+    $pb_phone = $data['phone'];
+
+    if ($pb_contact !== '' || $pb_email !== null || $pb_phone !== null) {
+        $checkPhonebookStmt = $db->prepare("
+            SELECT `id` FROM `phonebook`
+            WHERE LOWER(TRIM(COALESCE(`contact_details`, ''))) = LOWER(:contact_details)
+              AND LOWER(TRIM(COALESCE(`email`, ''))) = LOWER(:email)
+              AND TRIM(COALESCE(`phone`, '')) = :phone
+            LIMIT 1
+        ");
+        $checkPhonebookStmt->execute([
+            'contact_details' => $pb_contact,
+            'email' => $pb_email ?? '',
+            'phone' => $pb_phone ?? ''
+        ]);
+
+        if (!$checkPhonebookStmt->fetch()) {
+            $insertPhonebookStmt = $db->prepare("
+                INSERT INTO `phonebook` (`contact_details`, `email`, `phone`)
+                VALUES (:contact_details, :email, :phone)
+            ");
+            $insertPhonebookStmt->execute([
+                'contact_details' => $pb_contact,
+                'email' => $pb_email,
+                'phone' => $pb_phone
+            ]);
+        }
+    }
+}
+
 if (!empty($data['support_status'])) {
     $statusHistoryStmt = $db->prepare("INSERT INTO `support_status_history` (`case_id`, `agent`, `support_status`, `date`) VALUES (:case_id, :agent, :support_status, :date)");
     $statusHistoryStmt->execute([

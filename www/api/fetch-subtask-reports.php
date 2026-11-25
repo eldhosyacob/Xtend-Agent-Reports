@@ -49,6 +49,7 @@ $subtaskStmt = $db->prepare("
     SELECT 
         pst.id,
         pst.project_id,
+        pst.sub_project_id,
         pst.subtask_id,
         pst.title,
         pst.description,
@@ -81,6 +82,7 @@ if (!$subtask && $projectId !== '') {
         SELECT 
             pst.id,
             pst.project_id,
+            pst.sub_project_id,
             pst.subtask_id,
             pst.title,
             pst.description,
@@ -99,7 +101,7 @@ if (!$subtask && $projectId !== '') {
         LEFT JOIN `projects` p 
             ON (pst.project_id = p.project_id OR pst.project_id = CAST(p.id AS CHAR))
         WHERE (pst.subtask_id = :sid1 OR pst.id = :sid2)
-          AND (pst.project_id = :pid1 OR p.id = :pid2)
+          AND (pst.project_id = :pid1 OR pst.sub_project_id = :pid1 OR p.id = :pid2)
         LIMIT 1
     ");
     $fallbackStmt->execute([
@@ -128,6 +130,105 @@ if ($subtask) {
     }
 }
 
+// Resolve subproject details
+$resolvedSubProjectId = '';
+if ($subtask && !empty($subtask['sub_project_id'])) {
+    $resolvedSubProjectId = trim($subtask['sub_project_id']);
+} elseif ($subtask && !empty($subtask['project_id']) && strpos($subtask['project_id'], '_SP') !== false) {
+    $resolvedSubProjectId = trim($subtask['project_id']);
+} elseif (!empty($projectId) && strpos($projectId, '_SP') !== false) {
+    $resolvedSubProjectId = trim($projectId);
+} elseif (!empty($canonicalSubtaskString) && strpos($canonicalSubtaskString, '_SP') !== false) {
+    $resolvedSubProjectId = preg_replace('/_T\d+$/', '', $canonicalSubtaskString);
+}
+
+$subProjectRow = null;
+if (!empty($resolvedSubProjectId)) {
+    $spStmt = $db->prepare("
+        SELECT id, project_id, sub_project_id, sub_project_name, asignee, created_by 
+        FROM `sub_projects` 
+        WHERE sub_project_id = :spid OR id = :num_id 
+        LIMIT 1
+    ");
+    $spStmt->execute([
+        'spid' => $resolvedSubProjectId,
+        'num_id' => is_numeric($resolvedSubProjectId) ? (int)$resolvedSubProjectId : 0
+    ]);
+    $subProjectRow = $spStmt->fetch(PDO::FETCH_ASSOC);
+    if ($subProjectRow && $subtask) {
+        $subtask['sub_project_id'] = $subProjectRow['sub_project_id'];
+        $subtask['sub_project_name'] = $subProjectRow['sub_project_name'];
+        $subtask['sub_project_asignee'] = $subProjectRow['asignee'];
+    }
+}
+
+// Fetch user info from database to ensure fresh identifiers
+$userId = (int)($_SESSION['id'] ?? 0);
+$currentUsername = trim($_SESSION['username'] ?? '');
+$currentRealName = trim($_SESSION['real_name'] ?? ($_SESSION['full_name'] ?? ''));
+
+if ($userId > 0 && $db) {
+    $userStmt = $db->prepare("SELECT id, username, real_name FROM users WHERE id = :id LIMIT 1");
+    $userStmt->execute(['id' => $userId]);
+    $userData = $userStmt->fetch(PDO::FETCH_ASSOC);
+    if ($userData) {
+        if (!empty($userData['username'])) {
+            $currentUsername = trim($userData['username']);
+        }
+        if (!empty($userData['real_name'])) {
+            $currentRealName = trim($userData['real_name']);
+        }
+    }
+}
+
+$userNames = array_values(array_unique(array_filter([
+    $currentUsername,
+    $currentRealName
+])));
+if (!empty($currentRealName)) {
+    $parts = explode(' ', $currentRealName);
+    if (!empty($parts[0])) {
+        $userNames[] = trim($parts[0]);
+    }
+}
+$userNamesLower = array_map('strtolower', array_values(array_unique(array_filter($userNames))));
+
+if (!function_exists('checkIsUserAssigned')) {
+    function checkIsUserAssigned($assigneeString, $userNamesLower) {
+        $clean = strtolower(trim((string)$assigneeString));
+        if ($clean === '' || $clean === 'na' || $clean === 'n/a') {
+            return false;
+        }
+        if ($clean === 'all') {
+            return true;
+        }
+        $parts = array_map('trim', explode(',', $clean));
+        foreach ($userNamesLower as $uname) {
+            if ($uname !== '' && in_array($uname, $parts, true)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+$isSubprojectAssignedUser = false;
+if ($subProjectRow) {
+    $isSubprojectAssignedUser = checkIsUserAssigned($subProjectRow['asignee'] ?? '', $userNamesLower);
+} else {
+    // If not a subproject, check project asignee
+    $projAssignee = '';
+    if (!empty($subtask['project_id'])) {
+        $pStmt = $db->prepare("SELECT asignee FROM `projects` WHERE project_id = :pid OR id = :num_id LIMIT 1");
+        $pStmt->execute([
+            'pid' => $subtask['project_id'],
+            'num_id' => is_numeric($subtask['project_id']) ? (int)$subtask['project_id'] : 0
+        ]);
+        $projAssignee = $pStmt->fetchColumn() ?: '';
+    }
+    $isSubprojectAssignedUser = checkIsUserAssigned($projAssignee, $userNamesLower);
+}
+
 $whereClauses = [
     "(pr.subtask_id = :sid_str OR pr.subtask_id = :sid_num_str OR pr.subtask_id = :sid_raw)"
 ];
@@ -137,10 +238,22 @@ $queryParams = [
     'sid_raw' => $subtaskId
 ];
 
-if (!empty($canonicalProjectId)) {
-    $whereClauses[] = "(pr.project_id = :pid_canonical OR pr.project_id = :pid_raw)";
-    $queryParams['pid_canonical'] = $canonicalProjectId;
-    $queryParams['pid_raw'] = $projectId !== '' ? $projectId : $canonicalProjectId;
+$possibleProjectIds = array_values(array_unique(array_filter([
+    $canonicalProjectId,
+    $projectId,
+    $resolvedSubProjectId,
+    $subtask['project_id'] ?? '',
+    $subtask['sub_project_id'] ?? ''
+])));
+
+if (!empty($possibleProjectIds)) {
+    $pidPlaceholders = [];
+    foreach ($possibleProjectIds as $pIdx => $pidVal) {
+        $key = 'pid_' . $pIdx;
+        $pidPlaceholders[] = ':' . $key;
+        $queryParams[$key] = $pidVal;
+    }
+    $whereClauses[] = "(pr.project_id IN (" . implode(', ', $pidPlaceholders) . "))";
 }
 
 $whereSql = implode(' AND ', $whereClauses);
@@ -231,6 +344,8 @@ echo json_encode([
     'subtask' => $subtask,
     'subtask_id' => $canonicalSubtaskString,
     'project_id' => $canonicalProjectId,
+    'sub_project_id' => $resolvedSubProjectId,
+    'is_subproject_assigned_user' => $isSubprojectAssignedUser,
     'reports' => $reports,
     'stats' => [
         'total' => $totalCount,

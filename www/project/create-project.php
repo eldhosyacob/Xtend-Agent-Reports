@@ -6,6 +6,22 @@ $current_date = date('Y-m-d');
 
 $departments = [];
 $db = getDatabaseConnection();
+
+// Check authorization: Admin or User with project_creator permission
+$user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
+$user_project_creator = isset($_SESSION['project_creator']) ? (int)$_SESSION['project_creator'] : 0;
+if ($user_role !== 'admin' && $user_project_creator !== 1) {
+    if (!empty($_SESSION['id']) && $db) {
+        $checkStmt = $db->prepare("SELECT project_creator FROM users WHERE id = :id LIMIT 1");
+        $checkStmt->execute(['id' => $_SESSION['id']]);
+        $user_project_creator = (int)$checkStmt->fetchColumn();
+        $_SESSION['project_creator'] = $user_project_creator;
+    }
+}
+if ($user_role !== 'admin' && $user_project_creator !== 1) {
+    header('Location: project-dashboard.php');
+    exit;
+}
 if ($db) {
     $deptStmt = $db->query("SELECT DISTINCT department FROM users WHERE department IS NOT NULL AND TRIM(department) != '' ORDER BY department ASC");
     if ($deptStmt) {
@@ -28,30 +44,17 @@ if (empty($user_department) && !empty($_SESSION['id']) && $db) {
     }
 }
 
-// Fetch products based on department (Voice Logger -> products_vl, IVR -> products_ivr)
+// Fetch products for projects (Voice Logger and IVR)
 $products = [];
 if ($db) {
-    if (strcasecmp($user_department, 'Voice Logger') === 0) {
-        $prodStmt = $db->query("SELECT product_name FROM `products_vl` ORDER BY id ASC");
-        if ($prodStmt) {
-            $products = $prodStmt->fetchAll(PDO::FETCH_COLUMN);
-        }
-    } elseif (strcasecmp($user_department, 'IVR') === 0) {
-        $prodStmt = $db->query("SELECT product_name FROM `products_ivr` ORDER BY id ASC");
-        if ($prodStmt) {
-            $products = $prodStmt->fetchAll(PDO::FETCH_COLUMN);
-        }
-    } else {
-        // For Managers or other departments, fetch union of both tables
-        $prodStmt = $db->query("
-            SELECT product_name FROM `products_vl`
-            UNION
-            SELECT product_name FROM `products_ivr`
-            ORDER BY product_name ASC
-        ");
-        if ($prodStmt) {
-            $products = $prodStmt->fetchAll(PDO::FETCH_COLUMN);
-        }
+    $prodStmt = $db->query("
+        SELECT product_name FROM `products_vl`
+        UNION
+        SELECT product_name FROM `products_ivr`
+        ORDER BY product_name ASC
+    ");
+    if ($prodStmt) {
+        $products = $prodStmt->fetchAll(PDO::FETCH_COLUMN);
     }
 }
 ?>
@@ -83,7 +86,7 @@ if ($db) {
         </div>
 
         <div class="project-card-body">
-          <form id="createProjectForm" method="POST" autocomplete="off">
+          <form id="createProjectForm" method="POST" enctype="multipart/form-data" autocomplete="off">
             <!-- Row 1: Date, Project Name, Category & Priority -->
             <div class="project-form-row project-form-row-4">
               <!-- Date Field -->
@@ -91,7 +94,7 @@ if ($db) {
                 <label for="project_date">Date <span class="required-star">*</span></label>
                 <div class="project-input-wrapper">
                   <i class="fa-regular fa-calendar-days project-input-icon"></i>
-                  <input type="date" id="project_date" name="project_date" class="project-form-control" value="<?php echo htmlspecialchars($current_date); ?>" required>
+                  <input type="date" id="project_date" name="project_date" class="project-form-control" value="<?php echo htmlspecialchars($current_date); ?>" required readonly>
                 </div>
               </div>
 
@@ -134,69 +137,9 @@ if ($db) {
               </div>
             </div>
 
-            <!-- Row 2: Department, Assigned To, Assigned By & Project Status -->
-            <div class="project-form-row project-form-row-4">
-              <!-- Department Field -->
-              <div class="project-form-group">
-                <label for="project_department">Department <span class="required-star">*</span></label>
-                <div class="project-input-wrapper">
-                  <i class="fa-solid fa-sitemap project-input-icon"></i>
-                  <select id="project_department" name="project_department" class="project-form-control" required>
-                    <option value="" disabled selected>Select Department</option>
-                    <?php foreach ($departments as $dept): ?>
-                      <option value="<?php echo htmlspecialchars($dept); ?>"><?php echo htmlspecialchars($dept); ?></option>
-                    <?php endforeach; ?>
-                  </select>
-                </div>
-              </div>
+            <input type="hidden" id="project_status" name="project_status" value="Assigned">
 
-              <!-- Assigned To Field -->
-              <div class="project-form-group">
-                <label for="assignedToDisplay">Assigned To <span class="required-star">*</span></label>
-                <div class="project-input-wrapper assigned-to-wrapper" id="assignedToWrapper">
-                  <i class="fa-solid fa-users project-input-icon"></i>
-                  <div class="project-form-control assigned-to-display disabled" id="assignedToDisplay" tabindex="0">
-                    <span class="assigned-to-text placeholder" id="assignedToText">Select Department first</span>
-                    <i class="fa-solid fa-chevron-down assigned-to-arrow"></i>
-                  </div>
-                  <input type="hidden" id="project_assignee" name="project_assignee" value="" required>
-
-                  <div class="assigned-to-dropdown" id="assignedToDropdown">
-                    <div class="assigned-to-options-list" id="assignedToOptionsList">
-                      <!-- Populated dynamically via JS -->
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Assigned By Field -->
-              <div class="project-form-group">
-                <label for="project_assigned_by">Assigned By <span class="required-star">*</span></label>
-                <div class="project-input-wrapper">
-                  <i class="fa-solid fa-users-gear project-input-icon"></i>
-                  <select id="project_assigned_by" name="project_assigned_by" class="project-form-control" required>
-                    <option value="" disabled selected>Select Assigned By</option>
-                    <option value="Development">Development</option>
-                    <option value="Production">Production</option>
-                    <option value="R&D">R&D</option>
-                    <option value="Deepak">Deepak</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Project Status Field -->
-              <div class="project-form-group">
-                <label for="project_status">Project Status <span class="required-star">*</span></label>
-                <div class="project-input-wrapper">
-                  <i class="fa-solid fa-bars-progress project-input-icon"></i>
-                  <select id="project_status" name="project_status" class="project-form-control" required readonly>
-                    <option value="Assigned" selected>Assigned</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <!-- Row 3: Product Name, Product Sub Category, Client/Dealer Specific & Client Name/Dealer Name -->
+            <!-- Row 2: Product Name, Product Sub Category, Client/Dealer Specific & Client Name/Dealer Name -->
             <div class="project-form-row project-form-row-4">
               <!-- Product Name Field -->
               <div class="project-form-group">
@@ -315,6 +258,22 @@ if ($db) {
               </div>
             </div>
 
+            <!-- Row 7: Upload Documents -->
+            <div class="project-form-row">
+              <div class="project-form-group">
+                <label for="uploaded_documents">Upload Documents</label>
+                <div class="file-upload-wrapper">
+                  <input type="file" id="uploaded_documents" name="uploaded_documents[]" class="file-upload-input" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.csv,.doc,.docx,.xls,.xlsx,.zip,.txt">
+                  <div class="file-upload-content">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <div class="file-upload-text">Drag & drop documents here or <span>browse</span></div>
+                    <div class="file-upload-hint">Supports PDF, Images, Documents, CSV (Maximum 2 documents)</div>
+                  </div>
+                </div>
+                <div class="file-list-preview" id="fileListPreview"></div>
+              </div>
+            </div>
+
             <!-- Form Actions -->
             <div class="project-form-actions">
               <button type="submit" class="btn btn-primary">
@@ -329,7 +288,7 @@ if ($db) {
     <?php include '../components/header-sidebar.php'; ?>
 
     <script src="../plugins/jquery-3.7.1.min.js"></script>
-    <script src="../js/project/create-project.js"></script>
+    <script src="../js/project/create-project.js?v=<?php echo time(); ?>"></script>
   </body>
 
 </html>

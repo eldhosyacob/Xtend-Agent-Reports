@@ -37,7 +37,7 @@
 }
 
 .pending-records-table th {
-    padding: 16px 20px;
+    padding: 16px 15px;
     font-size: 13px;
     font-weight: 650;
     color: #084865;
@@ -89,4 +89,8 @@
 [data-theme="dark"] .pending-records-table tbody tr:hover {
     background: #1e293b;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.table-filter-actions .search-input-wrapper {
+    flex: 1;
 }

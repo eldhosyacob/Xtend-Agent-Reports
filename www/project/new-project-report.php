@@ -363,7 +363,7 @@ if (is_dir($projectUploadDir) && !empty($report['project_id']) && !empty($report
               <label for="department">DEPARTMENT</label>
               <div class="form-control-wrapper">
                 <i class="fa-solid fa-sitemap input-icon"></i>
-                <input type="text" id="department" name="department" class="form-control" placeholder="Enter department" value="<?php echo htmlspecialchars($department_val); ?>">
+                <input type="text" id="department" name="department" class="form-control" placeholder="Enter department" value="<?php echo htmlspecialchars($department_val); ?>" readonly>
               </div>
             </div>
             
@@ -372,7 +372,7 @@ if (is_dir($projectUploadDir) && !empty($report['project_id']) && !empty($report
               <label for="product_name">Product Name</label>
               <div class="form-control-wrapper select-wrapper">
                 <i class="fa-solid fa-box input-icon"></i>
-                <select id="product_name" name="product_name" class="form-control" required>
+                <select id="product_name" name="product_name" class="form-control" required readonly>
                   <option value="" disabled <?php echo empty($selected_product) ? 'selected' : ''; ?>>Select Product Name</option>
                   <?php 
                   $foundSelectedInList = false;

@@ -100,12 +100,12 @@ require_once 'config/auth_check.php';
               </div>
             </div>
 
-            <!-- 7. Email -->
+            <!-- 9. CONTACT DETAILS -->
             <div class="form-group col-6">
-              <label>Email</label>
+              <label>Contact Details</label>
               <div class="form-control-wrapper">
-                <i class="fa-regular fa-envelope input-icon"></i>
-                <input type="text" id="email" class="form-control" readonly>
+                <i class="fa-regular fa-address-book input-icon"></i>
+                <input type="text" id="contact_details" class="form-control" readonly>
               </div>
             </div>
 
@@ -118,12 +118,12 @@ require_once 'config/auth_check.php';
               </div>
             </div>
 
-            <!-- 9. CONTACT DETAILS -->
+            <!-- 7. Email -->
             <div class="form-group col-6">
-              <label>Contact Details</label>
+              <label>Email</label>
               <div class="form-control-wrapper">
-                <i class="fa-regular fa-address-book input-icon"></i>
-                <input type="text" id="contact_details" class="form-control" readonly>
+                <i class="fa-regular fa-envelope input-icon"></i>
+                <input type="text" id="email" class="form-control" readonly>
               </div>
             </div>
 

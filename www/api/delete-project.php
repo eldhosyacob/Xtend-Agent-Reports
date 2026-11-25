@@ -112,21 +112,27 @@ $delReportsStmt->execute([
 ]);
 
 // Delete associated physical upload files if any
-$projectUploadDir = realpath(__DIR__ . '/../file-uploads/project');
-if ($projectUploadDir && is_dir($projectUploadDir)) {
-    $cleanCanonicalPid = preg_replace('/[^a-zA-Z0-9_-]/', '_', $project['project_id']);
-    $cleanNumPid = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string)$project['id']);
-    $files = scandir($projectUploadDir);
-    if ($files !== false) {
-        foreach ($files as $file) {
-            if ($file === '.' || $file === '..') {
-                continue;
-            }
-            if ((!empty($cleanCanonicalPid) && strpos($file, $cleanCanonicalPid . '_') === 0) ||
-                (!empty($cleanNumPid) && strpos($file, $cleanNumPid . '_') === 0)) {
-                $filePath = $projectUploadDir . DIRECTORY_SEPARATOR . $file;
-                if (is_file($filePath)) {
-                    @unlink($filePath);
+$projectUploadDirs = [
+    realpath(__DIR__ . '/../file-uploads/project'),
+    realpath(__DIR__ . '/../file-uploads/project/projectRelated')
+];
+$cleanCanonicalPid = preg_replace('/[^a-zA-Z0-9_-]/', '_', $project['project_id']);
+$cleanNumPid = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string)$project['id']);
+
+foreach ($projectUploadDirs as $projectUploadDir) {
+    if ($projectUploadDir && is_dir($projectUploadDir)) {
+        $files = scandir($projectUploadDir);
+        if ($files !== false) {
+            foreach ($files as $file) {
+                if ($file === '.' || $file === '..') {
+                    continue;
+                }
+                if ((!empty($cleanCanonicalPid) && strpos($file, $cleanCanonicalPid . '_') === 0) ||
+                    (!empty($cleanNumPid) && strpos($file, $cleanNumPid . '_') === 0)) {
+                    $filePath = $projectUploadDir . DIRECTORY_SEPARATOR . $file;
+                    if (is_file($filePath)) {
+                        @unlink($filePath);
+                    }
                 }
             }
         }

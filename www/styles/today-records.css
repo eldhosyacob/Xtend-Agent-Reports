@@ -168,8 +168,8 @@
 .records-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
-    text-align: left;
+    font-size: 12px;
+    text-align: center;
 }
 
 .records-table th {
@@ -177,6 +177,7 @@
     background: var(--bg-dark);
     color: var(--text-secondary);
     font-weight: 600;
+    font-size: 13px;
     border-bottom: 1px solid var(--border-color);
     white-space: nowrap;
 }
@@ -306,5 +307,7 @@
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }

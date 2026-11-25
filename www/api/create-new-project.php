@@ -32,6 +32,23 @@ if (!$db) {
     exit;
 }
 
+// Check authorization: Admin or User with project_creator permission
+$user_role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
+$user_project_creator = isset($_SESSION['project_creator']) ? (int)$_SESSION['project_creator'] : 0;
+if ($user_role !== 'admin' && $user_project_creator !== 1) {
+    $checkStmt = $db->prepare("SELECT project_creator FROM users WHERE id = :id LIMIT 1");
+    $checkStmt->execute(['id' => $_SESSION['id']]);
+    $user_project_creator = (int)$checkStmt->fetchColumn();
+    $_SESSION['project_creator'] = $user_project_creator;
+}
+if ($user_role !== 'admin' && $user_project_creator !== 1) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Unauthorized: You do not have permission to create projects'
+    ]);
+    exit;
+}
+
 // Support both standard form POST data and JSON payload
 $input = $_POST;
 if (empty($input)) {
@@ -112,28 +129,55 @@ if (empty($priority)) {
     exit;
 }
 
-if (empty($department)) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Department is required'
-    ]);
-    exit;
-}
+// Validate uploaded documents if present
+$validDocIndices = [];
+if (!empty($_FILES['uploaded_documents']) && !empty($_FILES['uploaded_documents']['name'])) {
+    $docs = $_FILES['uploaded_documents'];
+    $docCount = is_array($docs['name']) ? count($docs['name']) : 0;
+    $totalDocSize = 0;
 
-if (empty($asignee)) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Assigned To is required'
-    ]);
-    exit;
-}
+    for ($i = 0; $i < $docCount; $i++) {
+        $err = isset($docs['error'][$i]) ? $docs['error'][$i] : UPLOAD_ERR_NO_FILE;
+        if ($err === UPLOAD_ERR_OK) {
+            $validDocIndices[] = $i;
+            $totalDocSize += isset($docs['size'][$i]) ? (int)$docs['size'][$i] : 0;
+        } elseif ($err !== UPLOAD_ERR_NO_FILE) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to upload document: Error code ' . $err
+            ]);
+            exit;
+        }
+    }
 
-if (empty($assigned_by)) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Assigned By is required'
-    ]);
-    exit;
+    if (count($validDocIndices) > 2) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Maximum 2 documents can be uploaded.'
+        ]);
+        exit;
+    }
+
+    if ($totalDocSize > 20 * 1024 * 1024) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Total size of documents cannot exceed 20MB.'
+        ]);
+        exit;
+    }
+
+    $allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'txt'];
+    foreach ($validDocIndices as $idx) {
+        $origName = basename($docs['name'][$idx]);
+        $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+        if (!in_array($ext, $allowedExtensions, true)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Invalid file format for document "' . htmlspecialchars($origName) . '". Allowed formats: ' . implode(', ', $allowedExtensions)
+            ]);
+            exit;
+        }
+    }
 }
 
 // Determine created_by from session
@@ -231,6 +275,30 @@ $stmt = $db->prepare("INSERT INTO `projects` ({$colsSql}) VALUES ({$valsSql})");
 $inserted = $stmt->execute($executeParams);
 
 if ($inserted) {
+    // Save uploaded project documents to file-uploads/project/projectRelated/
+    $uploadedFiles = [];
+    if (!empty($validDocIndices) && !empty($_FILES['uploaded_documents'])) {
+        $uploadDir = __DIR__ . '/../file-uploads/project/projectRelated/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $cleanCanonicalPid = preg_replace('/[^a-zA-Z0-9_-]/', '_', $project_id);
+        $docs = $_FILES['uploaded_documents'];
+
+        foreach ($validDocIndices as $idx) {
+            $tmpName = $docs['tmp_name'][$idx];
+            $origName = basename($docs['name'][$idx]);
+            $cleanName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $origName);
+            // Filename format: {$cleanCanonicalPid}_{uniqid}_{$cleanName}
+            $uniqueFilename = $cleanCanonicalPid . '_' . uniqid() . '_' . $cleanName;
+            $destPath = $uploadDir . $uniqueFilename;
+            if (move_uploaded_file($tmpName, $destPath)) {
+                $uploadedFiles[] = $uniqueFilename;
+            }
+        }
+    }
+
     // If requested, add client/dealer name to company_list
     if ($add_to_company_list && $client_dealer_specific === 'Yes' && !empty($client_dealer_name) && strcasecmp($client_dealer_name, 'NA') !== 0 && strcasecmp($client_dealer_name, 'N/A') !== 0) {
         $compCheck = $db->prepare("SELECT COUNT(*) FROM company_list WHERE LOWER(company_name) = LOWER(:name)");
@@ -244,7 +312,8 @@ if ($inserted) {
         'success' => true,
         'message' => 'Project created successfully',
         'id' => $db->lastInsertId(),
-        'project_id' => $project_id
+        'project_id' => $project_id,
+        'uploaded_documents' => $uploadedFiles
     ]);
 } else {
     echo json_encode([

@@ -100,7 +100,7 @@ $default_to_date = isset($_GET['to_date']) ? trim($_GET['to_date']) : '';
             <tr>
               <th>Date</th>
               <th>Project ID</th>
-              <th>Subtask</th>
+              <th>Task</th>
               <th>Agent</th>
               <th>Client Name</th>
               <th>Project Name</th>

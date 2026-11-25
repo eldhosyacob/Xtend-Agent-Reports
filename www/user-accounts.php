@@ -158,6 +158,12 @@ $current_user_id = $_SESSION['id'];
           <input type="checkbox" id="modalProjectOnly" name="project_only" value="1">
           <label class="form-checkbox-label" for="modalProjectOnly">Allow only Project Management</label>
         </div>
+
+        <!-- Project Creator Checkbox -->
+        <div class="form-checkbox-group" id="modalProjectCreatorGroup">
+          <input type="checkbox" id="modalProjectCreator" name="project_creator" value="1">
+          <label class="form-checkbox-label" for="modalProjectCreator">Allow Project Creation</label>
+        </div>
         
         <!-- Action Buttons -->
         <div class="modal-actions">
@@ -254,6 +260,12 @@ $current_user_id = $_SESSION['id'];
         <div class="form-checkbox-group">
           <input type="checkbox" id="editProjectOnly" name="project_only" value="1">
           <label class="form-checkbox-label" for="editProjectOnly">Allow only Project Management</label>
+        </div>
+
+        <!-- Project Creator Checkbox -->
+        <div class="form-checkbox-group" id="editProjectCreatorGroup">
+          <input type="checkbox" id="editProjectCreator" name="project_creator" value="1">
+          <label class="form-checkbox-label" for="editProjectCreator">Allow Project Creation</label>
         </div>
         
         <!-- Action Buttons -->

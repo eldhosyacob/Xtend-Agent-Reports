@@ -412,15 +412,148 @@ $(document).ready(function () {
     loadDepartmentProducts(dept);
   });
 
+  // Upload Documents logic (Maximum 2 files)
+  let selectedDocuments = [];
+  const $docInput = $('#uploaded_documents');
+  const $docPreview = $('#fileListPreview');
+  const $dropWrapper = $('.file-upload-wrapper');
+  const allowedDocExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'txt'];
+
+  function renderDocumentPreview() {
+    $docPreview.empty();
+    const docInputEl = $docInput[0];
+
+    if (docInputEl) {
+      try {
+        const dt = new DataTransfer();
+        selectedDocuments.forEach(function (f) { dt.items.add(f); });
+        docInputEl.files = dt.files;
+      } catch (e) {
+        // Fallback for older browsers
+      }
+    }
+
+    selectedDocuments.forEach(function (file, index) {
+      let iconClass = 'fa-regular fa-file';
+      const ext = (file.name || '').split('.').pop().toLowerCase();
+      if (['pdf'].includes(ext)) iconClass = 'fa-regular fa-file-pdf';
+      else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) iconClass = 'fa-regular fa-file-image';
+      else if (['csv', 'xls', 'xlsx'].includes(ext)) iconClass = 'fa-regular fa-file-excel';
+      else if (['doc', 'docx'].includes(ext)) iconClass = 'fa-regular fa-file-word';
+      else if (['zip', 'rar', '7z'].includes(ext)) iconClass = 'fa-regular fa-file-zipper';
+
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      const sizeText = file.size >= 1024 * 1024 ? sizeMB + ' MB' : Math.round(file.size / 1024) + ' KB';
+
+      const $item = $(`
+        <div class="file-preview-item">
+          <div class="file-preview-info">
+            <i class="${iconClass}"></i>
+            <span>${escapeHtml(file.name)}</span>
+            <span class="file-preview-size">(${sizeText})</span>
+          </div>
+          <button type="button" class="file-preview-remove" data-index="${index}" title="Remove document">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      `);
+      $docPreview.append($item);
+    });
+  }
+
+  function handleDocumentFilesInput(newFilesList) {
+    const newFiles = Array.from(newFilesList);
+    let limitExceeded = false;
+    let sizeExceeded = false;
+    let hasInvalidExt = false;
+    const maxTotalSize = 20 * 1024 * 1024; // 20MB total
+    let currentTotalSize = selectedDocuments.reduce(function (sum, f) { return sum + f.size; }, 0);
+
+    newFiles.forEach(function (newFile) {
+      const ext = (newFile.name || '').split('.').pop().toLowerCase();
+      if (!allowedDocExtensions.includes(ext)) {
+        hasInvalidExt = true;
+        return;
+      }
+      const exists = selectedDocuments.some(function (f) {
+        return f.name === newFile.name && f.size === newFile.size;
+      });
+      if (!exists) {
+        if (selectedDocuments.length >= 2) {
+          limitExceeded = true;
+        } else if (currentTotalSize + newFile.size > maxTotalSize) {
+          sizeExceeded = true;
+        } else {
+          selectedDocuments.push(newFile);
+          currentTotalSize += newFile.size;
+        }
+      }
+    });
+
+    if (hasInvalidExt) {
+      alert('Invalid file format. Allowed formats: PDF, Images, Documents, CSV, TXT, ZIP.');
+    }
+    if (limitExceeded) {
+      alert('Maximum 2 documents can be uploaded.');
+    }
+    if (sizeExceeded) {
+      alert('Total size of documents cannot exceed 20MB.');
+    }
+
+    renderDocumentPreview();
+  }
+
+  $docInput.on('click', function () {
+    this.value = '';
+  });
+
+  $docInput.on('change', function () {
+    if (this.files && this.files.length) {
+      handleDocumentFilesInput(this.files);
+    }
+    this.value = '';
+  });
+
+  $docPreview.on('click', '.file-preview-remove', function () {
+    const index = parseInt($(this).data('index'), 10);
+    if (!isNaN(index) && index >= 0 && index < selectedDocuments.length) {
+      selectedDocuments.splice(index, 1);
+      renderDocumentPreview();
+    }
+  });
+
+  $dropWrapper.on('dragover dragenter', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $(this).addClass('dragover');
+  });
+
+  $dropWrapper.on('dragleave dragend', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $(this).removeClass('dragover');
+  });
+
+  $dropWrapper.on('drop', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $(this).removeClass('dragover');
+    const dt = e.originalEvent.dataTransfer;
+    if (dt && dt.files && dt.files.length) {
+      handleDocumentFilesInput(dt.files);
+    }
+  });
+
+  $(window).on('dragover drop', function (e) {
+    e.preventDefault();
+  });
+
   // Handle Form Reset
   $form.on('reset', function () {
     setTimeout(function () {
       $clientDealerSpecific.val('No');
       handleSpecificChange();
       checkCompanyExists();
-      $department.val('');
-      loadDepartmentUsers('');
-      loadDepartmentProducts('');
       $productName.val('');
       $productSubCategory.val('');
       $productSerialNo.val('');
@@ -428,6 +561,8 @@ $(document).ready(function () {
       $hardwareId.val('');
       $softwareVersion.val('');
       $haspId.val('');
+      selectedDocuments = [];
+      renderDocumentPreview();
     }, 0);
   });
 
@@ -445,13 +580,6 @@ $(document).ready(function () {
     fetchCompanyList();
   }
 
-  if ($department.val()) {
-    loadDepartmentUsers($department.val());
-  } else {
-    $assignedToText.text('Select Department first').addClass('placeholder');
-    $assignedToDisplay.addClass('disabled');
-  }
-
   // Handle Form Submission
   $form.on('submit', function (e) {
     e.preventDefault();
@@ -461,16 +589,13 @@ $(document).ready(function () {
     const projectName = $('#project_name').val().trim();
     const category = $('#project_category').val();
     const priority = $('#project_priority').val();
-    const department = $department.val();
-    const assignee = $projectAssignee.val().trim();
-    const assignedBy = $('#project_assigned_by').val();
     const projectStatus = $('#project_status').val() || 'Assigned';
     const clientDealerSpecific = $clientDealerSpecific.val() || 'No';
     let clientDealerName = $clientDealerName.val().trim();
     const productName = $productName.val() ? $productName.val().trim() : '';
     const productSubCategory = $productSubCategory.val().trim();
 
-    if (!date || !projectName || !category || !priority || !department || !assignee || !assignedBy || !projectStatus || !productName) {
+    if (!date || !projectName || !category || !priority || !productName) {
       alert('Please fill in all required fields marked with *');
       return;
     }
@@ -485,41 +610,49 @@ $(document).ready(function () {
       clientDealerName = 'NA';
     }
 
+    if (selectedDocuments.length > 2) {
+      alert('Maximum 2 documents can be uploaded.');
+      return;
+    }
+
     // Set loading state
     $submitBtn.prop('disabled', true).html('<i class="fa-solid fa-circle-notch fa-spin"></i> Creating...');
 
     const addToCompanyList = ($addToCompanyList.is(':checked') && $addCompanyCheckboxContainer.hasClass('active')) ? 1 : 0;
 
-    const formData = {
-      project_date: date,
-      project_name: projectName,
-      project_category: category,
-      project_priority: priority,
-      project_department: department,
-      project_assignee: assignee,
-      project_assigned_by: assignedBy,
-      project_status: projectStatus,
-      client_dealer_specific: clientDealerSpecific,
-      client_dealer_name: clientDealerName,
-      product_name: productName,
-      product_sub_category: productSubCategory,
-      product_serial_no: $productSerialNo.val().trim(),
-      lcd_id: $lcdId.val().trim(),
-      hardware_id: $hardwareId.val().trim(),
-      software_version: $softwareVersion.val().trim(),
-      hasp_id: $haspId.val().trim(),
-      project_description: $('#project_description').val().trim(),
-      add_to_company_list: addToCompanyList
-    };
+    const formData = new FormData();
+    formData.append('project_date', date);
+    formData.append('project_name', projectName);
+    formData.append('project_category', category);
+    formData.append('project_priority', priority);
+    formData.append('project_status', projectStatus);
+    formData.append('client_dealer_specific', clientDealerSpecific);
+    formData.append('client_dealer_name', clientDealerName);
+    formData.append('product_name', productName);
+    formData.append('product_sub_category', productSubCategory);
+    formData.append('product_serial_no', $productSerialNo.val().trim());
+    formData.append('lcd_id', $lcdId.val().trim());
+    formData.append('hardware_id', $hardwareId.val().trim());
+    formData.append('software_version', $softwareVersion.val().trim());
+    formData.append('hasp_id', $haspId.val().trim());
+    formData.append('project_description', $('#project_description').val().trim());
+    formData.append('add_to_company_list', addToCompanyList);
+
+    selectedDocuments.forEach(function (file) {
+      formData.append('uploaded_documents[]', file);
+    });
 
     $.ajax({
       url: '../api/create-new-project.php',
       type: 'POST',
       data: formData,
+      processData: false,
+      contentType: false,
       dataType: 'json',
       success: function (response) {
         if (response.success) {
-          window.location.href = 'project-lists.php';
+          const targetPid = response.project_id || '';
+          window.location.href = 'create-sub-project.php' + (targetPid ? '?project_id=' + encodeURIComponent(targetPid) : '');
         } else {
           alert('Error: ' + (response.message || 'Failed to create project.'));
           $submitBtn.prop('disabled', false).html(originalBtnHtml);

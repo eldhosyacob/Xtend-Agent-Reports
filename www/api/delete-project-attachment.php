@@ -80,6 +80,24 @@ $projectStmt->execute([
 $project = $projectStmt->fetch();
 
 if (!$project) {
+    // Check in sub_projects table if this is a subproject
+    $spStmt = $db->prepare("SELECT id, project_id, sub_project_id FROM `sub_projects` WHERE sub_project_id = :spid OR id = :numeric_id LIMIT 1");
+    $spStmt->execute([
+        'spid' => $projectId,
+        'numeric_id' => is_numeric($projectId) ? (int)$projectId : 0
+    ]);
+    $spRow = $spStmt->fetch();
+    if ($spRow) {
+        $project = [
+            'id' => $spRow['id'],
+            'project_id' => $spRow['sub_project_id'],
+            'parent_project_id' => $spRow['project_id'],
+            'is_sub_project' => true
+        ];
+    }
+}
+
+if (!$project) {
     echo json_encode([
         'success' => false,
         'message' => 'Project not found'
@@ -96,6 +114,32 @@ if (!empty($cleanCanonicalPid) && strpos($baseFilename, $cleanCanonicalPid . '_'
     $isMatchingProject = true;
 } elseif (!empty($cleanNumPid) && strpos($baseFilename, $cleanNumPid . '_') === 0) {
     $isMatchingProject = true;
+} elseif (!empty($project['parent_project_id'])) {
+    $cleanParentPid = preg_replace('/[^a-zA-Z0-9_-]/', '_', $project['parent_project_id']);
+    if (strpos($baseFilename, $cleanParentPid . '_') === 0) {
+        $afterParent = substr($baseFilename, strlen($cleanParentPid . '_'));
+        if (preg_match('/^(\d+)_/', $afterParent, $rm)) {
+            $repId = (int)$rm[1];
+            $checkRepStmt = $db->prepare("
+                SELECT id FROM `project_reports` 
+                WHERE id = :rid AND (
+                    project_id = :spid 
+                    OR subtask_id LIKE :sp_prefix 
+                    OR subtask_id IN (SELECT pst.subtask_id FROM `project_subtasks` pst WHERE pst.sub_project_id = :spid2 OR pst.project_id = :spid3)
+                ) LIMIT 1
+            ");
+            $checkRepStmt->execute([
+                'rid' => $repId,
+                'spid' => $project['project_id'],
+                'sp_prefix' => $project['project_id'] . '_%',
+                'spid2' => $project['project_id'],
+                'spid3' => $project['project_id']
+            ]);
+            if ($checkRepStmt->fetch()) {
+                $isMatchingProject = true;
+            }
+        }
+    }
 }
 
 if (!$isMatchingProject) {
@@ -107,17 +151,19 @@ if (!$isMatchingProject) {
 }
 
 $projectUploadDir = realpath(__DIR__ . '/../file-uploads/project');
-if (!$projectUploadDir || !is_dir($projectUploadDir)) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Attachments directory not found'
-    ]);
-    exit;
+$projectRelatedUploadDir = realpath(__DIR__ . '/../file-uploads/project/projectRelated');
+
+$targetFilePath = '';
+$matchedDir = '';
+if ($projectUploadDir && is_file($projectUploadDir . DIRECTORY_SEPARATOR . $baseFilename)) {
+    $targetFilePath = $projectUploadDir . DIRECTORY_SEPARATOR . $baseFilename;
+    $matchedDir = $projectUploadDir;
+} elseif ($projectRelatedUploadDir && is_file($projectRelatedUploadDir . DIRECTORY_SEPARATOR . $baseFilename)) {
+    $targetFilePath = $projectRelatedUploadDir . DIRECTORY_SEPARATOR . $baseFilename;
+    $matchedDir = $projectRelatedUploadDir;
 }
 
-$targetFilePath = $projectUploadDir . DIRECTORY_SEPARATOR . $baseFilename;
-
-if (!file_exists($targetFilePath) || !is_file($targetFilePath)) {
+if (empty($targetFilePath) || !file_exists($targetFilePath) || !is_file($targetFilePath)) {
     echo json_encode([
         'success' => false,
         'message' => 'Attachment file not found'
@@ -125,12 +171,23 @@ if (!file_exists($targetFilePath) || !is_file($targetFilePath)) {
     exit;
 }
 
-// Security: Verify target file is strictly inside upload directory
+// Security: Verify target file is strictly inside an allowed upload directory
 $realTargetDir = dirname(realpath($targetFilePath));
-if ($realTargetDir !== $projectUploadDir) {
+if ($realTargetDir !== $matchedDir) {
     echo json_encode([
         'success' => false,
         'message' => 'Access denied: Invalid file location'
+    ]);
+    exit;
+}
+
+// For project related documents, only admin users are authorized to delete
+$userRole = strtolower(trim($_SESSION['role'] ?? ($_SESSION['user_type'] ?? '')));
+$isAdmin = ($userRole === 'admin');
+if ($matchedDir === $projectRelatedUploadDir && !$isAdmin) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Unauthorized: Only administrators can delete project related documents'
     ]);
     exit;
 }
